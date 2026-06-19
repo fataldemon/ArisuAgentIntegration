@@ -29,7 +29,8 @@
     <n-card title="Global Settings" :bordered="true">
       <n-grid :cols="2" :x-gap="16" :y-gap="12">
         <n-gi>
-          <n-form-item label="Tool Call Mode">
+          <n-form-item>
+            <template #label>Tool Call Mode <HelpTip>passthrough: MCP tools 不注入给 LLM。server_side: MCP tools 注入给 LLM 并在后端循环执行</HelpTip></template>
             <n-radio-group v-model:value="toolCallMode" @update:value="handleSetMode">
               <n-space>
                 <n-radio value="passthrough">Passthrough</n-radio>
@@ -39,7 +40,8 @@
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Max Tool Rounds">
+          <n-form-item>
+            <template #label>Max Tool Rounds <HelpTip>LLM 调用 MCP 工具的最大往返轮数。每轮 LLM 调一次工具，看到结果后决定是否再调用。防止无限循环</HelpTip></template>
             <n-input-number
               v-model:value="maxToolRounds"
               :min="1"
@@ -53,7 +55,8 @@
     </n-card>
 
     <n-card title="Quick Setup" :bordered="true">
-      <n-form-item label="Paste MCP Server JSON">
+      <n-form-item>
+        <template #label>Paste MCP Server JSON <HelpTip>粘贴完整的 MCP server JSON 配置。必须包含 enabled/transport/command/args 等字段</HelpTip></template>
         <n-input
           v-model:value="quickJson"
           type="textarea"
@@ -67,17 +70,20 @@
     <n-card :title="form.name ? `Edit: ${form.name}` : 'Create Server'" :bordered="true">
       <n-grid :cols="2" :x-gap="16" :y-gap="12">
         <n-gi>
-          <n-form-item label="Name">
+          <n-form-item>
+            <template #label>Name <HelpTip>唯一标识符，用于识别和查找该 MCP 服务器</HelpTip></template>
             <n-input v-model:value="form.name" placeholder="server-name" />
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Enabled">
+          <n-form-item>
+            <template #label>Enabled <HelpTip>勾选后 MCP 服务器生效。取消勾选后即使 tool_call_mode=server_side 该服务器工具也不可见</HelpTip></template>
             <n-switch v-model:value="form.enabled" />
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Transport">
+          <n-form-item>
+            <template #label>Transport <HelpTip>stdio: 子进程标准输入输出通信。sse/streamable_http: 连接远程 HTTP MCP 服务器</HelpTip></template>
             <n-select
               v-model:value="form.transport"
               :options="transportOptions"
@@ -86,17 +92,20 @@
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Description">
+          <n-form-item>
+            <template #label>Description <HelpTip>用于文档展示，不影响运行逻辑</HelpTip></template>
             <n-input v-model:value="form.description" placeholder="Optional description" />
           </n-form-item>
         </n-gi>
         <n-gi v-if="form.transport === 'stdio'">
-          <n-form-item label="Command">
+          <n-form-item>
+            <template #label>Command <HelpTip>仅 stdio 模式生效。要启动的进程命令，如 npx / python / uvx</HelpTip></template>
             <n-input v-model:value="form.command" placeholder="npx" />
           </n-form-item>
         </n-gi>
         <n-gi v-if="form.transport === 'stdio'">
-          <n-form-item label="Args (one per line)">
+          <n-form-item>
+            <template #label>Args (one per line) <HelpTip>仅 stdio 模式生效。每行一个命令行参数，例如 -y 和包名</HelpTip></template>
             <n-input
               v-model:value="argsText"
               type="textarea"
@@ -106,12 +115,14 @@
           </n-form-item>
         </n-gi>
         <n-gi v-if="form.transport !== 'stdio'" :span="2">
-          <n-form-item label="URL">
+          <n-form-item>
+            <template #label>URL <HelpTip>仅 sse/streamable_http 模式生效。远程 MCP 服务器的 HTTP 地址</HelpTip></template>
             <n-input v-model:value="form.url" placeholder="http://localhost:3000/sse" />
           </n-form-item>
         </n-gi>
         <n-gi :span="2">
-          <n-form-item label="Headers (JSON)">
+          <n-form-item>
+            <template #label>Headers (JSON) <HelpTip>仅远程模式生效。JSON 格式的 HTTP 请求头，如 {"Authorization": "Bearer xxx"}</HelpTip></template>
             <n-input
               v-model:value="headersText"
               type="textarea"
@@ -146,6 +157,7 @@ import {
 } from 'naive-ui'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
 import { mcpApi } from '../api/mcp'
+import HelpTip from '../components/HelpTip.vue'
 import type { MCPServer } from '../types'
 
 const message = useMessage()

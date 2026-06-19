@@ -25,7 +25,8 @@
       />
     </n-card>
 
-    <n-card title="Active Provider" :bordered="true">
+    <n-card :bordered="true">
+      <template #header>Active Provider <HelpTip>切换活跃 provider。所有对话请求都会路由到选中的活跃 provider</HelpTip></template>
       <n-radio-group v-model:value="selectedActive" @update:value="handleActivate">
         <n-space>
           <n-radio v-for="p in providers" :key="p.name" :value="p.name">
@@ -38,27 +39,32 @@
     <n-card :title="form.name ? `Edit: ${form.name}` : 'Create Provider'" :bordered="true">
       <n-grid :cols="2" :x-gap="16" :y-gap="12">
         <n-gi>
-          <n-form-item label="Name">
+          <n-form-item>
+            <template #label>name <HelpTip>唯一标识符，用于识别该 provider。例如 local_vllm</HelpTip></template>
             <n-input v-model:value="form.name" placeholder="provider-name" />
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Type">
+          <n-form-item>
+            <template #label>type <HelpTip>后端类型。目前固定为 openai_compatible</HelpTip></template>
             <n-input v-model:value="form.type" placeholder="openai_compatible" />
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Base URL">
+          <n-form-item>
+            <template #label>base_url <HelpTip>LLM 服务的完整地址（含 /v1 前缀），例如 http://localhost:8001/v1</HelpTip></template>
             <n-input v-model:value="form.base_url" placeholder="https://api.openai.com/v1" />
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Model">
+          <n-form-item>
+            <template #label>model <HelpTip>发送给 upstream 的模型名称。vLLM 的 --served-model-name 参数映射到此字段</HelpTip></template>
             <n-input v-model:value="form.model" placeholder="gpt-4o" />
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="API Key">
+          <n-form-item>
+            <template #label>api_key <HelpTip>API 密钥。如不需要鉴权可留空</HelpTip></template>
             <n-input
               v-model:value="form.api_key"
               type="password"
@@ -68,28 +74,34 @@
           </n-form-item>
         </n-gi>
         <n-gi>
-          <n-form-item label="Description">
+          <n-form-item>
+            <template #label>description <HelpTip>用于文档展示，不影响运行逻辑</HelpTip></template>
             <n-input v-model:value="form.description" placeholder="Optional description" />
           </n-form-item>
         </n-gi>
         <n-gi :span="2">
           <n-space :size="24">
-            <n-form-item label="Vision" label-placement="left">
+            <n-form-item label-placement="left">
+              <template #label>supports vision <HelpTip>勾选后图片 URL/data-uri 会传给模型。不勾选则替换为 [图片已省略] 占位文本</HelpTip></template>
               <n-switch v-model:value="form.supports_vision" />
             </n-form-item>
-            <n-form-item label="Audio" label-placement="left">
+            <n-form-item label-placement="left">
+              <template #label>supports audio <HelpTip>勾选后音频内容传给模型。不勾选则替换为 [音频已省略] 占位文本</HelpTip></template>
               <n-switch v-model:value="form.supports_audio" />
             </n-form-item>
-            <n-form-item label="Video" label-placement="left">
+            <n-form-item label-placement="left">
+              <template #label>supports video <HelpTip>勾选后视频内容传给模型。不勾选则替换为 [视频已省略] 占位文本</HelpTip></template>
               <n-switch v-model:value="form.supports_video" />
             </n-form-item>
-            <n-form-item label="Prefetch Media" label-placement="left">
+            <n-form-item label-placement="left">
+              <template #label>prefetch media <HelpTip>开启后 HTTP(S) 媒体 URL 会被后台预取内联为 data: URI 再发给模型。解决 vLLM 无法访问 CDN 签名 URL 的问题</HelpTip></template>
               <n-switch v-model:value="form.prefetch_media" />
             </n-form-item>
           </n-space>
         </n-gi>
         <n-gi :span="2">
-          <n-form-item label="Extra Body (JSON)">
+          <n-form-item>
+            <template #label>extra_body (JSON) <HelpTip>额外请求体参数（JSON），会合并到每次 LLM 调用中。例如 {"chat_template_kwargs": {"enable_thinking": false}}</HelpTip></template>
             <n-input
               v-model:value="extraBodyText"
               type="textarea"
@@ -124,6 +136,7 @@ import {
 import type { DataTableColumns } from 'naive-ui'
 import { providersApi } from '../api/providers'
 import type { Provider } from '../types'
+import HelpTip from '../components/HelpTip.vue'
 
 const message = useMessage()
 const providers = ref<Provider[]>([])

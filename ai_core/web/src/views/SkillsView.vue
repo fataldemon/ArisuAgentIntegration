@@ -9,7 +9,8 @@
       </template>
 
       <n-space vertical size="large">
-        <n-space>
+        <n-space align="center">
+          <span style="font-size: 14px">Skill name <HelpTip>skills/ 目录下的子文件夹名。每个 skill 是一个文件夹，内含 SKILL.md 文件</HelpTip></span>
           <n-input
             v-model:value="newSkillName"
             placeholder="New skill name"
@@ -67,6 +68,7 @@ import {
   type DataTableColumns,
 } from 'naive-ui'
 import { skillsApi } from '../api/skills'
+import HelpTip from '../components/HelpTip.vue'
 import type { Skill } from '../types'
 
 const message = useMessage()

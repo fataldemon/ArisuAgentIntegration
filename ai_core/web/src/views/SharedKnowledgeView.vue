@@ -2,7 +2,8 @@
   <div class="shared-knowledge-view">
     <NCard title="Shared Knowledge (_shared/knowledge)" class="section-card">
       <NSpace vertical :size="16">
-        <NFormItem label="File">
+        <NFormItem>
+          <template #label>File <HelpTip>选择知识库文件进行查看/编辑。.mem 是纯文本格式</HelpTip></template>
           <NSelect
             v-model:value="selectedFile"
             :options="fileOptions"
@@ -11,7 +12,8 @@
           />
         </NFormItem>
 
-        <NFormItem label="File Content">
+        <NFormItem>
+          <template #label>File Content <HelpTip>共享知识库内容，所有角色在 RAG 检索时都可访问。每个段落以空行分隔，可用 ##tag 后缀添加标签</HelpTip></template>
           <NInput
             v-model:value="content"
             type="textarea"
@@ -22,6 +24,7 @@
         </NFormItem>
 
         <NSpace align="center">
+          <span style="font-size: 14px">New file name <HelpTip>新文件名（.mem 后缀自动添加）</HelpTip></span>
           <NInput v-model:value="newFilename" placeholder="new_file.mem" style="width: 200px" />
           <NButton @click="createFile">Create</NButton>
           <NDivider vertical />
@@ -45,6 +48,7 @@ import {
   NCard, NButton, NInput, NSelect, NSpace, NDivider, NFormItem, useMessage,
 } from 'naive-ui'
 import { knowledgeApi } from '../api/knowledge'
+import HelpTip from '../components/HelpTip.vue'
 
 const CHARACTER = '_shared'
 const SUBJECT = 'knowledge'

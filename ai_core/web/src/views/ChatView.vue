@@ -109,12 +109,12 @@
     <div class="param-panel">
       <n-card title="Parameters" size="small" class="param-card">
         <div class="param-item">
-          <label class="param-label">Your Identity</label>
+          <label class="param-label">Your Identity <HelpTip>你的身份名称，会以"（名叫"xxx"的人说）"格式包装到消息中</HelpTip></label>
           <n-input v-model:value="identity" placeholder="老师" size="small" />
         </div>
 
         <div class="param-item">
-          <label class="param-label">Character</label>
+          <label class="param-label">Character <HelpTip>选择对话的 AI 角色</HelpTip></label>
           <n-select
             v-model:value="character"
             :options="characterOptions"
@@ -124,30 +124,30 @@
         </div>
 
         <div class="param-item">
-          <label class="param-label">Temperature: {{ temperature.toFixed(2) }}</label>
+          <label class="param-label">Temperature: {{ temperature.toFixed(2) }} <HelpTip>采样温度。范围 0~2，越高回复越随机，越低越确定</HelpTip></label>
           <n-slider v-model:value="temperature" :min="0" :max="2" :step="0.01" />
         </div>
 
         <div class="param-item">
-          <label class="param-label">Top-p: {{ topP.toFixed(2) }}</label>
+          <label class="param-label">Top-p: {{ topP.toFixed(2) }} <HelpTip>核采样概率。与 temperature 配合控制随机性</HelpTip></label>
           <n-slider v-model:value="topP" :min="0" :max="1" :step="0.01" />
         </div>
 
         <div class="param-item">
-          <label class="param-label">Max Tokens</label>
+          <label class="param-label">Max Tokens <HelpTip>单次回复的最大 token 数</HelpTip></label>
           <n-input v-model:value="maxTokensStr" placeholder="15000" />
         </div>
 
         <div class="param-item">
           <div class="switch-row">
-            <label class="param-label">Enable Thinking</label>
+            <label class="param-label">Enable Thinking <HelpTip>启用后模型会先进行思考推理再回复（Qwen3 思考模式）</HelpTip></label>
             <n-switch v-model:value="enableThinking" />
           </div>
         </div>
 
         <div class="param-item">
           <div class="switch-row">
-            <label class="param-label">On Embedding</label>
+            <label class="param-label">On Embedding <HelpTip>启用后会通过 RAG 检索角色知识库，将相关知识注入到对话上下文中</HelpTip></label>
             <n-switch v-model:value="onEmbedding" />
           </div>
         </div>
@@ -174,6 +174,7 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
+import HelpTip from '../components/HelpTip.vue'
 
 interface ChatMessage {
   role: 'user' | 'assistant'

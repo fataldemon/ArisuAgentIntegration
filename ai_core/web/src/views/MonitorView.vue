@@ -4,7 +4,7 @@
       <template #header-extra>
         <n-space align="center" :size="16">
           <span style="white-space: nowrap; font-size: 13px">
-            Interval: {{ intervalValue }}s
+            Interval: {{ intervalValue }}s <HelpTip>日志刷新间隔（秒）。值越小刷新越快但浏览器负载越大。建议 3 秒</HelpTip>
           </span>
           <n-slider
             v-model:value="intervalValue"
@@ -30,6 +30,7 @@
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { NSpace, NCard, NButton, NSlider, useMessage } from 'naive-ui'
 import { monitorApi } from '../api/monitor'
+import HelpTip from '../components/HelpTip.vue'
 import type { MonitorEntry } from '../types'
 
 const message = useMessage()
