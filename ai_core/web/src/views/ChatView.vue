@@ -7,6 +7,7 @@
           :key="idx"
           :class="['message-row', msg.role]"
         >
+          <img v-if="msg.role === 'assistant'" :src="getEmotionAvatar(parseEmotions(msg.content))" class="avatar" />
           <div class="message-bubble-wrap">
             <div :class="['message-bubble', msg.role]">
               <template v-if="msg.role === 'assistant'">
@@ -39,9 +40,11 @@
             </div>
             <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
           </div>
+          <img v-if="msg.role === 'user'" :src="userAvatar" class="avatar" />
         </div>
 
         <div v-if="isStreaming" class="message-row assistant">
+          <img :src="getEmotionAvatar(parseEmotions(streamingContent))" class="avatar" />
           <div class="message-bubble-wrap">
             <div class="message-bubble assistant">
               <div v-if="streamingThought" class="thinking-section">
@@ -266,6 +269,41 @@ function stripThinkContent(text: string): string {
   }
   return cleaned
 }
+
+const emotionImageMap: Record<string, string> = {
+  '认真': 'angry.png', '坚定': 'angry.png', '承诺': 'angry.png',
+  '生气': 'angry.png', '急切': 'angry.png', '拒绝': 'angry.png', '警惕': 'angry.png',
+  '烦恼': 'screwup.png', '慌张': 'screwup.png',
+  '专注': 'awake.png', '诚实': 'awake.png', '回答': 'awake.png',
+  '发愣': 'awake.png', '察觉': 'awake.png', '好奇': 'awake.png',
+  '期待': 'smile.png', '建议': 'smile.png', '解释': 'smile.png',
+  '高兴': 'smile.png', '欢迎': 'smile.png', '崇拜': 'smile.png',
+  '愉快': 'smile.png', '贴心': 'smile.png', '赞同': 'smile.png',
+  '邀请': 'smile.png', '惊喜': 'smile.png', '理解': 'smile.png', '喜悦': 'smile.png',
+  '回忆': 'thinking.png', '思考': 'thinking.png', '沉思': 'thinking.png',
+  '否认': 'thinking.png', '睡觉': 'thinking.png', '祈祷': 'thinking.png',
+  '自信': 'confident.png', '自豪': 'confident.png', '微笑': 'confident.png',
+  '失望': 'awkward.png', '难过': 'awkward.png', '为难': 'awkward.png',
+  '紧张': 'awkward.png', '困惑': 'awkward.png', '困扰': 'awkward.png',
+  '疑惑': 'awkward.png', '犹豫': 'awkward.png',
+  '委屈': 'cry.png', '伤心': 'cry.png',
+  '开心': 'happy.png', '兴奋': 'happy.png', '快乐': 'happy.png',
+  '可爱': 'happy.png', '俏皮': 'happy.png', '调皮': 'happy.png',
+  '卖萌': 'happy.png', '眨眼': 'happy.png',
+  '害怕': 'sweating.png', '无奈': 'sweating.png', '担忧': 'sweating.png',
+  '流汗': 'sweating.png', '尴尬': 'sweating.png', '震惊': 'sweating.png',
+  '惊讶': 'sweating.png', '道歉': 'sweating.png',
+  '平和': 'plain.png', '无聊': 'plain.png', '陈述': 'plain.png',
+  '害羞': 'shy.png', '羞涩': 'shy.png',
+  '感动': 'touching.png', '感激': 'touching.png',
+}
+
+function getEmotionAvatar(emotions: string[]): string {
+  if (emotions.length === 0) return '/admin/emoji/plain.png'
+  return `/admin/emoji/${emotionImageMap[emotions[0]] || 'plain.png'}`
+}
+
+const userAvatar = '/admin/emoji/sensei.jpg'
 
 function parseEmotions(text: string): string[] {
   const cleaned = stripThinkContent(text)
@@ -571,6 +609,8 @@ onMounted(() => {
 .message-row {
   display: flex;
   width: 100%;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .message-row.user {
@@ -581,8 +621,17 @@ onMounted(() => {
   justify-content: flex-start;
 }
 
+.avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
 .message-bubble-wrap {
-  max-width: 70%;
+  max-width: 65%;
   display: flex;
   flex-direction: column;
 }

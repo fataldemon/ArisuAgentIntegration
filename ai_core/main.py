@@ -63,6 +63,7 @@ from core.skill_manager import get_skill_manager
 from embedding.embedding import _get_model
 from embedding.migrate import migrate_all
 from llm.chat import (
+    _split_thought_and_answer,
     abort_request,
     chat,
     chat_on_setting,
@@ -70,7 +71,12 @@ from llm.chat import (
     clear_stale_media_cache,
     truncate_vllm_request_log,
 )
-from models.base import ChatCompletionRequest, ChatCompletionResponse
+from models.base import (
+    ChatCompletionRequest,
+    ChatCompletionResponse,
+    ChatCompletionResponseChoice,
+    ChatMessage,
+)
 from template import (
     LEGACY_ALICE_IMAGE_SETTING,
     LEGACY_ALICE_REPLY_INSTRUCTION,
@@ -213,6 +219,10 @@ async def create_chat_completion(request: ChatCompletionRequest):
                     request=request, max_tokens=max_chat_len, index=0
                 ):
                     yield {"data": resp.json()}
+                    try:
+                        await websocket_manager.broadcast(resp.json())
+                    except Exception:
+                        pass
             except Exception as e:
                 LOG.exception("streaming failure: %r", e)
                 yield {"data": '{"error":"stream_failure"}'}
