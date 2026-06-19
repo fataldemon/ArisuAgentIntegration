@@ -2,14 +2,14 @@
   <n-space vertical :size="20">
     <n-card v-if="activeProvider" class="active-card" :bordered="true">
       <n-space align="center" :size="16">
-        <n-tag type="info" size="large" round>Active</n-tag>
+        <n-tag type="info" size="large" round>{{ $t('common.active') }}</n-tag>
         <span class="active-name">{{ activeProvider.name }}</span>
         <n-tag>{{ activeProvider.model }}</n-tag>
         <n-tag>{{ activeProvider.type }}</n-tag>
       </n-space>
     </n-card>
 
-    <n-card title="Providers" :bordered="true">
+    <n-card :title="$t('providers.title')" :bordered="true">
       <template #header-extra>
         <n-button @click="fetchProviders" quaternary circle>
           <template #icon>↻</template>
@@ -26,7 +26,7 @@
     </n-card>
 
     <n-card :bordered="true">
-      <template #header>Active Provider <HelpTip>切换活跃 provider。所有对话请求都会路由到选中的活跃 provider</HelpTip></template>
+      <template #header>{{ $t('providers.activeProvider') }} <HelpTip>{{ $t('tips.activeProvider') }}</HelpTip></template>
       <n-radio-group v-model:value="selectedActive" @update:value="handleActivate">
         <n-space>
           <n-radio v-for="p in providers" :key="p.name" :value="p.name">
@@ -36,35 +36,35 @@
       </n-radio-group>
     </n-card>
 
-    <n-card :title="form.name ? `Edit: ${form.name}` : 'Create Provider'" :bordered="true">
+    <n-card :title="form.name ? $t('providers.addEdit') + ': ' + form.name : $t('providers.addEdit')" :bordered="true">
       <n-grid :cols="2" :x-gap="16" :y-gap="12">
         <n-gi>
           <n-form-item>
-            <template #label>name <HelpTip>唯一标识符，用于识别该 provider。例如 local_vllm</HelpTip></template>
+            <template #label>{{ $t('providers.name') }} <HelpTip>{{ $t('tips.providerName') }}</HelpTip></template>
             <n-input v-model:value="form.name" placeholder="provider-name" />
           </n-form-item>
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>type <HelpTip>后端类型。目前固定为 openai_compatible</HelpTip></template>
+            <template #label>{{ $t('providers.type') }} <HelpTip>{{ $t('tips.providerType') }}</HelpTip></template>
             <n-input v-model:value="form.type" placeholder="openai_compatible" />
           </n-form-item>
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>base_url <HelpTip>LLM 服务的完整地址（含 /v1 前缀），例如 http://localhost:8001/v1</HelpTip></template>
+            <template #label>{{ $t('providers.baseUrl') }} <HelpTip>{{ $t('tips.providerBaseUrl') }}</HelpTip></template>
             <n-input v-model:value="form.base_url" placeholder="https://api.openai.com/v1" />
           </n-form-item>
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>model <HelpTip>发送给 upstream 的模型名称。vLLM 的 --served-model-name 参数映射到此字段</HelpTip></template>
+            <template #label>{{ $t('providers.model') }} <HelpTip>{{ $t('tips.providerModel') }}</HelpTip></template>
             <n-input v-model:value="form.model" placeholder="gpt-4o" />
           </n-form-item>
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>api_key <HelpTip>API 密钥。如不需要鉴权可留空</HelpTip></template>
+            <template #label>{{ $t('providers.apiKey') }} <HelpTip>{{ $t('tips.providerApiKey') }}</HelpTip></template>
             <n-input
               v-model:value="form.api_key"
               type="password"
@@ -75,38 +75,38 @@
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>description <HelpTip>用于文档展示，不影响运行逻辑</HelpTip></template>
+            <template #label>{{ $t('providers.description') }} <HelpTip>{{ $t('tips.providerDescription') }}</HelpTip></template>
             <n-input v-model:value="form.description" placeholder="Optional description" />
           </n-form-item>
         </n-gi>
         <n-gi :span="2">
           <n-space :size="24">
             <n-form-item label-placement="left">
-              <template #label>supports vision <HelpTip>勾选后图片 URL/data-uri 会传给模型。不勾选则替换为 [图片已省略] 占位文本</HelpTip></template>
+              <template #label>{{ $t('providers.supportsVision') }} <HelpTip>{{ $t('tips.supportsVision') }}</HelpTip></template>
               <n-switch v-model:value="form.supports_vision" />
             </n-form-item>
             <n-form-item label-placement="left">
-              <template #label>supports audio <HelpTip>勾选后音频内容传给模型。不勾选则替换为 [音频已省略] 占位文本</HelpTip></template>
+              <template #label>{{ $t('providers.supportsAudio') }} <HelpTip>{{ $t('tips.supportsAudio') }}</HelpTip></template>
               <n-switch v-model:value="form.supports_audio" />
             </n-form-item>
             <n-form-item label-placement="left">
-              <template #label>supports video <HelpTip>勾选后视频内容传给模型。不勾选则替换为 [视频已省略] 占位文本</HelpTip></template>
+              <template #label>{{ $t('providers.supportsVideo') }} <HelpTip>{{ $t('tips.supportsVideo') }}</HelpTip></template>
               <n-switch v-model:value="form.supports_video" />
             </n-form-item>
             <n-form-item label-placement="left">
-              <template #label>prefetch media <HelpTip>开启后 HTTP(S) 媒体 URL 会被后台预取内联为 data: URI 再发给模型。解决 vLLM 无法访问 CDN 签名 URL 的问题</HelpTip></template>
+              <template #label>{{ $t('providers.prefetchMedia') }} <HelpTip>{{ $t('tips.prefetchMedia') }}</HelpTip></template>
               <n-switch v-model:value="form.prefetch_media" />
             </n-form-item>
           </n-space>
         </n-gi>
         <n-gi :span="2">
           <n-form-item>
-            <template #label>extra_body (JSON) <HelpTip>额外请求体参数（JSON），会合并到每次 LLM 调用中。例如 {"chat_template_kwargs": {"enable_thinking": false}}</HelpTip></template>
+            <template #label>{{ $t('providers.extraBody') }} <HelpTip>{{ $t('tips.extraBody') }}</HelpTip></template>
             <n-input
               v-model:value="extraBodyText"
               type="textarea"
               :rows="3"
-              placeholder='{"key": "value"}'
+              :placeholder="$t('providers.extraBodyPlaceholder')"
             />
           </n-form-item>
         </n-gi>
@@ -116,12 +116,12 @@
 
       <n-space>
         <n-button type="primary" @click="handleSave" :loading="saving">
-          {{ isEditing ? 'Update' : 'Save' }}
+          {{ $t('common.saveUpdate') }}
         </n-button>
         <n-button type="error" @click="handleDelete" :disabled="!isEditing" :loading="deleting">
-          Delete
+          {{ $t('common.deleteByName') }}
         </n-button>
-        <n-button @click="resetForm" quaternary>Clear</n-button>
+        <n-button @click="resetForm" quaternary>{{ $t('common.refresh') }}</n-button>
       </n-space>
     </n-card>
   </n-space>
@@ -134,11 +134,13 @@ import {
   NRadio, NTag, NDivider, NGrid, NGi, NFormItem, useMessage,
 } from 'naive-ui'
 import type { DataTableColumns } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import { providersApi } from '../api/providers'
 import type { Provider } from '../types'
 import HelpTip from '../components/HelpTip.vue'
 
 const message = useMessage()
+const { t } = useI18n()
 const providers = ref<Provider[]>([])
 const activeName = ref('')
 const selectedActive = ref('')
@@ -178,12 +180,12 @@ const columns: DataTableColumns<Provider> = [
       return row.name === activeName.value ? h('span', { style: 'color: #4C8FEC; font-weight: bold' }, '✓') : ''
     },
   },
-  { title: 'Name', key: 'name', width: 140 },
-  { title: 'Type', key: 'type', width: 120 },
-  { title: 'Model', key: 'model', width: 160 },
-  { title: 'Base URL', key: 'base_url', ellipsis: { tooltip: true }, width: 200 },
+  { title: t('providers.name'), key: 'name', width: 140 },
+  { title: t('providers.type'), key: 'type', width: 120 },
+  { title: t('providers.model'), key: 'model', width: 160 },
+  { title: t('providers.baseUrl'), key: 'base_url', ellipsis: { tooltip: true }, width: 200 },
   {
-    title: 'Vision',
+    title: t('providers.supportsVision'),
     key: 'supports_vision',
     width: 70,
     render(row) {
@@ -191,7 +193,7 @@ const columns: DataTableColumns<Provider> = [
     },
   },
   {
-    title: 'Audio',
+    title: t('providers.supportsAudio'),
     key: 'supports_audio',
     width: 70,
     render(row) {
@@ -199,7 +201,7 @@ const columns: DataTableColumns<Provider> = [
     },
   },
   {
-    title: 'Video',
+    title: t('providers.supportsVideo'),
     key: 'supports_video',
     width: 70,
     render(row) {
@@ -207,14 +209,14 @@ const columns: DataTableColumns<Provider> = [
     },
   },
   {
-    title: 'Prefetch',
+    title: t('providers.prefetchMedia'),
     key: 'prefetch_media',
     width: 80,
     render(row) {
       return h(NTag, { size: 'small', type: row.prefetch_media ? 'info' : 'default', bordered: false }, () => row.prefetch_media ? 'Yes' : 'No')
     },
   },
-  { title: 'Description', key: 'description', ellipsis: { tooltip: true } },
+  { title: t('providers.description'), key: 'description', ellipsis: { tooltip: true } },
 ]
 
 function rowProps(row: Provider) {
@@ -252,7 +254,7 @@ async function fetchProviders() {
 async function handleSave() {
   const name = form.value.name?.trim()
   if (!name) {
-    message.warning('Name is required')
+    message.warning(t('providers.nameRequired'))
     return
   }
   saving.value = true
@@ -273,7 +275,7 @@ async function handleSave() {
     }
     delete (body as any).name
     await providersApi.upsert(name, body)
-    message.success(isEditing.value ? 'Provider updated' : 'Provider created')
+    message.success(t('providers.saved'))
     resetForm()
     await fetchProviders()
   } catch (e: any) {
@@ -288,7 +290,7 @@ async function handleDelete() {
   deleting.value = true
   try {
     await providersApi.remove(editingOriginalName.value)
-    message.success('Provider deleted')
+    message.success(t('providers.deleted'))
     resetForm()
     await fetchProviders()
   } catch (e: any) {
@@ -302,7 +304,7 @@ async function handleActivate(name: string) {
   try {
     await providersApi.activate(name)
     activeName.value = name
-    message.success(`Activated: ${name}`)
+    message.success(t('providers.activated'))
   } catch (e: any) {
     selectedActive.value = activeName.value
     message.error(e.message || 'Failed to activate provider')

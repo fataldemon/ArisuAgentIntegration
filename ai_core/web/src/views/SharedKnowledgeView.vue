@@ -1,9 +1,9 @@
 <template>
   <div class="shared-knowledge-view">
-    <NCard title="Shared Knowledge (_shared/knowledge)" class="section-card">
+    <NCard :title="$t('sharedKb.title')" class="section-card">
       <NSpace vertical :size="16">
         <NFormItem>
-          <template #label>File <HelpTip>选择知识库文件进行查看/编辑。.mem 是纯文本格式</HelpTip></template>
+          <template #label>{{ $t('sharedKb.file') }} <HelpTip>{{ $t('tips.skFile') }}</HelpTip></template>
           <NSelect
             v-model:value="selectedFile"
             :options="fileOptions"
@@ -13,7 +13,7 @@
         </NFormItem>
 
         <NFormItem>
-          <template #label>File Content <HelpTip>共享知识库内容，所有角色在 RAG 检索时都可访问。每个段落以空行分隔，可用 ##tag 后缀添加标签</HelpTip></template>
+          <template #label>{{ $t('sharedKb.fileContent') }} <HelpTip>{{ $t('tips.skContent') }}</HelpTip></template>
           <NInput
             v-model:value="content"
             type="textarea"
@@ -24,16 +24,16 @@
         </NFormItem>
 
         <NSpace align="center">
-          <span style="font-size: 14px">New file name <HelpTip>新文件名（.mem 后缀自动添加）</HelpTip></span>
-          <NInput v-model:value="newFilename" placeholder="new_file.mem" style="width: 200px" />
-          <NButton @click="createFile">Create</NButton>
+          <span style="font-size: 14px">{{ $t('sharedKb.newFileName') }} <HelpTip>{{ $t('tips.skNewFile') }}</HelpTip></span>
+          <NInput v-model:value="newFilename" :placeholder="$t('sharedKb.newFileNamePlaceholder')" style="width: 200px" />
+          <NButton @click="createFile">{{ $t('sharedKb.createFile') }}</NButton>
           <NDivider vertical />
-          <NButton type="primary" @click="saveFile">Save</NButton>
-          <NButton type="error" @click="deleteFile">Delete</NButton>
-          <NButton @click="loadFiles">Refresh</NButton>
+          <NButton type="primary" @click="saveFile">{{ $t('sharedKb.saveFile') }}</NButton>
+          <NButton type="error" @click="deleteFile">{{ $t('sharedKb.deleteFile') }}</NButton>
+          <NButton @click="loadFiles">{{ $t('common.refresh') }}</NButton>
           <NDivider vertical />
-          <NButton type="warning" @click="rebuild">Rebuild FAISS Index</NButton>
-          <NButton @click="showStatus">Show Index Status</NButton>
+          <NButton type="warning" @click="rebuild">{{ $t('sharedKb.rebuildIndex') }}</NButton>
+          <NButton @click="showStatus">{{ $t('sharedKb.showIndexStatus') }}</NButton>
         </NSpace>
 
         <pre v-if="indexStatus" class="status-block">{{ indexStatus }}</pre>
@@ -47,9 +47,11 @@ import { ref, computed, onMounted } from 'vue'
 import {
   NCard, NButton, NInput, NSelect, NSpace, NDivider, NFormItem, useMessage,
 } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import { knowledgeApi } from '../api/knowledge'
 import HelpTip from '../components/HelpTip.vue'
 
+const { t } = useI18n()
 const CHARACTER = '_shared'
 const SUBJECT = 'knowledge'
 

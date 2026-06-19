@@ -1,23 +1,23 @@
 <template>
   <n-space vertical size="large">
-    <n-card title="Skills Management">
+    <n-card :title="$t('skills.title')">
       <template #header-extra>
         <n-space>
-          <n-tag type="info">{{ skills.length }} skills loaded</n-tag>
-          <n-button @click="handleReload" :loading="reloading">Reload from disk</n-button>
+          <n-tag type="info">{{ skills.length }} {{ $t('skills.desc') }}</n-tag>
+          <n-button @click="handleReload" :loading="reloading">{{ $t('common.reloadFromDisk') }}</n-button>
         </n-space>
       </template>
 
       <n-space vertical size="large">
         <n-space align="center">
-          <span style="font-size: 14px">Skill name <HelpTip>skills/ 目录下的子文件夹名。每个 skill 是一个文件夹，内含 SKILL.md 文件</HelpTip></span>
+          <span style="font-size: 14px">{{ $t('skills.skillName') }} <HelpTip>{{ $t('tips.skillName') }}</HelpTip></span>
           <n-input
             v-model:value="newSkillName"
-            placeholder="New skill name"
+            :placeholder="$t('skills.skillNamePlaceholder')"
             style="width: 240px"
           />
           <n-button type="primary" @click="handleCreate" :disabled="!newSkillName.trim()">
-            Create new skill
+            {{ $t('skills.createNew') }}
           </n-button>
         </n-space>
 
@@ -32,7 +32,7 @@
       </n-space>
     </n-card>
 
-    <n-card v-if="selectedSkill" :title="`Editing: ${selectedSkill}`">
+    <n-card v-if="selectedSkill" :title="`${$t('skills.content')}: ${selectedSkill}`">
       <n-space vertical size="medium">
         <n-input
           v-model:value="editorContent"
@@ -44,10 +44,10 @@
         />
         <n-space>
           <n-button type="primary" @click="handleSave" :loading="saving">
-            Save / Update
+            {{ $t('common.saveUpdate') }}
           </n-button>
           <n-button type="error" @click="handleDelete" :loading="deleting">
-            Delete
+            {{ $t('common.deleteByName') }}
           </n-button>
         </n-space>
       </n-space>
@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, h, onMounted } from 'vue'
+import { ref, h, computed, onMounted } from 'vue'
 import {
   NSpace,
   NCard,
@@ -67,10 +67,12 @@ import {
   useMessage,
   type DataTableColumns,
 } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import { skillsApi } from '../api/skills'
 import HelpTip from '../components/HelpTip.vue'
 import type { Skill } from '../types'
 
+const { t } = useI18n()
 const message = useMessage()
 const skills = ref<Skill[]>([])
 const loading = ref(false)
@@ -81,11 +83,11 @@ const selectedSkill = ref<string | null>(null)
 const editorContent = ref('')
 const newSkillName = ref('')
 
-const columns: DataTableColumns<Skill> = [
-  { title: 'Name', key: 'name', sorter: 'default' },
-  { title: 'Version', key: 'version', width: 100 },
+const columns = computed<DataTableColumns<Skill>>(() => [
+  { title: t('common.name'), key: 'name', sorter: 'default' },
+  { title: t('skills.version'), key: 'version', width: 100 },
   {
-    title: 'Auto Inject',
+    title: t('skills.autoInject'),
     key: 'auto_inject',
     width: 120,
     render(row) {
@@ -96,8 +98,8 @@ const columns: DataTableColumns<Skill> = [
       )
     },
   },
-  { title: 'Description', key: 'description', ellipsis: { tooltip: true } },
-]
+  { title: t('common.description'), key: 'description', ellipsis: { tooltip: true } },
+])
 
 function rowProps(row: Skill) {
   return {

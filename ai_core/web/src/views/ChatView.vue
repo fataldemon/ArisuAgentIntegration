@@ -13,7 +13,7 @@
               <template v-if="msg.role === 'assistant'">
                 <div v-if="msg.thought" class="thinking-section">
                   <n-collapse :default-expanded-names="[]">
-                    <n-collapse-item title="Thinking" name="thinking">
+                    <n-collapse-item :title="$t('chat.thinking')" name="thinking">
                       <div class="thinking-content">{{ msg.thought }}</div>
                     </n-collapse-item>
                   </n-collapse>
@@ -49,7 +49,7 @@
             <div class="message-bubble assistant">
               <div v-if="streamingThought" class="thinking-section">
                 <n-collapse :default-expanded-names="[]">
-                  <n-collapse-item title="Thinking" name="thinking">
+                  <n-collapse-item :title="$t('chat.thinking')" name="thinking">
                     <div class="thinking-content">{{ streamingThought }}</div>
                   </n-collapse-item>
                 </n-collapse>
@@ -82,7 +82,7 @@
           v-model:value="inputText"
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 4 }"
-          placeholder="Type a message..."
+          :placeholder="$t('chat.typeMessage')"
           :disabled="isStreaming"
           @keydown="handleKeydown"
           class="chat-input"
@@ -93,7 +93,7 @@
           @click="sendMessage"
           class="send-btn"
         >
-          Send
+          {{ $t('chat.send') }}
         </n-button>
         <n-button
           v-if="isStreaming"
@@ -101,59 +101,59 @@
           @click="abortStream"
           class="stop-btn"
         >
-          Stop generating
+          {{ $t('chat.stopGenerating') }}
         </n-button>
       </div>
     </div>
 
     <div class="param-panel">
-      <n-card title="Parameters" size="small" class="param-card">
+      <n-card :title="$t('chat.parameters')" size="small" class="param-card">
         <div class="param-item">
-          <label class="param-label">Your Identity <HelpTip>你的身份名称，会以"（名叫"xxx"的人说）"格式包装到消息中</HelpTip></label>
-          <n-input v-model:value="identity" placeholder="老师" size="small" />
+          <label class="param-label">{{ $t('chat.identity') }} <HelpTip>{{ $t('tips.chatIdentity') }}</HelpTip></label>
+          <n-input v-model:value="identity" :placeholder="$t('chat.identityPlaceholder')" size="small" />
         </div>
 
         <div class="param-item">
-          <label class="param-label">Character <HelpTip>选择对话的 AI 角色</HelpTip></label>
+          <label class="param-label">{{ $t('chat.character') }} <HelpTip>{{ $t('tips.chatCharacter') }}</HelpTip></label>
           <n-select
             v-model:value="character"
             :options="characterOptions"
             @update:value="onCharacterChange"
-            placeholder="Select character"
+            :placeholder="$t('chat.selectCharacter')"
           />
         </div>
 
         <div class="param-item">
-          <label class="param-label">Temperature: {{ temperature.toFixed(2) }} <HelpTip>采样温度。范围 0~2，越高回复越随机，越低越确定</HelpTip></label>
+          <label class="param-label">{{ $t('chat.temperature') }}: {{ temperature.toFixed(2) }} <HelpTip>{{ $t('tips.chatTemperature') }}</HelpTip></label>
           <n-slider v-model:value="temperature" :min="0" :max="2" :step="0.01" />
         </div>
 
         <div class="param-item">
-          <label class="param-label">Top-p: {{ topP.toFixed(2) }} <HelpTip>核采样概率。与 temperature 配合控制随机性</HelpTip></label>
+          <label class="param-label">{{ $t('chat.topP') }}: {{ topP.toFixed(2) }} <HelpTip>{{ $t('tips.chatTopP') }}</HelpTip></label>
           <n-slider v-model:value="topP" :min="0" :max="1" :step="0.01" />
         </div>
 
         <div class="param-item">
-          <label class="param-label">Max Tokens <HelpTip>单次回复的最大 token 数</HelpTip></label>
+          <label class="param-label">{{ $t('chat.maxTokens') }} <HelpTip>{{ $t('tips.chatMaxTokens') }}</HelpTip></label>
           <n-input v-model:value="maxTokensStr" placeholder="15000" />
         </div>
 
         <div class="param-item">
           <div class="switch-row">
-            <label class="param-label">Enable Thinking <HelpTip>启用后模型会先进行思考推理再回复（Qwen3 思考模式）</HelpTip></label>
+            <label class="param-label">{{ $t('chat.enableThinking') }} <HelpTip>{{ $t('tips.chatEnableThinking') }}</HelpTip></label>
             <n-switch v-model:value="enableThinking" />
           </div>
         </div>
 
         <div class="param-item">
           <div class="switch-row">
-            <label class="param-label">On Embedding <HelpTip>启用后会通过 RAG 检索角色知识库，将相关知识注入到对话上下文中</HelpTip></label>
+            <label class="param-label">{{ $t('chat.onEmbedding') }} <HelpTip>{{ $t('tips.chatOnEmbedding') }}</HelpTip></label>
             <n-switch v-model:value="onEmbedding" />
           </div>
         </div>
 
         <div class="param-item">
-          <n-button type="error" block @click="clearHistory">Clear History</n-button>
+          <n-button type="error" block @click="clearHistory">{{ $t('chat.clearHistory') }}</n-button>
         </div>
       </n-card>
     </div>
@@ -174,7 +174,10 @@ import {
   NSpin,
   NTag,
 } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import HelpTip from '../components/HelpTip.vue'
+
+const { t } = useI18n()
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -510,7 +513,6 @@ async function sendMessage() {
             scrollToBottom()
           }
         } catch {
-          // skip malformed JSON
         }
       }
     }
@@ -558,7 +560,6 @@ async function abortStream() {
     try {
       await fetch(`/admin/api/abort/${currentAbortId.value}`, { method: 'POST' })
     } catch {
-      // ignore abort request errors
     }
   }
   if (abortController.value) {

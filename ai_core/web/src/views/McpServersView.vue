@@ -2,15 +2,15 @@
   <n-space vertical :size="20">
     <n-card class="status-bar" :bordered="true">
       <n-space align="center" :size="16">
-        <n-tag type="info" size="large" round>MCP Status</n-tag>
-        <span class="status-label">Mode:</span>
+        <n-tag type="info" size="large" round>{{ $t('mcp.title') }}</n-tag>
+        <span class="status-label">{{ $t('mcp.toolCallMode') }}:</span>
         <n-tag>{{ toolCallMode }}</n-tag>
         <span class="status-label">Timeout:</span>
         <n-tag>{{ toolCallTimeout }}s</n-tag>
       </n-space>
     </n-card>
 
-    <n-card title="Servers" :bordered="true">
+    <n-card :title="$t('mcp.title')" :bordered="true">
       <template #header-extra>
         <n-button @click="fetchAll" quaternary circle>
           <template #icon>↻</template>
@@ -26,22 +26,22 @@
       />
     </n-card>
 
-    <n-card title="Global Settings" :bordered="true">
+    <n-card :title="$t('mcp.globalConfig')" :bordered="true">
       <n-grid :cols="2" :x-gap="16" :y-gap="12">
         <n-gi>
           <n-form-item>
-            <template #label>Tool Call Mode <HelpTip>passthrough: MCP tools 不注入给 LLM。server_side: MCP tools 注入给 LLM 并在后端循环执行</HelpTip></template>
+            <template #label>{{ $t('mcp.toolCallMode') }} <HelpTip>{{ $t('tips.toolCallMode') }}</HelpTip></template>
             <n-radio-group v-model:value="toolCallMode" @update:value="handleSetMode">
               <n-space>
-                <n-radio value="passthrough">Passthrough</n-radio>
-                <n-radio value="server_side">Server Side</n-radio>
+                <n-radio value="passthrough">{{ $t('mcp.passthrough') }}</n-radio>
+                <n-radio value="server_side">{{ $t('mcp.serverSide') }}</n-radio>
               </n-space>
             </n-radio-group>
           </n-form-item>
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>Max Tool Rounds <HelpTip>LLM 调用 MCP 工具的最大往返轮数。每轮 LLM 调一次工具，看到结果后决定是否再调用。防止无限循环</HelpTip></template>
+            <template #label>{{ $t('mcp.maxToolRounds') }} <HelpTip>{{ $t('tips.maxToolRounds') }}</HelpTip></template>
             <n-input-number
               v-model:value="maxToolRounds"
               :min="1"
@@ -54,9 +54,9 @@
       </n-grid>
     </n-card>
 
-    <n-card title="Quick Setup" :bordered="true">
+    <n-card :title="$t('mcp.quickSetup')" :bordered="true">
       <n-form-item>
-        <template #label>Paste MCP Server JSON <HelpTip>粘贴完整的 MCP server JSON 配置。必须包含 enabled/transport/command/args 等字段</HelpTip></template>
+        <template #label>{{ $t('mcp.pasteJson') }} <HelpTip>{{ $t('tips.pasteJson') }}</HelpTip></template>
         <n-input
           v-model:value="quickJson"
           type="textarea"
@@ -64,26 +64,26 @@
           placeholder='{"mcpServers": {"server-name": {"command": "npx", "args": ["-y", "..."]}}}'
         />
       </n-form-item>
-      <n-button type="primary" @click="handleParseJson" ghost>Parse &amp; Fill</n-button>
+      <n-button type="primary" @click="handleParseJson" ghost>{{ $t('mcp.parseAndFill') }}</n-button>
     </n-card>
 
-    <n-card :title="form.name ? `Edit: ${form.name}` : 'Create Server'" :bordered="true">
+    <n-card :title="form.name ? $t('mcp.addEditServer') + ': ' + form.name : $t('mcp.addEditServer')" :bordered="true">
       <n-grid :cols="2" :x-gap="16" :y-gap="12">
         <n-gi>
           <n-form-item>
-            <template #label>Name <HelpTip>唯一标识符，用于识别和查找该 MCP 服务器</HelpTip></template>
+            <template #label>{{ $t('mcp.name') }} <HelpTip>{{ $t('tips.mcpName') }}</HelpTip></template>
             <n-input v-model:value="form.name" placeholder="server-name" />
           </n-form-item>
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>Enabled <HelpTip>勾选后 MCP 服务器生效。取消勾选后即使 tool_call_mode=server_side 该服务器工具也不可见</HelpTip></template>
+            <template #label>{{ $t('mcp.enabled') }} <HelpTip>{{ $t('tips.mcpEnabled') }}</HelpTip></template>
             <n-switch v-model:value="form.enabled" />
           </n-form-item>
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>Transport <HelpTip>stdio: 子进程标准输入输出通信。sse/streamable_http: 连接远程 HTTP MCP 服务器</HelpTip></template>
+            <template #label>{{ $t('mcp.transport') }} <HelpTip>{{ $t('tips.mcpTransport') }}</HelpTip></template>
             <n-select
               v-model:value="form.transport"
               :options="transportOptions"
@@ -93,19 +93,19 @@
         </n-gi>
         <n-gi>
           <n-form-item>
-            <template #label>Description <HelpTip>用于文档展示，不影响运行逻辑</HelpTip></template>
+            <template #label>{{ $t('mcp.description') }} <HelpTip>{{ $t('tips.mcpDescription') }}</HelpTip></template>
             <n-input v-model:value="form.description" placeholder="Optional description" />
           </n-form-item>
         </n-gi>
         <n-gi v-if="form.transport === 'stdio'">
           <n-form-item>
-            <template #label>Command <HelpTip>仅 stdio 模式生效。要启动的进程命令，如 npx / python / uvx</HelpTip></template>
+            <template #label>{{ $t('mcp.command') }} <HelpTip>{{ $t('tips.mcpCommand') }}</HelpTip></template>
             <n-input v-model:value="form.command" placeholder="npx" />
           </n-form-item>
         </n-gi>
         <n-gi v-if="form.transport === 'stdio'">
           <n-form-item>
-            <template #label>Args (one per line) <HelpTip>仅 stdio 模式生效。每行一个命令行参数，例如 -y 和包名</HelpTip></template>
+            <template #label>{{ $t('mcp.args') }} <HelpTip>{{ $t('tips.mcpArgs') }}</HelpTip></template>
             <n-input
               v-model:value="argsText"
               type="textarea"
@@ -116,13 +116,13 @@
         </n-gi>
         <n-gi v-if="form.transport !== 'stdio'" :span="2">
           <n-form-item>
-            <template #label>URL <HelpTip>仅 sse/streamable_http 模式生效。远程 MCP 服务器的 HTTP 地址</HelpTip></template>
+            <template #label>{{ $t('mcp.url') }} <HelpTip>{{ $t('tips.mcpUrl') }}</HelpTip></template>
             <n-input v-model:value="form.url" placeholder="http://localhost:3000/sse" />
           </n-form-item>
         </n-gi>
         <n-gi :span="2">
           <n-form-item>
-            <template #label>Headers (JSON) <HelpTip>仅远程模式生效。JSON 格式的 HTTP 请求头，如 {"Authorization": "Bearer xxx"}</HelpTip></template>
+            <template #label>{{ $t('mcp.headers') }} <HelpTip>{{ $t('tips.mcpHeaders') }}</HelpTip></template>
             <n-input
               v-model:value="headersText"
               type="textarea"
@@ -137,12 +137,12 @@
 
       <n-space>
         <n-button type="primary" @click="handleSave" :loading="saving">
-          {{ isEditing ? 'Update' : 'Save' }}
+          {{ $t('common.saveUpdate') }}
         </n-button>
         <n-button type="error" @click="handleDelete" :disabled="!isEditing" :loading="deleting">
-          Delete
+          {{ $t('common.deleteByName') }}
         </n-button>
-        <n-button @click="resetForm" quaternary>Clear</n-button>
+        <n-button @click="resetForm" quaternary>{{ $t('common.refresh') }}</n-button>
       </n-space>
     </n-card>
   </n-space>
@@ -156,11 +156,13 @@ import {
   useMessage,
 } from 'naive-ui'
 import type { DataTableColumns, SelectOption } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import { mcpApi } from '../api/mcp'
 import HelpTip from '../components/HelpTip.vue'
 import type { MCPServer } from '../types'
 
 const message = useMessage()
+const { t } = useI18n()
 const servers = ref<MCPServer[]>([])
 const healthMap = ref<Record<string, { connected: boolean; tools: number }>>({})
 const toolCallMode = ref('passthrough')
@@ -195,18 +197,18 @@ const editingOriginalName = ref('')
 const isEditing = computed(() => !!editingOriginalName.value)
 
 const columns: DataTableColumns<MCPServer> = [
-  { title: 'Name', key: 'name', width: 150 },
+  { title: t('mcp.name'), key: 'name', width: 150 },
   {
-    title: 'Enabled',
+    title: t('mcp.enabled'),
     key: 'enabled',
     width: 80,
     render(row) {
       return h(NTag, { size: 'small', type: row.enabled ? 'success' : 'default', bordered: false }, () => row.enabled ? 'On' : 'Off')
     },
   },
-  { title: 'Transport', key: 'transport', width: 120 },
+  { title: t('mcp.transport'), key: 'transport', width: 120 },
   {
-    title: 'Command / URL',
+    title: t('mcp.command') + ' / ' + t('mcp.url'),
     key: 'endpoint',
     ellipsis: { tooltip: true },
     render(row) {
@@ -214,7 +216,7 @@ const columns: DataTableColumns<MCPServer> = [
     },
   },
   {
-    title: 'Status',
+    title: t('mcp.connected'),
     key: 'connected',
     width: 80,
     render(row) {
@@ -226,7 +228,7 @@ const columns: DataTableColumns<MCPServer> = [
     },
   },
   {
-    title: 'Tools',
+    title: t('mcp.tools'),
     key: 'tools',
     width: 70,
     render(row) {
@@ -234,7 +236,7 @@ const columns: DataTableColumns<MCPServer> = [
       return h(NTag, { size: 'small', bordered: false }, () => String(h_info?.tools ?? 0))
     },
   },
-  { title: 'Description', key: 'description', ellipsis: { tooltip: true } },
+  { title: t('mcp.description'), key: 'description', ellipsis: { tooltip: true } },
 ]
 
 function rowProps(row: MCPServer) {
@@ -275,7 +277,7 @@ async function fetchAll() {
 async function handleSave() {
   const name = form.value.name?.trim()
   if (!name) {
-    message.warning('Name is required')
+    message.warning(t('providers.nameRequired'))
     return
   }
   saving.value = true
@@ -303,7 +305,7 @@ async function handleSave() {
       description: form.value.description || undefined,
     }
     await mcpApi.upsert(name, body)
-    message.success(isEditing.value ? 'Server updated' : 'Server created')
+    message.success(t('mcp.saved'))
     resetForm()
     await fetchAll()
   } catch (e: any) {
@@ -318,7 +320,7 @@ async function handleDelete() {
   deleting.value = true
   try {
     await mcpApi.remove(editingOriginalName.value)
-    message.success('Server deleted')
+    message.success(t('mcp.deleted'))
     resetForm()
     await fetchAll()
   } catch (e: any) {
@@ -331,7 +333,7 @@ async function handleDelete() {
 async function handleSetMode(mode: string) {
   try {
     await mcpApi.setMode(mode)
-    message.success(`Mode set to ${mode}`)
+    message.success(t('mcp.modeSet'))
   } catch (e: any) {
     message.error(e.message || 'Failed to set mode')
     await fetchAll()
@@ -342,7 +344,7 @@ async function handleSetMaxRounds(val: number | null) {
   if (val == null) return
   try {
     await mcpApi.setMaxToolRounds(val)
-    message.success(`Max tool rounds set to ${val}`)
+    message.success(t('mcp.maxRoundsSet'))
   } catch (e: any) {
     message.error(e.message || 'Failed to set max rounds')
     await fetchAll()
@@ -355,7 +357,7 @@ function handleParseJson() {
     const serversObj = parsed.mcpServers || parsed.servers || parsed
     const entries = Object.entries(serversObj)
     if (entries.length === 0) {
-      message.warning('No servers found in JSON')
+      message.warning(t('mcp.noServersFound'))
       return
     }
     const [name, config] = entries[0] as [string, any]
@@ -371,7 +373,7 @@ function handleParseJson() {
     argsText.value = Array.isArray(config.args) ? config.args.join('\n') : ''
     headersText.value = config.headers ? JSON.stringify(config.headers, null, 2) : ''
     editingOriginalName.value = ''
-    message.success(`Parsed server: ${name}`)
+    message.success(t('mcp.parsed'))
   } catch {
     message.error('Invalid JSON')
   }

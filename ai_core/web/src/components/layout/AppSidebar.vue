@@ -3,8 +3,8 @@
     <div class="sidebar-header">
       <div class="sidebar-logo">S</div>
       <div class="sidebar-title">
-        <div class="sidebar-title-main">SCHALE</div>
-        <div class="sidebar-title-sub">Arisu Admin Panel</div>
+        <div class="sidebar-title-main">{{ $t('sidebar.title') }}</div>
+        <div class="sidebar-title-sub">{{ $t('sidebar.subtitle') }}</div>
       </div>
     </div>
     <nav class="sidebar-nav">
@@ -20,26 +20,46 @@
       </router-link>
     </nav>
     <div class="sidebar-footer">
-      <div class="sidebar-version">QwenAIServiceCore</div>
+      <div class="lang-switch">
+        <button
+          :class="['lang-btn', { active: currentLocale === 'zh' }]"
+          @click="switchLang('zh')"
+        >{{ $t('sidebar.langZh') }}</button>
+        <button
+          :class="['lang-btn', { active: currentLocale === 'en' }]"
+          @click="switchLang('en')"
+        >{{ $t('sidebar.langEn') }}</button>
+      </div>
+      <div class="sidebar-version">{{ $t('sidebar.footer') }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { setLocale, getLocale } from '../../locales'
 
 const route = useRoute()
+const { t } = useI18n()
+const currentLocale = ref(getLocale())
 
-const menuItems = [
-  { path: '/chat', icon: '\uD83D\uDCAC', label: 'Chat' },
-  { path: '/providers', icon: '\u2699\uFE0F', label: 'LLM Providers' },
-  { path: '/mcp', icon: '\uD83D\uDD0C', label: 'MCP Servers' },
-  { path: '/skills', icon: '\uD83D\uDCE6', label: 'Skills' },
-  { path: '/characters', icon: '\uD83D\uDC64', label: 'Characters' },
-  { path: '/shared-knowledge', icon: '\uD83D\uDCDA', label: 'Shared Knowledge' },
-  { path: '/monitor', icon: '\uD83D\uDCCA', label: 'Request Monitor' },
-  { path: '/channels', icon: '\uD83D\uDCE1', label: 'Channels' },
-]
+const menuItems = computed(() => [
+  { path: '/chat', icon: '\uD83D\uDCAC', label: t('sidebar.chat') },
+  { path: '/providers', icon: '\u2699\uFE0F', label: t('sidebar.providers') },
+  { path: '/mcp', icon: '\uD83D\uDD0C', label: t('sidebar.mcp') },
+  { path: '/skills', icon: '\uD83D\uDCE6', label: t('sidebar.skills') },
+  { path: '/characters', icon: '\uD83D\uDC64', label: t('sidebar.characters') },
+  { path: '/shared-knowledge', icon: '\uD83D\uDCDA', label: t('sidebar.sharedKnowledge') },
+  { path: '/monitor', icon: '\uD83D\uDCCA', label: t('sidebar.monitor') },
+  { path: '/channels', icon: '\uD83D\uDCE1', label: t('sidebar.channels') },
+])
+
+function switchLang(lang: 'zh' | 'en') {
+  setLocale(lang)
+  currentLocale.value = lang
+}
 </script>
 
 <style scoped>
@@ -144,6 +164,35 @@ const menuItems = [
 .sidebar-footer {
   padding: 12px 16px;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.lang-switch {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.lang-btn {
+  padding: 3px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lang-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.lang-btn.active {
+  background: rgba(255, 255, 255, 0.2);
+  color: #FFD700;
+  border-color: #FFD700;
 }
 
 .sidebar-version {

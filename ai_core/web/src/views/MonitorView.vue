@@ -1,10 +1,10 @@
 <template>
   <n-space vertical size="large">
-    <n-card title="Request Monitor">
+    <n-card :title="$t('monitor.title')">
       <template #header-extra>
         <n-space align="center" :size="16">
           <span style="white-space: nowrap; font-size: 13px">
-            Interval: {{ intervalValue }}s <HelpTip>日志刷新间隔（秒）。值越小刷新越快但浏览器负载越大。建议 3 秒</HelpTip>
+            {{ $t('monitor.interval') }}: {{ intervalValue }}s <HelpTip>{{ $t('tips.monitorInterval') }}</HelpTip>
           </span>
           <n-slider
             v-model:value="intervalValue"
@@ -13,7 +13,7 @@
             :step="0.5"
             style="width: 200px"
           />
-          <n-button @click="fetchLog" :loading="loading">Refresh now</n-button>
+          <n-button @click="fetchLog" :loading="loading">{{ $t('monitor.refreshNow') }}</n-button>
         </n-space>
       </template>
     </n-card>
@@ -29,10 +29,12 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { NSpace, NCard, NButton, NSlider, useMessage } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import { monitorApi } from '../api/monitor'
 import HelpTip from '../components/HelpTip.vue'
 import type { MonitorEntry } from '../types'
 
+const { t } = useI18n()
 const message = useMessage()
 const entries = ref<MonitorEntry[]>([])
 const loading = ref(false)
@@ -276,7 +278,7 @@ function renderEntry(entry: MonitorEntry): string {
 
 const renderedHtml = computed(() => {
   if (entries.value.length === 0) {
-    return sRaw('#8b8b8b', 'No entries yet. Waiting for requests...')
+    return sRaw('#8b8b8b', esc(t('monitor.noEntries')))
   }
   return entries.value.map(renderEntry).join('\n')
 })

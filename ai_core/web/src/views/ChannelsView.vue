@@ -1,9 +1,11 @@
 <template>
   <n-space vertical size="large" style="padding: 16px; background: #F0F4FA; min-height: 100vh">
     <n-space justify="space-between" align="center">
-      <n-h2 style="margin: 0; color: #4C8FEC">Channels</n-h2>
-      <n-button @click="fetchChannels" :loading="loading">Refresh All</n-button>
+      <n-h2 style="margin: 0; color: #4C8FEC">{{ $t('channels.title') }}</n-h2>
+      <n-button @click="fetchChannels" :loading="loading">{{ $t('common.refreshAll') }}</n-button>
     </n-space>
+
+    <n-text v-if="channels.length === 0 && !loading" depth="3">{{ $t('channels.noChannels') }}</n-text>
 
     <n-grid :cols="3" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
       <n-gi v-for="ch in channels" :key="ch.name" span="3 m:1">
@@ -29,12 +31,12 @@
             </n-space>
 
             <n-space vertical :size="4">
-              <n-text depth="3" v-if="ch.pid">PID: {{ ch.pid }}</n-text>
+              <n-text depth="3" v-if="ch.pid">{{ $t('channels.pid') }}: {{ ch.pid }}</n-text>
               <n-text depth="3" v-if="ch.started_at && ch.running">
-                Uptime: {{ formatUptime(ch.started_at) }}
+                {{ $t('channels.uptime') }}: {{ formatUptime(ch.started_at) }}
               </n-text>
               <n-text depth="3">
-                Restarts: {{ ch.restart_count ?? 0 }}
+                {{ $t('channels.restarts') }}: {{ ch.restart_count ?? 0 }}
               </n-text>
             </n-space>
 
@@ -46,7 +48,7 @@
                 :loading="actionLoading[ch.name] === 'start'"
                 @click="handleStart(ch.name)"
               >
-                Start
+                {{ $t('channels.start') }}
               </n-button>
               <n-button
                 type="error"
@@ -55,7 +57,7 @@
                 :loading="actionLoading[ch.name] === 'stop'"
                 @click="handleStop(ch.name)"
               >
-                Stop
+                {{ $t('channels.stop') }}
               </n-button>
               <n-button
                 size="small"
@@ -63,7 +65,7 @@
                 :loading="actionLoading[ch.name] === 'restart'"
                 @click="handleRestart(ch.name)"
               >
-                Restart
+                {{ $t('channels.restart') }}
               </n-button>
               <n-button
                 size="small"
@@ -73,7 +75,7 @@
                 target="_blank"
                 type="info"
               >
-                View Log
+                {{ $t('channels.viewLog') }}
               </n-button>
             </n-space>
           </n-space>
@@ -95,9 +97,11 @@ import {
   NH2,
   useMessage,
 } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
 import { channelsApi } from '../api/channels'
 import type { ChannelStatus } from '../types'
 
+const { t } = useI18n()
 const message = useMessage()
 const channels = ref<ChannelStatus[]>([])
 const loading = ref(false)
@@ -110,8 +114,8 @@ function statusColor(ch: ChannelStatus): string {
 }
 
 function statusLabel(ch: ChannelStatus): string {
-  if (ch.platform_blocked) return 'Blocked'
-  return ch.running ? 'Running' : 'Stopped'
+  if (ch.platform_blocked) return t('channels.blocked')
+  return ch.running ? t('channels.running') : t('channels.stopped')
 }
 
 function formatUptime(startedAt: string): string {

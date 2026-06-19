@@ -5,10 +5,10 @@
     </div>
     <div class="header-status">
       <n-tag v-if="activeProvider" type="info" size="small" round>
-        Provider: {{ activeProvider }}
+        {{ $t('header.provider') }}: {{ activeProvider }}
       </n-tag>
       <n-tag v-if="activeCharacter" type="success" size="small" round>
-        Character: {{ activeCharacter }}
+        {{ $t('header.character') }}: {{ activeCharacter }}
       </n-tag>
     </div>
   </div>
@@ -17,25 +17,28 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { NTag } from 'naive-ui'
 import { providersApi } from '../../api/providers'
 
 const route = useRoute()
+const { t } = useI18n()
 const activeProvider = ref('')
 const activeCharacter = ref('')
 
-const titleMap: Record<string, string> = {
-  '/chat': 'Chat',
-  '/providers': 'LLM Providers',
-  '/mcp': 'MCP Servers',
-  '/skills': 'Skills',
-  '/characters': 'Characters',
-  '/shared-knowledge': 'Shared Knowledge',
-  '/monitor': 'Request Monitor',
-  '/channels': 'Channels',
-}
-
-const pageTitle = computed(() => titleMap[route.path] || 'Admin')
+const pageTitle = computed(() => {
+  const map: Record<string, string> = {
+    '/chat': t('sidebar.chat'),
+    '/providers': t('sidebar.providers'),
+    '/mcp': t('sidebar.mcp'),
+    '/skills': t('sidebar.skills'),
+    '/characters': t('sidebar.characters'),
+    '/shared-knowledge': t('sidebar.sharedKnowledge'),
+    '/monitor': t('sidebar.monitor'),
+    '/channels': t('sidebar.channels'),
+  }
+  return map[route.path] || 'Admin'
+})
 
 const fetchStatus = async () => {
   try {
