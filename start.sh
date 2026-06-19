@@ -9,6 +9,13 @@ echo "  ArisuAgentIntegration Launcher"
 echo "========================================"
 echo
 
+# --- Check Node.js ---
+if ! command -v node &> /dev/null; then
+    echo "[ERROR] Node.js not found. Please install Node.js 18+ from https://nodejs.org"
+    exit 1
+fi
+echo "[OK] Node.js found."
+
 # --- AI Core venv ---
 if [ ! -f "venv/.installed" ]; then
     echo "[AI Core] Creating venv ..."
@@ -42,6 +49,20 @@ if [ ! -f "bilibili/.venv/.installed" ]; then
     bilibili/.venv/bin/pip install -r bilibili/requirements.txt
     touch bilibili/.venv/.installed
     echo "[Bilibili] Done."
+fi
+
+# --- Frontend build ---
+if [ ! -f "ai_core/web/dist/.installed" ]; then
+    echo
+    echo "[Frontend] Installing dependencies ..."
+    cd ai_core/web
+    npm install
+    echo "[Frontend] Building ..."
+    npm run build
+    mkdir -p dist
+    touch dist/.installed
+    cd "$SCRIPT_DIR"
+    echo "[Frontend] Done."
 fi
 
 echo

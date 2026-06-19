@@ -16,7 +16,7 @@ Compared to the legacy ``main.py`` (which booted an in-process vLLM
 
 * adds an admin surface for runtime configuration:
 
-    - ``GET  /admin``                          -- Gradio UI (mounted)
+    - ``GET  /admin``                          -- Vue SPA (built from web/)
     - ``GET  /admin/api/providers``            -- list providers
     - ``PUT  /admin/api/providers/{name}``     -- upsert
     - ``DELETE /admin/api/providers/{name}``   -- delete
@@ -118,12 +118,6 @@ async def lifespan(app: FastAPI):
     get_config_manager()
     get_skill_manager()
     persona_manager = get_persona_manager()
-    # Capture the main event loop for Gradio callbacks (see webui._run).
-    try:
-        from webui import capture_main_loop  # type: ignore
-        capture_main_loop()
-    except Exception:
-        pass
     # Seed the legacy "Tendou Arisu" persona on first boot of an
     # upgraded deployment so existing front-ends keep getting the same
     # character behaviour without manual file authoring. Idempotent.
@@ -274,19 +268,48 @@ async def admin_abort(abort_id: str):
 
 
 # ---------------------------------------------------------------------------
-# Admin: REST + Gradio mount
+# Admin: REST + Vue SPA mount
 # ---------------------------------------------------------------------------
 
 register_admin_routes(app)
 
-try:
-    from webui import build_admin_ui  # type: ignore
-    import gradio as gr  # type: ignore
+_DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "dist")
 
-    _admin_ui = build_admin_ui()
-    app = gr.mount_gradio_app(app, _admin_ui, path="/admin")
-except Exception as e:  # pragma: no cover -- gradio is optional
-    LOG.warning("Gradio admin UI not mounted: %r", e)
+if os.path.isdir(_DIST_DIR):
+    from starlette.staticfiles import StaticFiles
+    from starlette.responses import FileResponse
+
+    _assets_dir = os.path.join(_DIST_DIR, "assets")
+    if os.path.isdir(_assets_dir):
+        app.mount(
+            "/admin/assets",
+            StaticFiles(directory=_assets_dir),
+            name="admin-assets",
+        )
+
+    @app.get("/admin")
+    async def admin_index():
+        return FileResponse(os.path.join(_DIST_DIR, "index.html"))
+
+    @app.get("/admin/{path:path}")
+    async def admin_spa_fallback(path: str):
+        static_path = os.path.join(_DIST_DIR, path)
+        if os.path.isfile(static_path):
+            return FileResponse(static_path)
+        return FileResponse(os.path.join(_DIST_DIR, "index.html"))
+
+    LOG.info("Admin UI mounted from %s", _DIST_DIR)
+else:
+    @app.get("/admin")
+    async def admin_not_built():
+        return Response(
+            content=(
+                "<h2>Admin UI not built</h2>"
+                "<p>Run <code>npm install && npm run build</code> in "
+                "<code>ai_core/web/</code> to build the frontend.</p>"
+            ),
+            media_type="text/html",
+        )
 
 
 if __name__ == "__main__":

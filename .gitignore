@@ -32,6 +32,10 @@ ai_core/logs/*
 ai_core/embedding/**/*.pkl.bak
 ai_core/embedding/**/vector/*.bak
 
+# === Frontend ===
+ai_core/web/node_modules/
+ai_core/web/dist/
+
 # === QQ Bot runtime ===
 qq_bot/.venv/
 qq_bot/.env

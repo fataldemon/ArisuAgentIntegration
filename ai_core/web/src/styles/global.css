@@ -1,0 +1,44 @@
+:root {
+  --ba-primary: #4C8FEC;
+  --ba-primary-dark: #2B6BC7;
+  --ba-primary-light: #6BA3F0;
+  --ba-gold: #FFD700;
+  --ba-bg: #F0F4FA;
+  --ba-card: #FFFFFF;
+  --ba-text: #1A2333;
+  --ba-text-secondary: #6B7B8D;
+  --ba-sidebar-bg: linear-gradient(180deg, #4C8FEC 0%, #2B6BC7 100%);
+  --ba-border: #E3E8EF;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  width: 100%;
+  font-family: "Inter", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  background: var(--ba-bg);
+  color: var(--ba-text);
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c0c8d4;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a0aab4;
+}

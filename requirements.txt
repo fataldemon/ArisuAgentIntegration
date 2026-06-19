@@ -24,6 +24,3 @@ mcp~=1.2.0
 
 # --- Skill front-matter parsing ---
 pyyaml~=6.0.2
-
-# --- Admin Web UI ---
-gradio>=5.0

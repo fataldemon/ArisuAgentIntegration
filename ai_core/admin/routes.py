@@ -49,9 +49,12 @@ Personas (per-character system prompt):
 
 from __future__ import annotations
 
-from typing import Any, Dict
+import json
+import os
+from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Body
+from fastapi.responses import HTMLResponse
 
 from core.channel_manager import get_channel_supervisor
 from core.config_manager import get_config_manager
@@ -60,7 +63,14 @@ from core.persona_manager import get_persona_manager
 from core.skill_manager import get_skill_manager
 from llm.backends.registry import invalidate as invalidate_backend
 
-from fastapi.responses import HTMLResponse
+_EMBEDDING_ROOT = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "embedding"
+)
+_VLLM_REQUEST_LOG_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "logs",
+    "vllm_request_log.jsonl",
+)
 
 
 def register_admin_routes(app: FastAPI) -> None:
@@ -292,3 +302,204 @@ def register_admin_routes(app: FastAPI) -> None:
 
         api_url = f"/admin/api/channels/{channel_name}/log"
         return render_log_viewer(channel_name, api_url)
+
+    # ------------------- expression config -------------------
+
+    @app.get("/admin/api/expression")
+    async def get_expression():
+        return get_config_manager().get_expression_config().to_dict()
+
+    @app.put("/admin/api/expression")
+    async def set_expression(body: Dict[str, Any]):
+        fmt = (body.get("format") or "").strip()
+        instruction = (body.get("instruction") or "").strip()
+        if not fmt:
+            raise HTTPException(400, "format must not be empty")
+        ec = await get_config_manager().set_expression_config(fmt, instruction)
+        return ec.to_dict()
+
+    # ------------------- active character -------------------
+
+    @app.get("/admin/api/characters/active")
+    async def get_active_character():
+        return {"character": get_config_manager().get_active_character()}
+
+    @app.post("/admin/api/characters/activate")
+    async def activate_character(body: Dict[str, Any]):
+        character = (body.get("character") or "").strip()
+        await get_config_manager().set_active_character(character)
+        return {"ok": True, "character": character}
+
+    # ------------------- mcp max tool rounds -------------------
+
+    @app.post("/admin/api/mcp/max-tool-rounds")
+    async def set_mcp_max_tool_rounds(body: Dict[str, Any]):
+        try:
+            rounds = int(body.get("rounds", 5))
+            await get_config_manager().set_mcp_max_tool_rounds(rounds)
+            return {"ok": True, "rounds": get_config_manager().get_mcp_max_tool_rounds()}
+        except (ValueError, TypeError) as e:
+            raise HTTPException(400, str(e))
+
+    # ------------------- skills CRUD -------------------
+
+    @app.get("/admin/api/skills/{name}/raw")
+    async def read_skill_raw(name: str):
+        raw = get_skill_manager().read_skill_raw(name)
+        if raw is None:
+            raise HTTPException(404, "skill not found")
+        return {"name": name, "raw": raw}
+
+    @app.put("/admin/api/skills/{name}")
+    async def write_skill(name: str, body: Dict[str, Any]):
+        content = body.get("body") or body.get("content") or ""
+        ok = get_skill_manager().write_skill(name, content)
+        if not ok:
+            raise HTTPException(500, f"failed to write skill '{name}'")
+        return {"ok": True, "name": name}
+
+    @app.delete("/admin/api/skills/{name}")
+    async def delete_skill(name: str):
+        ok = get_skill_manager().delete_skill(name)
+        if not ok:
+            raise HTTPException(404, "skill not found")
+        return {"ok": True}
+
+    @app.post("/admin/api/skills")
+    async def create_skill(body: Dict[str, Any]):
+        name = (body.get("name") or "").strip()
+        if not name:
+            raise HTTPException(400, "name is required")
+        template = (
+            f"---\nname: {name}\ndescription: \"\"\n"
+            f"version: \"0.1.0\"\nauto_inject: false\n"
+            f"triggers:\n  keywords: []\n  regex: []\n---\n"
+        )
+        content = body.get("body") or body.get("content") or template
+        ok = get_skill_manager().write_skill(name, content)
+        if not ok:
+            raise HTTPException(500, f"failed to create skill '{name}'")
+        return {"ok": True, "name": name}
+
+    # ------------------- knowledge base -------------------
+
+    @app.get("/admin/api/kb/characters")
+    async def list_kb_characters():
+        if not os.path.isdir(_EMBEDDING_ROOT):
+            return {"characters": []}
+        chars = sorted(
+            d for d in os.listdir(_EMBEDDING_ROOT)
+            if os.path.isdir(os.path.join(_EMBEDDING_ROOT, d))
+            and not d.startswith("__")
+            and d != "_shared"
+        )
+        return {"characters": chars}
+
+    @app.get("/admin/api/kb/{character}/{subject}/files")
+    async def list_kb_files(character: str, subject: str):
+        subject_dir = os.path.join(_EMBEDDING_ROOT, character, subject)
+        if not os.path.isdir(subject_dir):
+            return {"files": []}
+        files = sorted(f for f in os.listdir(subject_dir) if f.endswith(".mem"))
+        return {"files": files}
+
+    @app.get("/admin/api/kb/{character}/{subject}/files/{filename}")
+    async def read_kb_file(character: str, subject: str, filename: str):
+        filepath = os.path.join(_EMBEDDING_ROOT, character, subject, filename)
+        if not os.path.isfile(filepath):
+            raise HTTPException(404, "file not found")
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                return {"filename": filename, "content": f.read()}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    @app.put("/admin/api/kb/{character}/{subject}/files/{filename}")
+    async def save_kb_file(character: str, subject: str, filename: str, body: Dict[str, Any]):
+        content = body.get("content", "")
+        filepath = os.path.join(_EMBEDDING_ROOT, character, subject, filename)
+        try:
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write(content)
+            return {"ok": True, "filename": filename}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    @app.post("/admin/api/kb/{character}/{subject}/files")
+    async def create_kb_file(character: str, subject: str, body: Dict[str, Any]):
+        filename = (body.get("filename") or "").strip()
+        if not filename:
+            raise HTTPException(400, "filename is required")
+        if not filename.endswith(".mem"):
+            filename += ".mem"
+        filepath = os.path.join(_EMBEDDING_ROOT, character, subject, filename)
+        if os.path.isfile(filepath):
+            raise HTTPException(409, f"'{filename}' already exists")
+        try:
+            os.makedirs(os.path.dirname(filepath), exist_ok=True)
+            with open(filepath, "w", encoding="utf-8") as f:
+                f.write("")
+            return {"ok": True, "filename": filename}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    @app.delete("/admin/api/kb/{character}/{subject}/files/{filename}")
+    async def delete_kb_file(character: str, subject: str, filename: str):
+        filepath = os.path.join(_EMBEDDING_ROOT, character, subject, filename)
+        if not os.path.isfile(filepath):
+            raise HTTPException(404, "file not found")
+        try:
+            os.remove(filepath)
+            return {"ok": True}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    @app.post("/admin/api/kb/{character}/{subject}/rebuild")
+    async def rebuild_kb_index(character: str, subject: str):
+        from embedding.embedding import generate_vector
+        try:
+            result = generate_vector(character, subject)
+            return {"ok": True, "result": result}
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    @app.get("/admin/api/kb/{character}/{subject}/index-status")
+    async def kb_index_status(character: str, subject: str):
+        from embedding.data_store import load_materials, index_path
+        p = index_path(character, subject)
+        n_vectors = 0
+        if os.path.exists(p):
+            try:
+                import faiss
+                idx = faiss.read_index(p)
+                n_vectors = int(idx.ntotal)
+            except Exception:
+                pass
+        materials = load_materials(character, subject)
+        return {
+            "vectors": n_vectors,
+            "materials": len(materials),
+            "index_file": os.path.basename(p) if os.path.exists(p) else None,
+        }
+
+    # ------------------- request monitor -------------------
+
+    @app.get("/admin/api/monitor/log")
+    async def get_monitor_log():
+        if not os.path.isfile(_VLLM_REQUEST_LOG_FILE):
+            return {"entries": []}
+        try:
+            entries: List[Dict[str, Any]] = []
+            with open(_VLLM_REQUEST_LOG_FILE, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        entries.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+            return {"entries": entries}
+        except Exception as e:
+            raise HTTPException(500, str(e))

@@ -17,6 +17,16 @@ if %errorlevel% neq 0 (
 )
 echo [OK] Python found.
 
+:: ---------- Check Node.js ----------
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Node.js not found in PATH.
+    echo Please install Node.js 18+ from https://nodejs.org
+    pause
+    exit /b 1
+)
+echo [OK] Node.js found.
+
 :: ---------- AI Core venv ----------
 if not exist "venv\.installed" (
     echo.
@@ -57,6 +67,21 @@ if not exist "bilibili\.venv\.installed" (
     if %errorlevel% neq 0 (echo [ERROR] Failed. & pause & exit /b 1)
     echo. > "bilibili\.venv\.installed"
     echo [Bilibili] Done.
+)
+
+:: ---------- Frontend build ----------
+if not exist "ai_core\web\dist\.installed" (
+    echo.
+    echo [Frontend] Installing dependencies ...
+    pushd ai_core\web
+    call npm install
+    if %errorlevel% neq 0 (echo [ERROR] npm install failed. & popd & pause & exit /b 1)
+    echo [Frontend] Building ...
+    call npm run build
+    if %errorlevel% neq 0 (echo [ERROR] npm build failed. & popd & pause & exit /b 1)
+    popd
+    echo. > "ai_core\web\dist\.installed"
+    echo [Frontend] Done.
 )
 
 echo.
