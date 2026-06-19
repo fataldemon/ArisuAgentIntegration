@@ -1,0 +1,362 @@
+
+============================================================
+[2026-06-19T08:31:41.286692+00:00] Channel 'qq_bot' started
+============================================================
+[16:31:41] [out] ʹ�� Python: F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\Scripts\python.exe
+[16:31:41] [out] �������ؼ��ӣ���ǰ���� [26652].
+[16:31:41] [out] 06-19 16:31:41 [SUCCESS] nonebot | NoneBot is initializing...
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot | Current Env: prod
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "echo" from "nonebot.plugins.echo"
+[16:31:42] [out] 06-19 16:31:42 [ERROR] nonebot | Failed to import "gradio_call"
+[16:31:42] [out] Traceback (most recent call last):
+[16:31:42] [out]   File "<string>", line 14, in <module>
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:31:42] [out]     return load_all_plugins(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:31:42] [out]     return manager.load_all_plugins()
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:31:42] [out]     return set(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:31:42] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:31:42] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:31:42] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:31:42] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:31:42] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:31:42] [out]     super().exec_module(module)
+[16:31:42] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\gradio_call.py", line 1, in <module>
+[16:31:42] [out]     from gradio_client import Client
+[16:31:42] [out] ModuleNotFoundError: No module named 'gradio_client'
+[16:31:42] [out] 06-19 16:31:42 [ERROR] nonebot | Failed to import "chatglmOpenapi"
+[16:31:42] [out] Traceback (most recent call last):
+[16:31:42] [out]   File "<string>", line 14, in <module>
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:31:42] [out]     return load_all_plugins(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:31:42] [out]     return manager.load_all_plugins()
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:31:42] [out]     return set(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:31:42] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:31:42] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:31:42] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:31:42] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:31:42] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:31:42] [out]     super().exec_module(module)
+[16:31:42] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\chatglmOpenapi.py", line 9, in <module>
+[16:31:42] [out]     from langchain.llms.base import LLM
+[16:31:42] [out] ModuleNotFoundError: No module named 'langchain.llms'
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "reminder_scheduler" from "src.plugins.reminder_scheduler"
+[16:31:42] [out] 06-19 16:31:42 [ERROR] nonebot | Failed to import "voice"
+[16:31:42] [out] Traceback (most recent call last):
+[16:31:42] [out]   File "<string>", line 14, in <module>
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:31:42] [out]     return load_all_plugins(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:31:42] [out]     return manager.load_all_plugins()
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:31:42] [out]     return set(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:31:42] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:31:42] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:31:42] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:31:42] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:31:42] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:31:42] [out]     super().exec_module(module)
+[16:31:42] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\voice.py", line 12, in <module>
+[16:31:42] [out]     from src.plugins.gradio_call import get_audio_from_gradio
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:31:42] [out]     super().exec_module(module)
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\gradio_call.py", line 1, in <module>
+[16:31:42] [out]     from gradio_client import Client
+[16:31:42] [out] ModuleNotFoundError: No module named 'gradio_client'
+[16:31:42] [out] 06-19 16:31:42 [ERROR] nonebot | Failed to import "qwenOpenapi"
+[16:31:42] [out] Traceback (most recent call last):
+[16:31:42] [out]   File "<string>", line 14, in <module>
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:31:42] [out]     return load_all_plugins(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:31:42] [out]     return manager.load_all_plugins()
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:31:42] [out]     return set(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:31:42] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:31:42] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:31:42] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:31:42] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:31:42] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:31:42] [out]     super().exec_module(module)
+[16:31:42] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\qwenOpenapi.py", line 12, in <module>
+[16:31:42] [out]     from langchain.llms.base import LLM
+[16:31:42] [out] ModuleNotFoundError: No module named 'langchain.llms'
+[16:31:42] [out] 06-19 16:31:42 [ERROR] nonebot | Failed to import "emaid"
+[16:31:42] [out] Traceback (most recent call last):
+[16:31:42] [out]   File "<string>", line 14, in <module>
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:31:42] [out]     return load_all_plugins(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:31:42] [out]     return manager.load_all_plugins()
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:31:42] [out]     return set(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:31:42] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:31:42] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:31:42] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:31:42] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:31:42] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:31:42] [out]     super().exec_module(module)
+[16:31:42] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\emaid.py", line 10, in <module>
+[16:31:42] [out]     from src.dao.chat_history import init_fts
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\dao\chat_history.py", line 4, in <module>
+[16:31:42] [out]     from sqlalchemy import Column, Integer, String, Text, DateTime, func, Index, inspect, text
+[16:31:42] [out] ModuleNotFoundError: No module named 'sqlalchemy'
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna:uniseg" from "nonebot_plugin_alconna.uniseg"
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_waiter"
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna"
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_localstore"
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot_plugin_htmlrender | [htmlrender] render_backend is not set; runtime startup will be skipped.
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot_plugin_htmlrender | Optional plugin nonebot_plugin_sentry not installed, skip bootstrap.
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot_plugin_htmlrender | Optional plugin nonebot_plugin_prometheus not installed, skip bootstrap.
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_htmlrender"
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_apscheduler"
+[16:31:42] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not start with '^', otherwise it will ignore the prefix automatically.
+[16:31:42] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:31:42] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not end with '$', otherwise it will use `compact=False` automatically.
+[16:31:42] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_heweather"
+[16:31:42] [out] 06-19 16:31:42 [ERROR] nonebot | Failed to import "emotion"
+[16:31:42] [out] Traceback (most recent call last):
+[16:31:42] [out]   File "<string>", line 14, in <module>
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:31:42] [out]     return load_all_plugins(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:31:42] [out]     return manager.load_all_plugins()
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:31:42] [out]     return set(
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:31:42] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:31:42] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:31:42] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:31:42] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:31:42] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:31:42] [out]     super().exec_module(module)
+[16:31:42] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:31:42] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\emotion.py", line 3, in <module>
+[16:31:42] [out]     from src.dao.user import favor_change
+[16:31:42] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\dao\user.py", line 1, in <module>
+[16:31:42] [out]     from sqlalchemy import Column, Integer, String
+[16:31:42] [out] ModuleNotFoundError: No module named 'sqlalchemy'
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Succeeded to load plugin "dataset_collection" from "src.plugins.dataset_collection"
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Running NoneBot...
+[16:31:42] [out] 06-19 16:31:42 [SUCCESS] nonebot | Loaded adapters: OneBot V11
+[16:31:42] [out] 06-19 16:31:42 [INFO] uvicorn | Started server process [39972]
+[16:31:42] [out] 06-19 16:31:42 [INFO] uvicorn | Waiting for application startup.
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot_plugin_htmlrender | HTMLRender Starting...
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot_plugin_htmlrender | No render backend selected; startup skipped.
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot_plugin_apscheduler | Scheduler Started
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot_plugin_heweather | Loaded 0 weather push subscriptions
+[16:31:42] [out] 06-19 16:31:42 [INFO] uvicorn | Application startup complete.
+[16:31:42] [out] 06-19 16:31:42 [INFO] uvicorn | Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[16:31:42] [out] 06-19 16:31:42 [INFO] nonebot | OneBot V11 | Bot 2367513895 connected
+[16:33:31] Process exited with code 1
+
+============================================================
+[2026-06-19T08:39:09.710110+00:00] Channel 'qq_bot' started
+============================================================
+[16:39:10] [out] ʹ�� Python: F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\Scripts\python.exe
+[16:39:10] [out] �������ؼ��ӣ���ǰ���� [43540].
+[16:39:10] [out] 06-19 16:39:10 [SUCCESS] nonebot | NoneBot is initializing...
+[16:39:10] [out] 06-19 16:39:10 [INFO] nonebot | Current Env: prod
+[16:39:10] [out] 06-19 16:39:10 [SUCCESS] nonebot | Succeeded to load plugin "echo" from "nonebot.plugins.echo"
+[16:39:11] [out] 06-19 16:39:11 [ERROR] nonebot | Failed to import "qwenOpenapi"
+[16:39:11] [out] Traceback (most recent call last):
+[16:39:11] [out]   File "<string>", line 14, in <module>
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:39:11] [out]     return load_all_plugins(
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:39:11] [out]     return manager.load_all_plugins()
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:39:11] [out]     return set(
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:39:11] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:39:11] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:39:11] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:39:11] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:39:11] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:39:11] [out]     super().exec_module(module)
+[16:39:11] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\qwenOpenapi.py", line 16, in <module>
+[16:39:11] [out]     from src.function.function_call import skill_call
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\function\function_call.py", line 8, in <module>
+[16:39:11] [out]     import src.function.services as serv
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\function\services.py", line 15, in <module>
+[16:39:11] [out]     from src.skills.online_search import online_search_func, access_page_func
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\skills\online_search.py", line 7, in <module>
+[16:39:11] [out]     import html2text
+[16:39:11] [out] ModuleNotFoundError: No module named 'html2text'
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "chatglmOpenapi" from "src.plugins.chatglmOpenapi"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "gradio_call" from "src.plugins.gradio_call"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "dataset_collection" from "src.plugins.dataset_collection"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "reminder_scheduler" from "src.plugins.reminder_scheduler"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "emotion" from "src.plugins.emotion"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna:uniseg" from "nonebot_plugin_alconna.uniseg"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_waiter"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_htmlrender"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_apscheduler"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_localstore"
+[16:39:11] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not start with '^', otherwise it will ignore the prefix automatically.
+[16:39:11] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:39:11] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not end with '$', otherwise it will use `compact=False` automatically.
+[16:39:11] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_heweather"
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Succeeded to load plugin "voice" from "src.plugins.voice"
+[16:39:11] [out] 06-19 16:39:11 [ERROR] nonebot | Failed to import "emaid"
+[16:39:11] [out] Traceback (most recent call last):
+[16:39:11] [out]   File "<string>", line 14, in <module>
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 151, in load_from_toml
+[16:39:11] [out]     return load_all_plugins(
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\load.py", line 68, in load_all_plugins
+[16:39:11] [out]     return manager.load_all_plugins()
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 204, in load_all_plugins
+[16:39:11] [out]     return set(
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 205, in <genexpr>
+[16:39:11] [out]     filter(None, (self.load_plugin(name) for name in self.available_plugins))
+[16:39:11] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 170, in load_plugin
+[16:39:11] [out]     module = importlib.import_module(self._searched_plugin_ids[name])
+[16:39:11] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+[16:39:11] [out]     return _bootstrap._gcd_import(name[level:], package, level)
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:39:11] [out]     super().exec_module(module)
+[16:39:11] [out]   File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+[16:39:11] [out]   File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\emaid.py", line 12, in <module>
+[16:39:11] [out]     from src.plugins.qwenOpenapi import Qwen, SLEEP_INFORMATION
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\plugin\manager.py", line 256, in exec_module
+[16:39:11] [out]     super().exec_module(module)
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\qwenOpenapi.py", line 16, in <module>
+[16:39:11] [out]     from src.function.function_call import skill_call
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\function\function_call.py", line 8, in <module>
+[16:39:11] [out]     import src.function.services as serv
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\function\services.py", line 15, in <module>
+[16:39:11] [out]     from src.skills.online_search import online_search_func, access_page_func
+[16:39:11] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\skills\online_search.py", line 7, in <module>
+[16:39:11] [out]     import html2text
+[16:39:11] [out] ModuleNotFoundError: No module named 'html2text'
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Running NoneBot...
+[16:39:11] [out] 06-19 16:39:11 [SUCCESS] nonebot | Loaded adapters: OneBot V11
+[16:39:11] [out] 06-19 16:39:11 [INFO] uvicorn | Started server process [43240]
+[16:39:11] [err] INFO:uvicorn.error:Started server process [43240]
+[16:39:11] [out] 06-19 16:39:11 [INFO] uvicorn | Waiting for application startup.
+[16:39:11] [err] INFO:uvicorn.error:Waiting for application startup.
+[16:39:11] [out] 06-19 16:39:11 [INFO] nonebot_plugin_htmlrender | HTMLRender Starting...
+[16:39:11] [out] 06-19 16:39:11 [INFO] nonebot_plugin_htmlrender | Checking Playwright environment...
+[16:39:12] [out] 06-19 16:39:12 [INFO] nonebot_plugin_htmlrender | HTMLRender Started.
+[16:39:12] [out] 06-19 16:39:12 [INFO] nonebot_plugin_apscheduler | Scheduler Started
+[16:39:12] [out] 06-19 16:39:12 [INFO] nonebot_plugin_heweather | Loaded 0 weather push subscriptions
+[16:39:12] [out] 06-19 16:39:12 [INFO] uvicorn | Application startup complete.
+[16:39:12] [err] INFO:uvicorn.error:Application startup complete.
+[16:39:12] [out] 06-19 16:39:12 [INFO] uvicorn | Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[16:39:12] [err] INFO:uvicorn.error:Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[16:39:12] [out] 06-19 16:39:12 [INFO] nonebot | OneBot V11 | Bot 2367513895 connected
+[16:41:49] Process exited with code 3221225786
+
+============================================================
+[2026-06-19T08:42:53.817594+00:00] Channel 'qq_bot' started
+============================================================
+[16:42:54] [out] ʹ�� Python: F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\Scripts\python.exe
+[16:42:54] [out] �������ؼ��ӣ���ǰ���� [33852].
+[16:42:54] [out] 06-19 16:42:54 [SUCCESS] nonebot | NoneBot is initializing...
+[16:42:54] [out] 06-19 16:42:54 [INFO] nonebot | Current Env: prod
+[16:42:54] [out] 06-19 16:42:54 [SUCCESS] nonebot | Succeeded to load plugin "echo" from "nonebot.plugins.echo"
+[16:42:54] [out] 06-19 16:42:54 [SUCCESS] nonebot | Succeeded to load plugin "dataset_collection" from "src.plugins.dataset_collection"
+[16:42:54] [out] 06-19 16:42:54 [SUCCESS] nonebot | Succeeded to load plugin "emotion" from "src.plugins.emotion"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "qwenOpenapi" from "src.plugins.qwenOpenapi"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "reminder_scheduler" from "src.plugins.reminder_scheduler"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "gradio_call" from "src.plugins.gradio_call"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "emaid" from "src.plugins.emaid"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "voice" from "src.plugins.voice"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "chatglmOpenapi" from "src.plugins.chatglmOpenapi"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna:uniseg" from "nonebot_plugin_alconna.uniseg"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_waiter"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_htmlrender"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_apscheduler"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_localstore"
+[16:42:55] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not start with '^', otherwise it will ignore the prefix automatically.
+[16:42:55] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:42:55] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not end with '$', otherwise it will use `compact=False` automatically.
+[16:42:55] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_heweather"
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Running NoneBot...
+[16:42:55] [out] 06-19 16:42:55 [SUCCESS] nonebot | Loaded adapters: OneBot V11
+[16:42:55] [out] 06-19 16:42:55 [INFO] uvicorn | Started server process [26848]
+[16:42:55] [err] INFO:uvicorn.error:Started server process [26848]
+[16:42:55] [out] 06-19 16:42:55 [INFO] uvicorn | Waiting for application startup.
+[16:42:55] [err] INFO:uvicorn.error:Waiting for application startup.
+[16:42:55] [err] INFO:root:��Ϣ cron ������: ˯��=23:00  ��=09:00
+[16:42:55] [err] INFO:root:���ѵ������������������� 0 ����Ծ����
+[16:42:55] [out] [FTS] ������Ѵ���, ��������
+[16:42:55] [out] [FTS] ȫ���������� 3921 ������, ����ͬ��
+[16:42:55] [out] [FTS] ���������/�������
+[16:42:55] [out] 06-19 16:42:55 [INFO] nonebot_plugin_htmlrender | HTMLRender Starting...
+[16:42:55] [out] 06-19 16:42:55 [INFO] nonebot_plugin_htmlrender | Checking Playwright environment...
+[16:42:56] [out] 06-19 16:42:56 [INFO] nonebot_plugin_htmlrender | HTMLRender Started.
+[16:42:56] [out] 06-19 16:42:56 [INFO] nonebot_plugin_apscheduler | Scheduler Started
+[16:42:56] [out] 06-19 16:42:56 [INFO] nonebot_plugin_heweather | Loaded 0 weather push subscriptions
+[16:42:56] [out] 06-19 16:42:56 [INFO] uvicorn | Application startup complete.
+[16:42:56] [err] INFO:uvicorn.error:Application startup complete.
+[16:42:56] [out] 06-19 16:42:56 [INFO] uvicorn | Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[16:42:56] [err] INFO:uvicorn.error:Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[16:42:56] [out] 06-19 16:42:56 [INFO] nonebot | OneBot V11 | Bot 2367513895 connected
+[16:46:07] Process exited with code 3221225786

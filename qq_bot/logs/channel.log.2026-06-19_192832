@@ -1,0 +1,50 @@
+
+============================================================
+[2026-06-19T11:20:32.026853+00:00] Channel 'qq_bot' started
+============================================================
+使用 Python: F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\Scripts\python.exe
+启动重载监视，当前进程 [27224].
+06-19 19:20:32 [SUCCESS] nonebot | NoneBot is initializing...
+06-19 19:20:32 [INFO] nonebot | Current Env: prod
+06-19 19:20:32 [SUCCESS] nonebot | Succeeded to load plugin "echo" from "nonebot.plugins.echo"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna:uniseg" from "nonebot_plugin_alconna.uniseg"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_waiter"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_htmlrender"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_apscheduler"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_localstore"
+F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not start with '^', otherwise it will ignore the prefix automatically.
+  cls.command().shortcut(key, args, **kwargs)  # type: ignore
+F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not end with '$', otherwise it will use `compact=False` automatically.
+  cls.command().shortcut(key, args, **kwargs)  # type: ignore
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_heweather"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "gradio_call" from "src.plugins.gradio_call"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "chatglmOpenapi" from "src.plugins.chatglmOpenapi"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "qwenOpenapi" from "src.plugins.qwenOpenapi"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "reminder_scheduler" from "src.plugins.reminder_scheduler"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "voice" from "src.plugins.voice"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "emotion" from "src.plugins.emotion"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "dataset_collection" from "src.plugins.dataset_collection"
+06-19 19:20:33 [SUCCESS] nonebot | Succeeded to load plugin "emaid" from "src.plugins.emaid"
+06-19 19:20:33 [SUCCESS] nonebot | Running NoneBot...
+06-19 19:20:33 [SUCCESS] nonebot | Loaded adapters: OneBot V11
+06-19 19:20:33 [INFO] uvicorn | Started server process [39400]
+INFO:uvicorn.error:Started server process [39400]
+06-19 19:20:33 [INFO] uvicorn | Waiting for application startup.
+INFO:uvicorn.error:Waiting for application startup.
+06-19 19:20:33 [INFO] nonebot_plugin_htmlrender | HTMLRender Starting...
+06-19 19:20:33 [INFO] nonebot_plugin_htmlrender | Checking Playwright environment...
+06-19 19:20:34 [INFO] nonebot_plugin_htmlrender | HTMLRender Started.
+06-19 19:20:34 [INFO] nonebot_plugin_apscheduler | Scheduler Started
+06-19 19:20:34 [INFO] nonebot_plugin_heweather | Loaded 0 weather push subscriptions
+INFO:root:作息 cron 已设置: 睡觉=23:00  起床=09:00
+INFO:root:提醒调度器已启动，加载了 0 条活跃提醒
+[FTS] 虚拟表已存在, 跳过创建
+[FTS] 全文索引已有 3952 条数据, 跳过同步
+[FTS] 触发器检查/创建完成
+06-19 19:20:34 [INFO] uvicorn | Application startup complete.
+INFO:uvicorn.error:Application startup complete.
+06-19 19:20:34 [INFO] uvicorn | Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+INFO:uvicorn.error:Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+06-19 19:20:34 [INFO] nonebot | OneBot V11 | Bot 2367513895 connected
+[19:24:11] Process exited with code 3221225786

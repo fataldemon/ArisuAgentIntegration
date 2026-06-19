@@ -1,0 +1,16 @@
+aiohttp==3.11.13
+Brotli==1.0.9
+funasr==1.2.4
+playwright==1.50.0
+pydantic==2.10.6
+python-dotenv==1.0.1
+requests==2.32.3
+sounddevice==0.5.1
+SQLAlchemy==2.0.38
+streamlit==1.43.0
+streamlit_autorefresh==1.0.1
+streamlit_chat==0.1.1
+streamlit_extras==0.5.5
+torch==2.6.0
+torchaudio==2.6.0
+yarl==1.18.3

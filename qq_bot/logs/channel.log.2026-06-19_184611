@@ -1,0 +1,143 @@
+
+============================================================
+[2026-06-19T08:48:07.739754+00:00] Channel 'qq_bot' started
+============================================================
+[16:48:08] [out] 使用 Python: F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\Scripts\python.exe
+[16:48:08] [out] 启动重载监视，当前进程 [35388].
+[16:48:08] [out] 06-19 16:48:08 [SUCCESS] nonebot | NoneBot is initializing...
+[16:48:08] [out] 06-19 16:48:08 [INFO] nonebot | Current Env: prod
+[16:48:08] [out] 06-19 16:48:08 [SUCCESS] nonebot | Succeeded to load plugin "echo" from "nonebot.plugins.echo"
+[16:48:08] [out] 06-19 16:48:08 [SUCCESS] nonebot | Succeeded to load plugin "chatglmOpenapi" from "src.plugins.chatglmOpenapi"
+[16:48:08] [out] 06-19 16:48:08 [SUCCESS] nonebot | Succeeded to load plugin "reminder_scheduler" from "src.plugins.reminder_scheduler"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "qwenOpenapi" from "src.plugins.qwenOpenapi"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna:uniseg" from "nonebot_plugin_alconna.uniseg"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_waiter"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_htmlrender"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_apscheduler"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_localstore"
+[16:48:09] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not start with '^', otherwise it will ignore the prefix automatically.
+[16:48:09] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:48:09] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not end with '$', otherwise it will use `compact=False` automatically.
+[16:48:09] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_heweather"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "emotion" from "src.plugins.emotion"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "gradio_call" from "src.plugins.gradio_call"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "emaid" from "src.plugins.emaid"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "voice" from "src.plugins.voice"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Succeeded to load plugin "dataset_collection" from "src.plugins.dataset_collection"
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Running NoneBot...
+[16:48:09] [out] 06-19 16:48:09 [SUCCESS] nonebot | Loaded adapters: OneBot V11
+[16:48:09] [out] 06-19 16:48:09 [INFO] uvicorn | Started server process [39204]
+[16:48:09] [err] INFO:uvicorn.error:Started server process [39204]
+[16:48:09] [out] 06-19 16:48:09 [INFO] uvicorn | Waiting for application startup.
+[16:48:09] [err] INFO:uvicorn.error:Waiting for application startup.
+[16:48:09] [out] 06-19 16:48:09 [INFO] nonebot_plugin_htmlrender | HTMLRender Starting...
+[16:48:09] [out] 06-19 16:48:09 [INFO] nonebot_plugin_htmlrender | Checking Playwright environment...
+[16:48:10] [out] 06-19 16:48:10 [INFO] nonebot_plugin_htmlrender | HTMLRender Started.
+[16:48:10] [out] 06-19 16:48:10 [INFO] nonebot_plugin_apscheduler | Scheduler Started
+[16:48:10] [out] 06-19 16:48:10 [INFO] nonebot_plugin_heweather | Loaded 0 weather push subscriptions
+[16:48:10] [err] INFO:root:作息 cron 已设置: 睡觉=23:00  起床=09:00
+[16:48:10] [err] INFO:root:提醒调度器已启动，加载了 0 条活跃提醒
+[16:48:10] [out] [FTS] 虚拟表已存在, 跳过创建
+[16:48:10] [out] [FTS] 全文索引已有 3921 条数据, 跳过同步
+[16:48:10] [out] [FTS] 触发器检查/创建完成
+[16:48:10] [out] 06-19 16:48:10 [INFO] uvicorn | Application startup complete.
+[16:48:10] [err] INFO:uvicorn.error:Application startup complete.
+[16:48:10] [out] 06-19 16:48:10 [INFO] uvicorn | Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[16:48:10] [err] INFO:uvicorn.error:Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[16:48:10] [out] 06-19 16:48:10 [INFO] nonebot | OneBot V11 | Bot 2367513895 connected
+[16:49:26] [out] 06-19 16:49:26 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message 60714296 from 664648216@[群:203845310] '快吃晚饭了'
+[16:49:26] [out] 06-19 16:49:26 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=248)
+[16:49:26] [out] 06-19 16:49:26 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=248) running complete
+[16:49:26] [out] 06-19 16:49:26 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[16:49:29] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': '快吃晚饭了'}<<<<<< 
+[16:49:29] [out] ▲人物名称已更新为老师
+[16:49:29] [out] 关于老师:[你对老师的好感度: 100,你对老师的了解: "老师，是隶属于沙勒的顾问老师，也是基沃托斯唯一的老师，是你最亲近的人之一。老师的名字是“魔童様”，性别男，是一名戴着眼镜的大人。老师似乎没有什么战斗力。沙勒（S.C.H.A.L.E.，又称作夏莱）是隶属于联邦学生会的搜查机构，也负责解决学生的问题。沙勒办公大楼是老师平时办公的地方，平时会有学生来值日，帮助老师处理公务。沙勒的生活区，是老师在基沃托斯居住的地方。",你对老师的态度: "老师是你最亲近的人之一，你很喜欢老师。老师和游戏开发部的大家是最初发现你的人，也是你最珍视的伙伴。不管老师提出什么要求你都会欣然同意的。"]
+[16:49:29] [out] 〖老师的状态栏〗
+[16:49:29] [out]  职业：Lv.1的老师
+[16:49:29] [out] 经验值：0/100
+[16:49:29] [out] 生命值：100/100
+[16:49:29] [out] 攻击力：1
+[16:49:29] [out] 防御力：0
+[16:49:29] [out] ]
+[16:49:29] [out] 是否是车站：否
+[16:49:29] [out] >>>>>FINISH_REASON = error<<<<<<
+[16:49:29] [out] [ERROR]后端错误！！！
+[16:49:29] [out] Thought: 
+[16:49:29] [out] 
+[16:49:29] [out] 06-19 16:49:29 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[16:49:29] [out] 历史长度：21
+[16:49:29] [out] 06-19 16:49:29 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[16:49:29] [out] 06-19 16:49:29 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[16:51:28] [out] 06-19 16:51:28 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message 729746875 from 599897336@[Ⱥ:739048999] '[image:file=CD54E925D5B8046DAAE065E6C184197D.jpg,subType=1,url=https://multimedia.nt.qq.com.cn/download?appid=1407&fileid=EhSC7Yll...,file_size=15382]'
+[16:51:28] [out] 06-19 16:51:28 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[16:51:31] [out] >>>>SEG.TYPE>>>>>image<<<<<<>>>>>SEG.DATA>>>>>{'file': 'CD54E925D5B8046DAAE065E6C184197D.jpg', 'subType': 1, 'url': 'https://multimedia.nt.qq.com.cn/download?appid=1407&fileid=EhSC7Yllch_EppVWGnfHsq3vSQxLPxiWeCD_Ciibg9Wu9pKVAzIEcHJvZFCAvaMBWhDBcZzIRCykAQOW2saPfqMGegLsO4IBAmd6&spec=0&rkey=CAQSMB4CHk81RuoQ8e40OZjSYRoLJp8Hcpy0bk4I7P3ZNtRgIx6Ct0RNiKNfy3kmiAxp8A', 'file_size': '15382'}<<<<<< 
+[16:51:31] [out] [黑白发送了一个表情包][image,url=https://multimedia.nt.qq.com.cn/download?appid=1407&fileid=EhSC7Yllch_EppVWGnfHsq3vSQxLPxiWeCD_Ciibg9Wu9pKVAzIEcHJvZFCAvaMBWhDBcZzIRCykAQOW2saPfqMGegLsO4IBAmd6&spec=0&rkey=CAQSMB4CHk81RuoQ8e40OZjSYRoLJp8Hcpy0bk4I7P3ZNtRgIx6Ct0RNiKNfy3kmiAxp8A]
+[16:51:31] [out] （暑假中）
+[16:51:31] [out] 关于黑白:[名为“黑白”的同学是一名学生。你对黑白同学的好感度: 2.2,你对黑白同学的态度: "你认识黑白同学有一段日子了，他可以算是你的朋友。你从来不打算与黑白同学发展恋爱关系。"
+[16:51:31] [out] 〖黑白的状态栏〗
+[16:51:31] [out]  职业：Lv.1的NPC
+[16:51:31] [out] 经验值：0/100
+[16:51:31] [out] 生命值：100/100
+[16:51:31] [out] 攻击力：1
+[16:51:31] [out] 防御力：0
+[16:51:31] [out] ]
+[16:51:31] [out] 是否是车站：否
+[16:51:31] [out] >>>>>FINISH_REASON = error<<<<<<
+[16:51:31] [out] [ERROR]后端错误！！！
+[16:51:31] [out] Thought: 
+[16:51:31] [out] 
+[16:51:31] [out] 06-19 16:51:31 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[16:51:31] [out] 历史长度：21
+[16:51:31] [out] 06-19 16:51:31 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[16:51:31] [out] ******图片缓存地址：名叫“黑白”的同学发送的[https://multimedia.nt.qq.com.cn/download?appid=1407&fileid=EhSC7Yllch_EppVWGnfHsq3vSQxLPxiWeCD_Ciibg9Wu9pKVAzIEcHJvZFCAvaMBWhDBcZzIRCykAQOW2saPfqMGegLsO4IBAmd6&spec=0&rkey=CAQSMB4CHk81RuoQ8e40OZjSYRoLJp8Hcpy0bk4I7P3ZNtRgIx6Ct0RNiKNfy3kmiAxp8A]******
+[16:51:31] [out] 06-19 16:51:31 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[17:15:13] [out] 06-19 17:15:13 [SUCCESS] nonebot | OneBot V11 2367513895 | [notice.notify.poke]: {'time': 1781860513, 'self_id': 2367513895, 'post_type': 'notice', 'notice_type': 'notify', 'sub_type': 'poke', 'user_id': 664648216, 'group_id': 203845310, 'target_id': 2367513895, 'raw_info': [{'col': '1', 'nm': '', 'type': 'qq', 'uid': 'u_Ti4ymajHq2krZnGfb4EJvQ'}, {'jp': 'https://zb.vip.qq.com/v2/pages/nudgeMall?_wv=2&actionId=0', 'src': 'http://tianquan.gtimg.cn/nudgeaction/item/0/expression.jpg', 'type': 'img'}, {'txt': '戳了戳', 'type': 'nor'}, {'col': '1', 'nm': '', 'tp': '0', 'type': 'qq', 'uid': 'u_UU9z4r5eZAJOOqmA8mcg8g'}, {'txt': '的脸', 'type': 'nor'}]}
+[17:15:13] [out] 06-19 17:15:13 [INFO] nonebot | Event will be handled by Matcher(type='notice', module=src.plugins.emaid, lineno=236)
+[17:15:13] [out] 06-19 17:15:13 [INFO] nonebot | Matcher(type='notice', module=src.plugins.emaid, lineno=236) running complete
+[17:15:13] [out] 06-19 17:15:13 [ERROR] nonebot | Running Matcher(type='notice', module=src.plugins.emaid, lineno=236) failed.
+[17:15:13] [out] Traceback (most recent call last):
+[17:15:13] [out]   File "<string>", line 17, in <module>
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\__init__.py", line 337, in run
+[17:15:13] [out]     get_driver().run(*args, **kwargs)
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\drivers\fastapi.py", line 187, in run
+[17:15:13] [out]     uvicorn.run(
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\uvicorn\main.py", line 620, in run
+[17:15:13] [out]     server.run()
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\uvicorn\server.py", line 75, in run
+[17:15:13] [out]     return asyncio_run(self.serve(sockets=sockets), loop_factory=self.config.get_loop_factory())
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\uvicorn\_compat.py", line 60, in asyncio_run
+[17:15:13] [out]     return loop.run_until_complete(main)
+[17:15:13] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\asyncio\base_events.py", line 633, in run_until_complete
+[17:15:13] [out]     self.run_forever()
+[17:15:13] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\asyncio\windows_events.py", line 321, in run_forever
+[17:15:13] [out]     super().run_forever()
+[17:15:13] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\asyncio\base_events.py", line 600, in run_forever
+[17:15:13] [out]     self._run_once()
+[17:15:13] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\asyncio\base_events.py", line 1896, in _run_once
+[17:15:13] [out]     handle._run()
+[17:15:13] [out]   File "C:\Users\Windows\AppData\Local\Programs\Python\Python310\lib\asyncio\events.py", line 80, in _run
+[17:15:13] [out]     self._context.run(self._callback, *self._args)
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\anyio\_core\_tasks.py", line 278, in _run_coro
+[17:15:13] [out]     retval = await self._coro
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\utils.py", line 328, in run_coro_with_shield
+[17:15:13] [out]     return await coro
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\message.py", line 509, in check_and_run_matcher
+[17:15:13] [out]     await _run_matcher(
+[17:15:13] [out] > File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\message.py", line 461, in _run_matcher
+[17:15:13] [out]     await matcher.run(bot, event, state, stack, dependency_cache)
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\internal\matcher\matcher.py", line 916, in run
+[17:15:13] [out]     await self.simple_run(bot, event, state, stack, dependency_cache)
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\internal\matcher\matcher.py", line 855, in simple_run
+[17:15:13] [out]     await handler(
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot\dependencies\__init__.py", line 113, in __call__
+[17:15:13] [out]     return await cast(Callable[..., Awaitable[R]], self.call)(**values)
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\emaid.py", line 691, in chat
+[17:15:13] [out]     set_talker_name(user_id, username)
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\plugins\emaid.py", line 352, in set_talker_name
+[17:15:13] [out]     update_user_name(user_id, username)
+[17:15:13] [out]   File "F:\GitRepository\ArisuAgentIntegration\qq_bot\src\dao\user.py", line 61, in update_user_name
+[17:15:13] [out]     print(f"▲人物名称已更新为{user_name}")
+[17:15:13] [out] UnicodeEncodeError: 'gbk' codec can't encode character '\U00010381' in position 9: illegal multibyte sequence
+[17:15:42] Process exited with code 3221225786

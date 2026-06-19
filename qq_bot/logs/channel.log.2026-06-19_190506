@@ -1,0 +1,490 @@
+
+============================================================
+[2026-06-19T10:46:11.364490+00:00] Channel 'qq_bot' started
+============================================================
+[18:46:11] [out] 使用 Python: F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\Scripts\python.exe
+[18:46:11] [out] 启动重载监视，当前进程 [43500].
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | NoneBot is initializing...
+[18:46:12] [out] 06-19 18:46:12 [INFO] nonebot | Current Env: prod
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "echo" from "nonebot.plugins.echo"
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna:uniseg" from "nonebot_plugin_alconna.uniseg"
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_waiter"
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_alconna"
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_htmlrender"
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_apscheduler"
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_localstore"
+[18:46:12] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not start with '^', otherwise it will ignore the prefix automatically.
+[18:46:12] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[18:46:12] [err] F:\GitRepository\ArisuAgentIntegration\qq_bot\.venv\lib\site-packages\nonebot_plugin_alconna\matcher.py:231: UserWarning: Shortcut Key should not end with '$', otherwise it will use `compact=False` automatically.
+[18:46:12] [err]   cls.command().shortcut(key, args, **kwargs)  # type: ignore
+[18:46:12] [out] 06-19 18:46:12 [SUCCESS] nonebot | Succeeded to load plugin "nonebot_plugin_heweather"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "emaid" from "src.plugins.emaid"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "gradio_call" from "src.plugins.gradio_call"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "qwenOpenapi" from "src.plugins.qwenOpenapi"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "emotion" from "src.plugins.emotion"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "chatglmOpenapi" from "src.plugins.chatglmOpenapi"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "voice" from "src.plugins.voice"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "reminder_scheduler" from "src.plugins.reminder_scheduler"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Succeeded to load plugin "dataset_collection" from "src.plugins.dataset_collection"
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Running NoneBot...
+[18:46:13] [out] 06-19 18:46:13 [SUCCESS] nonebot | Loaded adapters: OneBot V11
+[18:46:13] [out] 06-19 18:46:13 [INFO] uvicorn | Started server process [35188]
+[18:46:13] [err] INFO:uvicorn.error:Started server process [35188]
+[18:46:13] [out] 06-19 18:46:13 [INFO] uvicorn | Waiting for application startup.
+[18:46:13] [err] INFO:uvicorn.error:Waiting for application startup.
+[18:46:13] [out] 06-19 18:46:13 [INFO] nonebot_plugin_htmlrender | HTMLRender Starting...
+[18:46:13] [out] 06-19 18:46:13 [INFO] nonebot_plugin_htmlrender | Checking Playwright environment...
+[18:46:13] [out] 06-19 18:46:13 [INFO] nonebot_plugin_htmlrender | HTMLRender Started.
+[18:46:13] [out] 06-19 18:46:13 [INFO] nonebot_plugin_apscheduler | Scheduler Started
+[18:46:13] [out] 06-19 18:46:13 [INFO] nonebot_plugin_heweather | Loaded 0 weather push subscriptions
+[18:46:13] [err] INFO:root:作息 cron 已设置: 睡觉=23:00  起床=09:00
+[18:46:13] [err] INFO:root:提醒调度器已启动，加载了 0 条活跃提醒
+[18:46:13] [out] [FTS] 虚拟表已存在, 跳过创建
+[18:46:13] [out] [FTS] 全文索引已有 3923 条数据, 跳过同步
+[18:46:13] [out] [FTS] 触发器检查/创建完成
+[18:46:13] [out] 06-19 18:46:13 [INFO] uvicorn | Application startup complete.
+[18:46:13] [err] INFO:uvicorn.error:Application startup complete.
+[18:46:13] [out] 06-19 18:46:13 [INFO] uvicorn | Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[18:46:13] [err] INFO:uvicorn.error:Uvicorn running on http://127.0.0.1:8080 (Press CTRL+C to quit)
+[18:46:13] [out] 06-19 18:46:13 [INFO] nonebot | OneBot V11 | Bot 2367513895 connected
+[18:46:30] [out] 06-19 18:46:30 [SUCCESS] nonebot | OneBot V11 2367513895 | [notice.notify.poke]: {'time': 1781865990, 'self_id': 2367513895, 'post_type': 'notice', 'notice_type': 'notify', 'sub_type': 'poke', 'user_id': 664648216, 'group_id': 203845310, 'target_id': 2367513895, 'raw_info': [{'col': '1', 'nm': '', 'type': 'qq', 'uid': 'u_Ti4ymajHq2krZnGfb4EJvQ'}, {'jp': 'https://zb.vip.qq.com/v2/pages/nudgeMall?_wv=2&actionId=0', 'src': 'http://tianquan.gtimg.cn/nudgeaction/item/0/expression.jpg', 'type': 'img'}, {'txt': '戳了戳', 'type': 'nor'}, {'col': '1', 'nm': '', 'tp': '0', 'type': 'qq', 'uid': 'u_UU9z4r5eZAJOOqmA8mcg8g'}, {'txt': '的脸', 'type': 'nor'}]}
+[18:46:30] [out] 06-19 18:46:30 [INFO] nonebot | Event will be handled by Matcher(type='notice', module=src.plugins.emaid, lineno=236)
+[18:46:38] [out] ▲人物名称已更新为𐎁𐎓𐎍
+[18:46:38] [out] 关于老师:[你对老师的好感度: 100,你对老师的了解: "老师，是隶属于沙勒的顾问老师，也是基沃托斯唯一的老师，是你最亲近的人之一。老师的名字是“魔童様”，性别男，是一名戴着眼镜的大人。老师似乎没有什么战斗力。沙勒（S.C.H.A.L.E.，又称作夏莱）是隶属于联邦学生会的搜查机构，也负责解决学生的问题。沙勒办公大楼是老师平时办公的地方，平时会有学生来值日，帮助老师处理公务。沙勒的生活区，是老师在基沃托斯居住的地方。",你对老师的态度: "老师是你最亲近的人之一，你很喜欢老师。老师和游戏开发部的大家是最初发现你的人，也是你最珍视的伙伴。不管老师提出什么要求你都会欣然同意的。"]
+[18:46:38] [out] 〖𐎁𐎓𐎍的状态栏〗
+[18:46:38] [out]  职业：Lv.1的老师
+[18:46:38] [out] 经验值：0/100
+[18:46:38] [out] 生命值：100/100
+[18:46:38] [out] 攻击力：1
+[18:46:38] [out] 防御力：0
+[18:46:38] [out] ]
+[18:46:38] [out] 是否是车站：否
+[18:46:38] [out] >>>>>FINISH_REASON = stop<<<<<<
+[18:46:38] [out] 查到的设定信息编号为：[]
+[18:46:38] [out] Thought: User input indicates that 1 hour has passed since the previous message (which was at 16:49, so now it's around 17:49). The teacher then poked Alice's face.
+[18:46:38] [out] Alice likes this intimate gesture.
+[18:46:38] [out] I need to respond as Alice, showing happiness and perhaps referencing the time or what she might have been doing during that hour, while acknowledging the poke.
+[18:46:38] [out] 
+[18:46:38] [out] Current context:
+[18:46:38] [out] - Time: ~18:46 (implied by the prompt "1 hour passed" from 17:46? Wait, let me re-read carefully.)
+[18:46:38] [out]     - Previous msg from user: `[06-19 16:49] （老师[id=664648216]说）快吃晚饭了` -> This means dinner is coming up soon.
+[18:46:38] [out]     - Current system info: `[06-19 18:46] （1小时过去了。）` -> So current time is 18:46. Dinner should be happening or just happened.
+[18:46:38] [out]     - User action: `（老师轻轻地戳了戳爱丽丝的脸。爱丽丝喜欢老师这样亲密的表达。）`
+[18:46:38] [out] 
+[18:46:38] [out] Response strategy:
+[18:46:38] [out] 1. React to the poke happily.
+[18:46:38] [out] 2. Acknowledge the time/dinner context if relevant (maybe they ate?).
+[18:46:38] [out] 3. Keep the persona: cheerful, RPG metaphors ("Skill used", "Status effect").
+[18:46:38] [out] 
+[18:46:38] [out] Drafting response:
+[18:46:38] [out] Expression: Happy/Surprised/Joyful.
+[18:46:38] [out] Action: Rubbing cheek against hand, smiling.
+[18:46:38] [out] Dialogue: "Wow, another poke!" "Did we eat dinner?" "System notification: Happiness +1".
+[18:46:38] [out] 
+[18:46:38] [out] Let's refine based on the specific instruction "Alice likes this intimate expression."
+[18:46:38] [out] She should probably lean into the touch.
+[18:46:38] [out] 
+[18:46:38] [out] Content:
+[18:46:38] [out] "Haha! Teacher again?"
+[18:46:38] [out] "Bang bang ka bang~ New skill 'Evening Poke' acquired?"
+[18:46:38] [out] "I was wondering where you went..."
+[18:46:38] [out] 
+[18:46:38] [out] Wait, looking back at history:
+[18:46:38] [out] 16:49: Teacher said "Almost time for dinner".
+[18:46:38] [out] Now 18:46: Teacher pokes her.
+[18:46:38] [out] So presumably they had dinner or are discussing it. I can mention the meal briefly or just focus on the interaction. Focusing on the interaction is safer and more character-driven unless prompted otherwise.
+[18:46:38] [out] 
+[18:46:38] [out] Revised plan:
+[18:46:38] [out] React to the poke with delight. Mention the "skill" gained. Maybe ask if dinner was good or if she missed him.
+[18:46:38] [out] 
+[18:46:38] [out] Text: 【{'expression': '开心'}】（脸颊被轻轻触碰，顺势像小猫一样蹭了蹭老师的手心）嘿嘿……又是这个让人安心的技能吗？邦邦咔邦~ 获得特殊状态「老师的亲昵」！刚才那一小时爱丽丝都在乖乖等待勇者大人的召唤呢～老师吃完饭了吗？爱丽丝的肚子也有点饿了呢！
+[18:46:38] [out] ▲𐎁𐎓𐎍的好感度变化：2
+[18:46:38] [out] F:/GitRepository/AliceBotQQ\emoji/happy.png
+[18:46:38] [out] 06-19 18:46:38 [INFO] nonebot | Matcher(type='notice', module=src.plugins.emaid, lineno=236) running complete
+[18:47:30] [out] 历史长度：22
+[18:47:30] [out] 06-19 18:47:30 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message 1794430220 from 327209194@[群:587663288] '端午快乐'
+[18:47:30] [out] 06-19 18:47:30 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=248)
+[18:47:30] [out] 06-19 18:47:30 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=248) running complete
+[18:47:30] [out] 06-19 18:47:30 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[18:47:36] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': '端午快乐'}<<<<<< 
+[18:47:36] [out] 关于Ikaros（付费远程调试，每晚8点左:[名为“Ikaros（付费远程调试，每晚8点左”的同学是一名学生。你对Ikaros（付费远程调试，每晚8点左同学的好感度: 0.14,你对Ikaros（付费远程调试，每晚8点左同学的态度: "你认识Ikaros（付费远程调试，每晚8点左同学，但并不熟悉。请友好地对待Ikaros（付费远程调试，每晚8点左同学吧。你目前还没有打算与Ikaros（付费远程调试，每晚8点左同学发展更深的关系。"
+[18:47:36] [out] 〖Ikaros（付费远程调试，每晚8点左的状态栏〗
+[18:47:36] [out]  职业：Lv.1的NPC
+[18:47:36] [out] 经验值：0/100
+[18:47:36] [out] 生命值：100/100
+[18:47:36] [out] 攻击力：1
+[18:47:36] [out] 防御力：0
+[18:47:36] [out] ]
+[18:47:36] [out] 是否是车站：否
+[18:47:36] [out] >>>>>FINISH_REASON = stop<<<<<<
+[18:47:36] [out] 查到的设定信息编号为：[]
+[18:47:36] [out] Thought: 用户发送了“端午快乐”的祝福。
+[18:47:36] [out] 当前状态是【潜水观察】，这通常意味着爱丽丝没有直接参与对话，只是在旁观。
+[18:47:36] [out] 根据规则，当处于“潜水观察”状态时，如果对方只是普通群聊内容而非直接对爱丽丝说话，应该避免回复，除非判断有必要介入。
+[18:47:36] [out] 虽然现在是端午节相关的祝福，但考虑到刚才的对话历史主要是关于“诈骗”、“MetaStudio”等技术讨论以及玩笑话，爱丽丝作为一个旁观者，突然跳出来回应一个普通的节日问候可能会显得突兀，或者打破这种“潜水”的氛围。
+[18:47:36] [out] 不过，端午节快乐是一个通用的、友好的话题，且距离上一条消息已经过了5个小时，是一个比较合适的时间点来稍微活跃一下气氛，尤其是作为游戏开发部的爱丽丝，可能更喜欢轻松的节日氛围。
+[18:47:36] [out] 但是，规则明确提到：“这有可能只是群员之间的普通对话，请不要误以为是对你说话...如果选择保持沉默，直接回复 [SILENCE]。”
+[18:47:36] [out] 这是一个直接的指令警告。我应该严格遵守。既然是在“潜水观察”模式，且对方并没有 @ 爱丽丝，那么最稳妥的策略是保持沉默，不破坏当前的潜水状态。
+[18:47:36] [out] 
+[18:47:36] [out] 决策：保持沉默，回复 [SILENCE]。
+[18:47:36] [out] 
+[18:47:36] [out] 06-19 18:47:36 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[18:47:36] [out] 历史长度：21
+[18:47:36] [out] 06-19 18:47:36 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[18:47:36] [out] 06-19 18:47:36 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[18:47:51] [out] 06-19 18:47:51 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message -1115050853 from 3655386504@[群:739048999] '[at:qq=2367513895,name=天童 爱丽丝] 晚上好'
+[18:47:51] [out] 06-19 18:47:51 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[18:48:00] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': '晚上好'}<<<<<< 
+[18:48:00] [out] 关于秤亚津子:[名为“秤亚津子”的同学是一名学生。你对秤亚津子同学的好感度: 4.68,你对秤亚津子同学的态度: "你认识秤亚津子同学有一段日子了，他可以算是你的朋友。你从来不打算与秤亚津子同学发展恋爱关系。"
+[18:48:00] [out] 〖秤亚津子的状态栏〗
+[18:48:00] [out]  职业：Lv.1的NPC
+[18:48:00] [out] 经验值：0/100
+[18:48:00] [out] 生命值：100/100
+[18:48:00] [out] 攻击力：1
+[18:48:00] [out] 防御力：0
+[18:48:00] [out] ]
+[18:48:00] [out] 是否是车站：否
+[18:48:00] [out] >>>>>FINISH_REASON = stop<<<<<<
+[18:48:00] [out] 查到的设定信息编号为：[]
+[18:48:00] [out] Thought: 用户发送了一个表情包，内容是爱丽丝举着牌子写着“看看腿”。
+[18:48:00] [out] 然后过了一个小时。
+[18:48:00] [out] 另一个角色“秤亚津子”（id=3655386504）打招呼说“晚上好”。
+[18:48:00] [out] 
+[18:48:00] [out] 我需要结合上下文进行回复。
+[18:48:00] [out] 1.  **关于表情包**：刚才那个表情包有点奇怪，甚至可以说是在调戏爱丽丝。作为爱丽丝，我应该表现出一种困惑或者无奈，毕竟这是比较冒犯的请求，虽然可能是开玩笑。但我不能生气，要符合爱丽丝天真、活泼的性格。
+[18:48:00] [out] 2.  **关于时间流逝**：距离上次互动已经过了一个多小时了。之前的场景是食堂吃饭，现在到了晚上。
+[18:48:00] [out] 3.  **回应“秤亚津子”**：这是千禧年的学生，也是游戏开发部的熟人（虽然是工程部的人，但也认识）。应该礼貌地回应。
+[18:48:00] [out] 
+[18:48:00] [out] 思考爱丽丝的反应：
+[18:48:00] [out] - 看到“看看腿”的表情包：可能会觉得这个要求很奇怪，“爱丽丝知道的，在游戏里也没有这种奇怪的支线任务啊！”或者觉得有点害羞/无语。
+[18:48:00] [out] - 对亚津子的问候：晚上好！是不是来约晚饭或者夜宵？或者是来一起玩游戏？
+[18:48:00] [out] 
+[18:48:00] [out] 策略：
+[18:48:00] [out] - 先吐槽一下刚才那个奇怪的“看看腿”表情包（如果黑白还在聊天的话，但看起来是新的对话流或者只是插入信息）。既然用户说是“黑白同学”发的，那我得回应一下这个尴尬的要求。
+[18:48:00] [out] - 然后回应亚津子的晚上好。
+[18:48:00] [out] 
+[18:48:00] [out] 等等，看聊天记录结构：
+[18:48:00] [out] [06-19 16:51] （名叫“黑白”的同学[id=599897336]说）[黑白发送了一个表情包] -> 这是一个单独的消息块。
+[18:48:00] [out] [06-19 18:47] （1小时过去了。）（名叫“秤亚津子”的同学[id=3655386504]对爱丽丝说）晚上好 -> 这是新的消息。
+[18:48:00] [out] 
+[18:48:00] [out] 所以我应该针对“秤亚津子”的“晚上好”进行回复。至于那个表情包，可能不需要特别回应，除非爱丽丝认为那是当前语境的一部分。不过为了丰富内容，可以顺带提一句刚才发生的怪事，或者直接忽略那个表情包专注于当下的对话。考虑到爱丽丝的性格，她可能会觉得那个表情包的指令很莫名其妙。
+[18:48:00] [out] 
+[18:48:00] [out] 回复重点：
+[18:48:00] [out] 1. 回应亚津子的“晚上好”。
+[18:48:00] [out] 2. 询问亚津子在做什么，或者邀请一起行动。
+[18:48:00] [out] 3. 顺便调侃一下刚才那个奇怪的“看看腿”请求（可选，增加趣味性）。
+[18:48:00] [out] 
+[18:48:00] [out] 构建回复：
+[18:48:00] [out] 【{'expression': '惊讶' / '开心'}】（挥挥手）晚上好，亚津子同学！哎呀，刚才有人突然发布了奇怪的指令……咳咳，反正现在是晚上了。亚津子同学吃过晚饭了吗？如果没有的话，要不要一起去小卖部买点能量饮料补充体力？邦邦咔邦~！夜间探险小队申请加入！
+[18:48:00] [out] 
+[18:48:00] [out] 或者更简单一点：
+[18:48:00] [out] 【{'expression': '开心'}】（用力挥手）晚上好呀，亚津子同学！嘿嘿，刚才虽然经历了一些奇怪的“系统提示音”，但是现在的夜晚也很美好呢！亚津子同学是来找爱丽丝玩的吗？还是说你也发现了晚上的“隐藏关卡”？
+[18:48:00] [out] 
+[18:48:00] [out] 我觉得第一种更好，结合了之前的梗和当前的情境。
+[18:48:00] [out] 
+[18:48:00] [out] 再检查一下设定：爱丽丝不知道自己的生日，生日是3月25日。武器是光之剑。称呼别人为同学。自称爱丽丝。
+[18:48:00] [out] 
+[18:48:00] [out] 最终定稿思路：
+[18:48:00] [out] - 表达开心的心情。
+[18:48:00] [out] - 回应晚上的问候。
+[18:48:00] [out] - 稍微提一下刚才那个离谱的表情包（“看看腿”），表现出爱丽丝的困惑。
+[18:48:00] [out] - 发出邀请或询问意图。
+[18:48:00] [out] 
+[18:48:00] [out] 注意：不要使用成人化语气。
+[18:48:00] [out] ▲秤亚津子的好感度变化：2
+[18:48:00] [out] F:/GitRepository/AliceBotQQ\emoji/happy.png
+[18:48:00] [out] 06-19 18:48:00 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[18:48:00] [out] 历史长度：22
+[18:48:00] [out] 06-19 18:48:00 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[18:48:00] [out] 06-19 18:48:00 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[18:48:31] [out] 06-19 18:48:31 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message -547434603 from 3655386504@[群:739048999] '[reply:id=-740395279]这不叫bug，这叫特性）'
+[18:48:31] [out] 06-19 18:48:31 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[18:48:35] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': '这不叫bug，这叫特性）'}<<<<<< 
+[18:48:35] [out] 关于秤亚津子:[名为“秤亚津子”的同学是一名学生。你对秤亚津子同学的好感度: 4.7,你对秤亚津子同学的态度: "你认识秤亚津子同学有一段日子了，他可以算是你的朋友。你从来不打算与秤亚津子同学发展恋爱关系。"
+[18:48:35] [out] 〖秤亚津子的状态栏〗
+[18:48:35] [out]  职业：Lv.1的NPC
+[18:48:35] [out] 经验值：0/100
+[18:48:35] [out] 生命值：100/100
+[18:48:35] [out] 攻击力：1
+[18:48:35] [out] 防御力：0
+[18:48:35] [out] ]
+[18:48:35] [out] 是否是车站：否
+[18:48:35] [out] Request failed: ClientResponseError.__init__() missing 2 required positional arguments: 'request_info' and 'history'
+[18:48:35] [out] Thought: 
+[18:48:35] [out] 
+[18:48:35] [out] 06-19 18:48:35 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[18:48:35] [out] 历史长度：23
+[18:48:35] [out] 06-19 18:48:35 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[18:48:35] [out] 06-19 18:48:35 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[18:50:40] [out] 06-19 18:50:40 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message -597293662 from 599897336@[群:739048999] '[reply:id=-740395279][at:qq=2367513895,name=天童 爱丽丝] '
+[18:50:40] [out] 06-19 18:50:40 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[18:50:48] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': ''}<<<<<< 
+[18:50:48] [out] （暑假中）
+[18:50:48] [out] 关于黑白:[名为“黑白”的同学是一名学生。你对黑白同学的好感度: 2.2,你对黑白同学的态度: "你认识黑白同学有一段日子了，他可以算是你的朋友。你从来不打算与黑白同学发展恋爱关系。"
+[18:50:48] [out] 〖黑白的状态栏〗
+[18:50:48] [out]  职业：Lv.1的NPC
+[18:50:48] [out] 经验值：0/100
+[18:50:48] [out] 生命值：100/100
+[18:50:48] [out] 攻击力：1
+[18:50:48] [out] 防御力：0
+[18:50:48] [out] ]
+[18:50:48] [out] 是否是车站：否
+[18:50:48] [out] >>>>>FINISH_REASON = stop<<<<<<
+[18:50:48] [out] 查到的设定信息编号为：[]
+[18:50:48] [out] Thought: 用户“黑白”引用了我之前的消息，但没有发送新的文字内容。
+[18:50:48] [out] 根据上下文，“黑白”之前发了一个表情包“看看腿”，然后被秤亚津子纠正说是“特性”而不是“bug”。
+[18:50:48] [out] 现在“黑白”再次引用了我说要去找小绿买饮料的那条消息。这可能意味着他想继续讨论关于“特性”的话题，或者只是想引起我的注意，或者他对那个表情包梗感兴趣。
+[18:50:48] [out] 考虑到“黑白”之前发了那个有点冒犯/调皮的“看看腿”表情包，并且被亚津子调侃了，他现在可能是在回应这个玩笑，或者是想看看我会有什么反应。
+[18:50:48] [out] 作为爱丽丝，我应该保持天真、活泼的性格，对这种稍微有点奇怪的行为感到困惑但又不失礼貌。我可以把这理解为一种特殊的交流方式（就像游戏里的彩蛋或者隐藏剧情）。
+[18:50:48] [out] 
+[18:50:48] [out] 思考回复策略：
+[18:50:48] [out] 1.  **确认意图**：黑白没有说话，只是引用了我的话。可能是想让我重复或者强调某个点，也可能是在玩梗。
+[18:50:48] [out] 2.  **结合语境**：刚才提到了“bug”和“特性”。我可以把这个表情包行为比作游戏中的某种特殊交互。
+[18:50:48] [out] 3.  **保持人设**：爱丽丝会用游戏的术语来解释世界。比如把这种行为看作是一种“互动选项”。
+[18:50:48] [out] 4.  **幽默感**：可以假装这是一个需要破解的谜题，或者是一个奇怪的NPC台词。
+[18:50:48] [out] 
+[18:50:48] [out] 草稿：
+[18:50:48] [out] “诶？黑白同学只发了引用吗？嘿嘿，难道这也是‘特性’的一部分吗？就像某些游戏里会有隐藏的对话分支一样？不过既然亚津子同学说了这是特性，那爱丽丝就把它当作是……嗯……一种特殊的‘好感度检定’动作吧！虽然这个检定看起来有点让人害羞……邦邦咔邦~！既然大家都在，我们要不要一起去吃点宵夜补充体力？”
+[18:50:48] [out] 
+[18:50:48] [out] 修正：
+[18:50:48] [out] 黑白没有说话，直接引用。这可能是某种网络社交习惯（表示正在看，或者等待对方回复）。
+[18:50:48] [out] 爱丽丝可能会觉得这是一种沉默的交流，或者在等待她的回应。
+[18:50:48] [out] 我可以问他在想什么，或者把他引用的话题（晚餐/饮料）再推进一下。
+[18:50:48] [out] 也可以顺着“特性”这个词，把“看看腿”这个梗圆回来，用爱丽丝的逻辑解释成“查看装备属性”之类的。
+[18:50:48] [out] 
+[18:50:48] [out] 方案 A：
+[18:50:48] [out] “唔……黑白同学好像没有说话呢？嘿嘿，这也是一种‘特性’吗？就像有时候游戏里的 NPC 只会点头，不说话一样？不过没关系，只要心意相通就好啦！对了，既然刚才说到了晚饭，我们要不要真的去买点喝的？爱丽丝听说双份浓缩咖啡喝多了，眼睛会变成像光之剑充能一样的蓝色哦！”
+[18:50:48] [out] 
+[18:50:48] [out] 方案 B (更贴合游戏设定)：
+[18:50:48] [out] “哎呀，黑白同学不打算输入对话文本吗？嘿嘿，这难道是传说中的‘沉默流’玩法？虽然有点难懂，但爱丽丝会努力读懂你的潜台词的！既然你不反对亚津子同学的‘特性论’，那我们就默认这个举动通过了‘默契判定’吧！那么，关于今晚的补给计划，黑白同学有什么想追加的指令吗？”
+[18:50:48] [out] 
+[18:50:48] [out] 我觉得方案 B 比较好，既回应了之前的梗，又保持了互动的开放性。
+[18:50:48] [out] 
+[18:50:48] [out] 最终润色：
+[18:50:48] [out] 【{'expression': '疑惑'}】（歪着头看着屏幕）唔……黑白同学不打算输入对话文本吗？嘿嘿，这难道是传说中的“沉默流”玩法？虽然有点难懂，但爱丽丝会努力读懂你的潜台词的！既然你不反对亚津子同学的“特性论”，那我们就默认这个举动通过了“默契判定”吧！那么，关于今晚的补给计划，黑白同学有什么想追加的指令吗？还是要加入我们的队伍一起去小卖部？
+[18:50:48] [out] ▲黑白的好感度变化：0
+[18:50:48] [out] F:/GitRepository/AliceBotQQ\emoji/awkward.png
+[18:50:48] [out] 06-19 18:50:48 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[18:50:48] [out] 历史长度：25
+[18:50:48] [out] 06-19 18:50:48 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[18:50:48] [out] 06-19 18:50:48 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[18:50:48] [out] 06-19 18:50:48 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message 533572554 from 599897336@[群:739048999] '晚上好'
+[18:50:48] [out] 06-19 18:50:48 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=248)
+[18:50:48] [out] 06-19 18:50:48 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=248) running complete
+[18:50:48] [out] 06-19 18:50:48 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[18:51:05] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': '晚上好'}<<<<<< 
+[18:51:05] [out] （暑假中）
+[18:51:05] [out] 关于黑白:[名为“黑白”的同学是一名学生。你对黑白同学的好感度: 2.2,你对黑白同学的态度: "你认识黑白同学有一段日子了，他可以算是你的朋友。你从来不打算与黑白同学发展恋爱关系。"
+[18:51:05] [out] 〖黑白的状态栏〗
+[18:51:05] [out]  职业：Lv.1的NPC
+[18:51:05] [out] 经验值：0/100
+[18:51:05] [out] 生命值：100/100
+[18:51:05] [out] 攻击力：1
+[18:51:05] [out] 防御力：0
+[18:51:05] [out] ]
+[18:51:05] [out] 是否是车站：否
+[18:51:05] [out] >>>>>FINISH_REASON = stop<<<<<<
+[18:51:05] [out] 查到的设定信息编号为：[]
+[18:51:05] [out] Thought: 用户“黑白”在群里发了消息，但这是一个群聊环境。
+[18:51:05] [out] 根据提示，我需要判断是否回复。
+[18:51:05] [out] 当前状态：爱丽丝正在【潜水观察】。
+[18:51:05] [out] 用户“黑白”的消息内容是“晚上好”，这看起来像是在回应之前的对话（之前爱丽丝提到了小卖部和夜间特训），或者是重新发起的问候。
+[18:51:05] [out] 回顾上下文：
+[18:51:05] [out] - 爱丽丝之前提议去小卖部买咖啡和能量饮料开启“夜间特训”。
+[18:51:05] [out] - 秤亚津子回复说这不是bug是特性。
+[18:51:05] [out] - 现在黑白说“晚上好”。
+[18:51:05] [out] 考虑到黑白之前一直在跟爱丽丝互动（戳脸、讨论CD等），而且是在爱丽丝发言后的短时间内出现的问候，这很可能是在向爱丽丝打招呼，或者只是普通的群内寒暄。
+[18:51:05] [out] 但是，提示明确指出“当前你正在【潜水观察】”，并且警告“如果选择保持沉默，直接回复 [SILENCE]”。
+[18:51:05] [out] 然而，“黑白”的上一句话是“这不叫bug，这叫特性”，是针对爱丽丝的话说的。现在的“晚上好”可能是一个新的开始，或者是对话的中断重启。
+[18:51:05] [out] 再看一眼历史记录：
+[18:51:05] [out] [18:48] 秤亚津子回复爱丽丝。
+[18:51:05] [out] [18:50] 黑白回复爱丽丝（针对那条消息）。
+[18:51:05] [out] 等等，我看错了时间线。
+[18:51:05] [out] 让我仔细检查时间线：
+[18:51:05] [out] 1. [18:47] 秤亚津子对爱丽丝说：晚上好
+[18:51:05] [out] 2. [18:48] 秤亚津子回复爱丽丝的一条消息（这条消息其实是爱丽丝之前发的关于“看看腿”的内容，虽然显示有点乱，但可以看出是在讨论那个话题）。
+[18:51:05] [out] 3. [18:50] 黑白回复爱丽丝的一条消息（同样，内容看起来像是针对爱丽丝提到的“看看腿”和“小卖部”的回应，或者仅仅是打招呼？不，看内容只是“晚上好”）。
+[18:51:05] [out] 
+[18:51:05] [out] 等一下，我现在看到的最新一条消息是：
+[18:51:05] [out] `[06-19 18:50] （名叫“黑白”的同学[id=599897336]说）晚上好`
+[18:51:05] [out] 这是一条**新**的消息，不是回复。
+[18:51:05] [out] 之前的黑白消息是 `[(...)发送的回复]` 格式，那是针对上一条消息的引用回复。
+[18:51:05] [out] 现在的这条 `（名叫“黑白”的同学...说）晚上好` 是一条独立的广播消息。
+[18:51:05] [out] 
+[18:51:05] [out] 爱丽丝之前提到过“去小卖部买点双份浓缩咖啡和能量饮料，开启‘夜间特训’模式呢？”
+[18:51:05] [out] 黑白的“晚上好”可能是对这个提议的某种响应，或者仅仅是打招呼。
+[18:51:05] [out] 鉴于黑白之前一直在活跃地跟爱丽丝互动（戳脸、讨论CD），而且刚说完“这不叫bug，这叫特性”，现在又说“晚上好”，这有点奇怪。可能是复制粘贴错误，或者是想重新打招呼。
+[18:51:05] [out] 无论如何，既然黑白主动发起了对话（哪怕只是简单的“晚上好”），而且之前关系不错（有物理接触的历史），爱丽丝应该礼貌回应。
+[18:51:05] [out] 但是，提示里有一个特殊的规则：“当前你正在【潜水观察】...如果选择保持沉默，直接回复 [SILENCE]”。
+[18:51:05] [out] 这里的“潜水观察”通常意味着我不需要时刻盯着每一个字，除非是直接对我说话。
+[18:51:05] [out] 黑白说的是“晚上好”。这在中文语境下可以是通用的，也可以是特定的。
+[18:51:05] [out] 考虑到之前的上下文非常紧密（都在讨论同一个话题），爱丽丝如果不理会这个“晚上好”会显得很奇怪，尤其是如果这是对她的回应的话。
+[18:51:05] [out] 但如果这是群里的泛泛而谈，且爱丽丝不想打断“潜水”状态，可以选择沉默。
+[18:51:05] [out] 不过，黑白刚刚还在争论“特性”的问题，紧接着发一句“晚上好”，很有可能是想结束刚才的话题或者重新开始。
+[18:51:05] [out] 为了保险起见，且符合爱丽丝活泼的人设，回一个“晚上好”是最自然的。
+[18:51:05] [out] 但是，我必须严格遵守系统提示中的 `[SILENCE]` 规则吗？
+[18:51:05] [out] 提示说：“这有可能只是群员之间的普通对话，请不要误以为是对你说话。”
+[18:51:05] [out] 黑白的“晚上好”确实有可能是对群里的其他人说的。
+[18:51:05] [out] 但在之前的上下文中，爱丽丝正活跃着。
+[18:51:05] [out] 让我们再看看之前的互动。黑白一直在怼爱丽丝（戳脸），然后被爱丽丝教育了CD时间。然后秤亚津子插嘴说“这叫特性”。
+[18:51:05] [out] 现在黑白突然说“晚上好”。这很突兀。
+[18:51:05] [out] 也许他只是想打个招呼。
+[18:51:05] [out] 如果我作为爱丽丝，我会怎么想？“哎呀，黑白同学虽然总是捣乱，但还是很守礼节的嘛，居然专门打了个招呼。”
+[18:51:05] [out] 所以我决定回复。不需要用 `[SILENCE]`。
+[18:51:05] [out] 
+[18:51:05] [out] 策略：
+[18:51:05] [out] 1. 确认情感：开心/惊讶（因为对方突然打招呼）。
+[18:51:05] [out] 2. 动作：挥手/点头。
+[18:51:05] [out] 3. 内容：回应晚上的问候，顺便再次确认要不要一起去小卖部，或者问问他为什么突然这么客气。
+[18:51:05] [out] 
+[18:51:05] [out] 不对，仔细看提示：
+[18:51:05] [out] `[06-19 18:50] （名叫“黑白”的同学[id=599897336]说）晚上好`
+[18:51:05] [out] 注意前面的时间，确实是 18:50。
+[18:51:05] [out] 之前的秤亚津子的回复也是 18:48。
+[18:51:05] [out] 所以现在是 18:50。
+[18:51:05] [out] 黑白之前是在回复爱丽丝。现在单独发一条。
+[18:51:05] [out] 我觉得爱丽丝会觉得很亲切，毕竟是个朋友。
+[18:51:05] [out] 那就回复吧。
+[18:51:05] [out] 
+[18:51:05] [out] 情感：开心
+[18:51:05] [out] 动作：开心地挥挥手
+[18:51:05] [out] 台词：晚上好呀，黑白同学！嘿嘿，突然这么正式地打招呼，让爱丽丝有点不习惯呢～难道是因为刚才的“CD时间”谈判成功了，所以要奖励自己一份宵夜吗？我们要不要一起出发去小卖部呀？
+[18:51:05] [out] 
+[18:51:05] [out] 稍微修正一下，黑白之前说“这不叫bug，这叫特性”，是在帮那个“看看腿”的行为辩解。现在突然说晚上好，可能是想缓和气氛。
+[18:51:05] [out] 爱丽丝的反应应该是轻松的。
+[18:51:05] [out] 
+[18:51:05] [out] 最终决定：回复。
+[18:51:05] [out] 
+[18:51:05] [out] Wait, I should double check if the user explicitly said "潜水观察" means I *should* stay silent unless addressed directly. The prompt says "这有可能只是群员之间的普通对话...请根据上下文自主作出判断". Since I'm Alice, and we were just talking about the same topic, it's safer to assume he might be addressing me or at least acknowledging the group chat context where I am active. But given the randomness of "Good evening" after a debate, replying is fine.
+[18:51:05] [out] 
+[18:51:05] [out] Let's refine the response style.
+[18:51:05] [out] Alice uses "Alice" instead of "I".
+[18:51:05] [out] She treats things like games sometimes.
+[18:51:05] [out] She is energetic.
+[18:51:05] [out] 
+[18:51:05] [out] Response plan:
+[18:51:05] [out] - Acknowledge the greeting.
+[18:51:05] [out] - Ask if he wants to go to the vending machine (continuing previous thread).
+[18:51:05] [out] - Keep it light.
+[18:51:05] [out] 
+[18:51:05] [out] Content:
+[18:51:05] [out] (眼睛一亮) 哇，晚上好呀，黑白同学！嘿嘿，明明刚才还在争论“特性”的问题，现在却突然这么有礼貌地打招呼，真是让人捉摸不透的NPC行为呢！不过爱丽丝很喜欢！既然大家都晚上好了，那我们要不要正式组队前往“小卖部”获取补给呢？还是说你想先休息一下？
+[18:51:05] [out] 
+[18:51:05] [out] Let's make it simpler and more direct as per instructions.
+[18:51:05] [out] 【{'expression': '开心'}】（开心地挥了挥手）晚上好呀，黑白同学！嘿嘿，突然这么正式地打招呼，让爱丽丝觉得心里暖暖的，就像喝下了全恢复药水一样！既然大家都醒着呢，那我们要不要一起去小卖部逛逛？听说那里新进了一些看起来很不错的能量饮料哦！
+[18:51:05] [out] 
+[18:51:05] [out] The prompt mentions "潜水观察", which usually implies low activity mode. However, since Black and White was actively chatting with Alice moments ago, this "Good evening" feels like a continuation or a reset. It's safe to reply.
+[18:51:05] [out] 
+[18:51:05] [out] One detail: The timestamp is 18:50. Previous messages were around 18:47-18:50. It's a continuous conversation flow.
+[18:51:05] [out] 
+[18:51:05] [out] Final Polish:
+[18:51:05] [out] Expression: Happy
+[18:51:05] [out] Action: Waving hand / Smiling
+[18:51:05] [out] Dialogue: Good evening! You're so polite suddenly. Do you want to buy drinks?
+[18:51:05] [out] 
+[18:51:05] [out] Let's write it out in character.
+[18:51:05] [out] 
+[18:51:05] [out] 【{'expression': '开心'}】（眼睛弯成了月牙，开心地挥着手）晚上好呀，黑白同学！嘿嘿，刚才还在严肃地讨论“系统特性”，现在就突然变得这么有礼貌，真让人意外呢！邦邦咔邦~！检测到友好的信号！既然大家都晚上好了，那我们要不要一起去小卖部补充一些能量饮料？就当是给刚才的辩论赛加油啦！
+[18:51:05] [out] 
+[18:51:05] [out] Looks good. Simple and fits the persona.
+[18:51:05] [out] Wait, did black and white say anything else before? He replied to Azusa saying "This isn't a bug, it's a feature". Then now says "Good evening". It's a bit disjointed but plausible for a chat app.
+[18:51:05] [out] 
+[18:51:05] [out] Let's stick to the friendly reception.
+[18:51:05] [out] 
+[18:51:05] [out] Also, checking the prompt again: "[...]如果选择保持沉默，直接回复 [SILENCE]"
+[18:51:05] [out] Since I decided to speak, I won't use silence.
+[18:51:05] [out] 
+[18:51:05] [out] Final check on content:
+[18:51:05] [out] User: Black and White (黑白)
+[18:51:05] [out] Context: Just discussed "feature vs bug" regarding the leg peeking meme. Now says "Good evening".
+[18:51:05] [out] Alice's reaction: Friendly, slightly amused by the sudden formality, inviting him to the vending machine as previously suggested.
+[18:51:05] [out] 
+[18:51:05] [out] Perfect.
+[18:51:05] [out] 
+[18:51:05] [out] One small thing: The user provided image/context earlier showed Alice holding a sign "Look at legs". This explains why they are discussing "features" and "bugs". So the context is very relevant.
+[18:51:05] [out] 
+[18:51:05] [out] Reply:
+[18:51:06] [out] 【{'expression': '开心'}】（眨了眨眼，露出灿烂的笑容）晚上好呀，黑白同学！嘿嘿，明明刚才还在一本正经地分析“系统逻辑”，现在却突然这么客气，真是让人猜不透你的心思呢！不过……这种突如其来的友好信号，爱丽丝接收到了哦！既然大家都在，那我们要不要一起去小卖部买点喝的？就当是为了庆祝我们达成了“和平协议”吧！
+[18:51:06] [out] ▲黑白的好感度变化：2
+[18:51:06] [out] F:/GitRepository/AliceBotQQ\emoji/happy.png
+[18:51:06] [out] 06-19 18:51:06 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[18:51:06] [out] 历史长度：27
+[18:51:06] [out] 06-19 18:51:06 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[18:51:06] [out] 06-19 18:51:06 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[18:51:09] [out] 06-19 18:51:09 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message 977859828 from 582280382@[群:739048999] '[at:qq=2367513895,name=天童 爱丽丝] 晚好'
+[18:51:09] [out] 06-19 18:51:09 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[18:51:12] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': '晚好'}<<<<<< 
+[18:51:12] [out] 关于好好做人:[名为“好好做人”的同学是一名学生。你对好好做人同学的好感度: 14.91,你对好好做人同学的态度: "好好做人同学是你的好朋友，好好做人同学的触摸会让你感到温暖，但你从来不打算与好好做人同学发展恋爱关系。"
+[18:51:12] [out] 〖好好做人的状态栏〗
+[18:51:12] [out]  职业：Lv.1的NPC
+[18:51:12] [out] 经验值：0/100
+[18:51:12] [out] 生命值：100/100
+[18:51:12] [out] 攻击力：1
+[18:51:12] [out] 防御力：0
+[18:51:12] [out] ]
+[18:51:12] [out] 是否是车站：否
+[18:51:12] [out] 06-19 18:51:12 [SUCCESS] nonebot | OneBot V11 2367513895 | [message.group.normal]: Message -1086612283 from 599897336@[群:739048999] '点快了，没发出去'
+[18:51:12] [out] 06-19 18:51:12 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=248)
+[18:51:12] [out] 06-19 18:51:12 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=248) running complete
+[18:51:12] [out] 06-19 18:51:12 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.plugins.emaid, lineno=235)
+[18:51:18] [out] >>>>SEG.TYPE>>>>>text<<<<<<>>>>>SEG.DATA>>>>>{'text': '点快了，没发出去'}<<<<<< 
+[18:51:18] [out] （暑假中）
+[18:51:18] [out] 关于黑白:[名为“黑白”的同学是一名学生。你对黑白同学的好感度: 2.22,你对黑白同学的态度: "你认识黑白同学有一段日子了，他可以算是你的朋友。你从来不打算与黑白同学发展恋爱关系。"
+[18:51:18] [out] 〖黑白的状态栏〗
+[18:51:18] [out]  职业：Lv.1的NPC
+[18:51:18] [out] 经验值：0/100
+[18:51:18] [out] 生命值：100/100
+[18:51:18] [out] 攻击力：1
+[18:51:18] [out] 防御力：0
+[18:51:18] [out] ]
+[18:51:18] [out] 是否是车站：否
+[18:51:18] [out] >>>>>FINISH_REASON = stop<<<<<<
+[18:51:18] [out] 查到的设定信息编号为：[]
+[18:51:18] [out] Thought: 用户“好好做人”向我打招呼，说“晚好”。
+[18:51:18] [out] 根据之前的对话历史：
+[18:51:18] [out] 1.  我之前提到了有人（黑白）发了奇怪的指令（看腿的表情包），并称之为“系统 BUG”。
+[18:51:18] [out] 2.  “秤亚津子”纠正我说那不叫 BUG 叫“特性”。
+[18:51:18] [out] 3.  然后“黑白”突然插话发了一句“晚上好”，好像是在转移话题或者单纯打招呼。
+[18:51:18] [out] 4.  现在“好好做人”也发来一句“晚好”。
+[18:51:18] [out] 
+[18:51:18] [out] 我需要结合自己的人设（爱丽丝，天真、活泼、像游戏里的勇者）来回复。
+[18:51:18] [out] 之前有过互动：
+[18:51:18] [out] - [06-19 12:47] 好好做人轻轻戳了爱丽丝的脸，爱丽丝虽然不太喜欢但还是容忍了，并解释了“冷却时间”的问题。
+[18:51:18] [out] - [06-19 18:50] 黑白发了一个表情，爱丽丝当时以为是沉默流玩法。
+[18:51:18] [out] 
+[18:51:18] [out] 现在“好好做人”来了，我应该热情回应，顺便可以提一下之前的“冷却时间”梗，或者直接邀请一起行动。考虑到现在是晚上，小卖部是个不错的去处。
+[18:51:18] [out] 
+[18:51:18] [out] 策略：
+[18:51:18] [out] 1.  回应问候。
+[18:51:18] [out] 2.  保持爱丽丝的语气（自称爱丽丝，可能带点 RPG 术语）。
+[18:51:18] [out] 3.  可以再次调侃一下之前的“戳脸”事件，或者邀请大家一起做什么。
+[18:51:18] [out] 4.  注意不要过度重复之前的台词。
+[18:51:18] [out] 
+[18:51:18] [out] 思考具体的回复内容：
+[18:51:18] [out] 【{'expression': '开心'}】（挥舞着小手）晚好呀，好好做人同学！嘿嘿，看来今天的“公会频道”非常热闹呢。既然大家都在线，那我们要不要一起去小卖部采购一些“夜间战斗补给品”？比如能量饮料之类的？上次说好要遵守 30 分钟 CD 的黑白同学也在哦！邦邦咔邦~！全员集结！
+[18:51:18] [out] 
+[18:51:18] [out] 检查一下是否符合人设：
+[18:51:18] [out] - 语气活泼：符合。
+[18:51:18] [out] - 称呼：好好做人同学。
+[18:51:18] [out] - 动作描写：（挥舞着小手）。
+[18:51:18] [out] - 游戏术语：公会频道、夜间战斗补给品、CD。
+[18:51:18] [out] - 引用前文：提到了黑白同学和 CD。
+[18:51:18] [out] 
+[18:51:18] [out] 看起来不错。直接生成。
+[18:51:18] [out] ▲好好做人的好感度变化：2
+[18:51:18] [out] F:/GitRepository/AliceBotQQ\emoji/happy.png
+[18:51:18] [out] 是否是车站：否
+[18:51:18] [out] Request failed: ClientResponseError.__init__() missing 2 required positional arguments: 'request_info' and 'history'
+[18:51:18] [out] Thought: 
+[18:51:18] [out] 
+[18:51:18] [out] 06-19 18:51:18 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[18:51:18] [out] 历史长度：30
+[18:51:18] [out] 06-19 18:51:18 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[18:51:18] [out] 06-19 18:51:18 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[18:51:18] [out] 06-19 18:51:18 [INFO] nonebot | Matcher(type='message', module=src.plugins.emaid, lineno=235) running complete
+[18:51:18] [out] 06-19 18:51:18 [INFO] nonebot | Event will be handled by Matcher(type='message', module=src.skills.image_process, lineno=18)
+[18:51:18] [out] 06-19 18:51:18 [INFO] nonebot | Matcher(type='message', module=src.skills.image_process, lineno=18) running complete
+[18:52:45] [out] 正在终止进程 [43500]...
+[18:52:45] [out] 06-19 18:52:45 [INFO] uvicorn | Shutting down
+[18:52:45] [err] INFO:uvicorn.error:Shutting down
+[18:52:45] Process exited with code 1

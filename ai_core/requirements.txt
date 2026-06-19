@@ -1,0 +1,29 @@
+# --- Web framework ---
+fastapi~=0.133.1
+starlette~=0.52.1
+uvicorn==0.34.0
+sse-starlette~=2.1.3
+
+# --- LLM client (we call vLLM / OpenAI-compatible HTTP APIs now) ---
+httpx~=0.27.2
+pydantic~=2.12.5
+
+# --- Embedding & knowledge base ---
+sentence_transformers==3.3.1
+faiss_cpu==1.9.0.post1
+numpy~=2.2.6
+torch~=2.10.0
+transformers~=4.57.6
+
+# --- Media handling (image / gif frame extraction) ---
+pillow~=11.2.1
+requests~=2.32.3
+
+# --- MCP client ---
+mcp~=1.2.0
+
+# --- Skill front-matter parsing ---
+pyyaml~=6.0.2
+
+# --- Admin web UI (mounted to /admin on the same FastAPI app) ---
+gradio>=5.0

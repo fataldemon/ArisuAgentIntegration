@@ -1,0 +1,1932 @@
+"""Gradio admin UI mounted at ``/admin``.
+
+This is a thin presentation layer over the JSON admin API exposed by
+:mod:`admin.routes`. We deliberately do **not** hit the HTTP API from the UI
+-- since the UI runs in the same process as the FastAPI app, talking to the
+Python managers directly is simpler and avoids needing a self-targeted HTTP
+client just to render a form.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import html
+import json
+import os
+import time
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional, Tuple
+
+import gradio as gr  # type: ignore
+
+from core.config_manager import get_config_manager
+from core.mcp_manager import get_mcp_manager
+from core.persona_manager import get_persona_manager
+from core.skill_manager import get_skill_manager
+from core.channel_manager import get_channel_supervisor
+from llm.backends.registry import invalidate as invalidate_backend
+
+_MAIN_LOOP: Optional[asyncio.AbstractEventLoop] = None
+
+
+def capture_main_loop() -> None:
+    """Store the FastAPI event loop so Gradio thread callbacks can dispatch to it."""
+    global _MAIN_LOOP
+    try:
+        _MAIN_LOOP = asyncio.get_running_loop()
+    except RuntimeError:
+        pass
+
+_EMBEDDING_ROOT = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "embedding"
+)
+_VLLM_REQUEST_LOG_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "logs", "vllm_request_log.jsonl"
+)
+
+
+def _kb_subject_choices(character: str) -> List[str]:
+    """Return valid subjects for a character."""
+    if not character:
+        return ["setting", "expression"]
+    if character == "_shared":
+        return ["knowledge"]
+    return ["setting", "expression"]
+
+
+_CUSTOM_CSS = """
+footer { visibility: hidden !important; }
+"""
+
+
+def _run(coro):
+    """Synchronously execute an async function from a Gradio callback."""
+    global _MAIN_LOOP
+    if _MAIN_LOOP is not None and _MAIN_LOOP.is_running():
+        future = asyncio.run_coroutine_threadsafe(coro, _MAIN_LOOP)
+        return future.result()
+    try:
+        loop = asyncio.get_running_loop()
+        future = asyncio.run_coroutine_threadsafe(coro, loop)
+        return future.result()
+    except RuntimeError:
+        pass
+    return asyncio.run(coro)
+
+
+# ---------------------------------------------------------------------------
+# Provider helpers
+# ---------------------------------------------------------------------------
+
+
+def _active_provider_markdown() -> str:
+    cm = get_config_manager()
+    active_char = cm.get_active_character()
+    char_info = f" | Character: `{active_char}`" if active_char else ""
+    return (
+        f"**Active Provider:** `{cm.get_active_provider_name() or '(none)'}`"
+        f"{char_info}"
+    )
+
+
+def _provider_choices() -> List[str]:
+    return [p.name for p in get_config_manager().list_providers()]
+
+
+def _refresh_providers() -> Tuple[List[List[Any]], str, gr.update]:
+    cm = get_config_manager()
+    active_name = cm.get_active_provider_name()
+    rows = []
+    for p in cm.list_providers():
+        marker = "✓" if p.name == active_name else ""
+        rows.append(
+            [
+                marker,
+                p.name,
+                p.type,
+                p.model,
+                p.base_url,
+                p.supports_vision,
+                p.supports_audio,
+                p.supports_video,
+                p.prefetch_media,
+                p.description,
+            ]
+        )
+    return (
+        rows,
+        _active_provider_markdown(),
+        gr.update(choices=_provider_choices(), value=active_name),
+    )
+
+
+def _provider_table_select(evt: gr.SelectData, table) -> Tuple:
+    if evt.index is None:
+        return ("", "", "", "", "", "", "", "", "", "", "")
+    row_idx = evt.index[0]
+    try:
+        import pandas as pd
+        if isinstance(table, pd.DataFrame):
+            if row_idx >= len(table):
+                return ("", "", "", "", "", "", "", "", "", "", "")
+            row = table.iloc[row_idx].tolist()
+        else:
+            if row_idx >= len(table):
+                return ("", "", "", "", "", "", "", "", "", "", "")
+            row = table[row_idx]
+    except Exception:
+        return ("", "", "", "", "", "", "", "", "", "", "")
+    return (
+        row[1] if len(row) > 1 else "",
+        row[4] if len(row) > 4 else "",
+        row[3] if len(row) > 3 else "",
+        "",
+        row[2] if len(row) > 2 else "",
+        bool(row[5]) if len(row) > 5 else False,
+        bool(row[6]) if len(row) > 6 else False,
+        bool(row[7]) if len(row) > 7 else False,
+        bool(row[8]) if len(row) > 8 else False,
+        "",
+        row[9] if len(row) > 9 else "",
+    )
+
+
+def _save_provider(
+    name: str,
+    base_url: str,
+    api_key: str,
+    model: str,
+    ptype: str,
+    supports_vision: bool,
+    supports_audio: bool,
+    supports_video: bool,
+    prefetch_media: bool,
+    extra_body_json: str,
+    description: str,
+) -> Tuple[List[List[Any]], str, gr.update, str]:
+    if not name.strip():
+        rows, active, radio = _refresh_providers()
+        return rows, active, radio, "✗ name is required"
+    try:
+        extra_body = json.loads(extra_body_json) if extra_body_json.strip() else {}
+        if not isinstance(extra_body, dict):
+            raise ValueError("extra_body must be a JSON object")
+    except Exception as e:
+        rows, active, radio = _refresh_providers()
+        return rows, active, radio, f"✗ bad extra_body JSON: {e}"
+    body = {
+        "type": ptype.strip() or "openai_compatible",
+        "base_url": base_url.strip(),
+        "api_key": api_key.strip(),
+        "model": model.strip(),
+        "supports_vision": bool(supports_vision),
+        "supports_audio": bool(supports_audio),
+        "supports_video": bool(supports_video),
+        "prefetch_media": bool(prefetch_media),
+        "extra_body": extra_body,
+        "description": description.strip(),
+    }
+    try:
+        _run(get_config_manager().upsert_provider(name.strip(), body))
+        _run(invalidate_backend(name.strip()))
+    except Exception as e:
+        rows, active, radio = _refresh_providers()
+        return rows, active, radio, f"✗ {e}"
+    rows, active, radio = _refresh_providers()
+    return rows, active, radio, f"✓ saved {name.strip()}"
+
+
+def _activate_provider(name: str) -> Tuple[List[List[Any]], str, gr.update, str]:
+    name = (name or "").strip()
+    if not name:
+        rows, active, radio = _refresh_providers()
+        return rows, active, radio, "✗ name is required"
+    ok = _run(get_config_manager().activate_provider(name))
+    rows, active, radio = _refresh_providers()
+    return rows, active, radio, ("✓ activated" if ok else "✗ unknown provider")
+
+
+def _delete_provider(name: str) -> Tuple[List[List[Any]], str, gr.update, str]:
+    name = name.strip()
+    if not name:
+        rows, active, radio = _refresh_providers()
+        return rows, active, radio, "✗ name is required"
+    ok = _run(get_config_manager().delete_provider(name))
+    if ok:
+        _run(invalidate_backend(name))
+    rows, active, radio = _refresh_providers()
+    return rows, active, radio, ("✓ deleted" if ok else "✗ unknown provider")
+
+
+# ---------------------------------------------------------------------------
+# MCP helpers
+# ---------------------------------------------------------------------------
+
+
+def _refresh_mcp() -> Tuple[List[List[Any]], str, gr.update, gr.update]:
+    cm = get_config_manager()
+    rows = []
+    health = _run(get_mcp_manager().health())
+    for s in cm.list_mcp_servers():
+        h = health.get(s.name, {})
+        rows.append(
+            [
+                s.name,
+                s.enabled,
+                s.transport,
+                s.command or s.url or "",
+                h.get("connected", False),
+                h.get("tools", 0),
+                s.description,
+            ]
+        )
+    return (
+        rows,
+        f"Mode: `{cm.get_mcp_tool_call_mode()}` | Timeout: {cm.get_mcp_tool_call_timeout()}s",
+        gr.update(value=cm.get_mcp_tool_call_mode()),
+        gr.update(value=cm.get_mcp_max_tool_rounds()),
+    )
+
+
+def _mcp_table_select(evt: gr.SelectData, table) -> Tuple:
+    """Fill the MCP edit form when a table row is clicked."""
+    if evt.index is None:
+        return "", False, "stdio", "", "", "", "{}", "", ""
+    row_idx = evt.index[0]
+    try:
+        import pandas as pd
+        if isinstance(table, pd.DataFrame):
+            if row_idx >= len(table):
+                return "", False, "stdio", "", "", "", "{}", "", ""
+            row = table.iloc[row_idx].tolist()
+        else:
+            if row_idx >= len(table):
+                return "", False, "stdio", "", "", "", "{}", "", ""
+            row = table[row_idx]
+    except Exception:
+        return "", False, "stdio", "", "", "", "{}", "", ""
+    name = row[0] if len(row) > 0 else ""
+    enabled = bool(row[1]) if len(row) > 1 else False
+    transport = row[2] if len(row) > 2 else "stdio"
+    cmd_or_url = row[3] if len(row) > 3 else ""
+    desc = row[6] if len(row) > 6 else ""
+
+    # Fetch full config for remaining fields
+    cfg = get_config_manager().get_mcp_server(name)
+    command_val = ""
+    url_val = ""
+    args_val = ""
+    headers_val = ""
+    if cfg:
+        command_val = cfg.command or ""
+        url_val = cfg.url or ""
+        args_val = "\n".join(cfg.args) if cfg.args else ""
+        headers_val = json.dumps(cfg.headers, ensure_ascii=False) if cfg.headers else "{}"
+
+    if transport in ("sse", "streamable_http"):
+        command_or_url_display = url_val or cmd_or_url
+    else:
+        command_or_url_display = command_val or cmd_or_url
+
+    return (
+        name, enabled, transport,
+        command_val if transport == "stdio" else "",
+        args_val if transport == "stdio" else "",
+        url_val if transport in ("sse", "streamable_http") else "",
+        headers_val,
+        desc,
+    )
+
+
+def _save_mcp(
+    name: str,
+    enabled: bool,
+    transport: str,
+    command: str,
+    args_text: str,
+    url: str,
+    headers_json: str,
+    description: str,
+) -> Tuple[List[List[Any]], str, gr.update, str]:
+    if not name.strip():
+        rows, info, radio, rounds = _refresh_mcp()
+        return rows, info, radio, "✗ name is required"
+    try:
+        headers = json.loads(headers_json) if headers_json.strip() else {}
+        if not isinstance(headers, dict):
+            raise ValueError("headers must be a JSON object")
+    except Exception as e:
+        rows, info, radio, rounds = _refresh_mcp()
+        return rows, info, radio, f"✗ bad headers JSON: {e}"
+    args = [a for a in (args_text or "").splitlines() if a.strip()]
+    body = {
+        "enabled": bool(enabled),
+        "transport": transport,
+        "command": command.strip() or None,
+        "args": args,
+        "url": url.strip() or None,
+        "headers": headers,
+        "description": description.strip(),
+    }
+    try:
+        _run(get_config_manager().upsert_mcp_server(name.strip(), body))
+        _run(get_mcp_manager().invalidate(name.strip()))
+    except Exception as e:
+        rows, info, radio, rounds = _refresh_mcp()
+        return rows, info, radio, f"✗ {e}"
+    rows, info, radio, rounds = _refresh_mcp()
+    return rows, info, radio, f"✓ saved {name.strip()}"
+
+
+def _delete_mcp(name: str) -> Tuple[List[List[Any]], str, gr.update, str]:
+    name = name.strip()
+    if not name:
+        rows, info, radio, rounds = _refresh_mcp()
+        return rows, info, radio, "✗ name is required"
+    ok = _run(get_config_manager().delete_mcp_server(name))
+    if ok:
+        _run(get_mcp_manager().invalidate(name))
+    rows, info, radio, rounds = _refresh_mcp()
+    return rows, info, radio, ("✓ deleted" if ok else "✗ unknown server")
+
+
+def _mcp_parse_json(json_str: str, name: str) -> Tuple:
+    """Parse a pasted MCP server JSON config and fill the edit form."""
+    import json as _json
+    try:
+        data = _json.loads(json_str)
+    except _json.JSONDecodeError as e:
+        return ("", False, "stdio", "", "", "", "", "", f"✗ Invalid JSON: {e}")
+
+    if not name and isinstance(data.get("name"), str):
+        name = data["name"]
+
+    transport = str(data.get("transport", "stdio"))
+    args_list = data.get("args") or []
+    args_text = "\n".join(args_list) if isinstance(args_list, list) else str(args_list)
+    headers = data.get("headers") or {}
+    headers_text = _json.dumps(headers, ensure_ascii=False) if headers else ""
+
+    return (
+        name.strip(),
+        bool(data.get("enabled", False)),
+        transport,
+        str(data.get("command", "") or ""),
+        args_text,
+        str(data.get("url", "") or ""),
+        headers_text,
+        str(data.get("description", "") or ""),
+        "✓ Parsed — review and click Save to apply",
+    )
+
+
+def _set_mcp_mode(mode: str) -> Tuple[List[List[Any]], str, gr.update, str]:
+    try:
+        _run(get_config_manager().set_mcp_tool_call_mode(mode))
+    except Exception as e:
+        rows, info, radio, rounds = _refresh_mcp()
+        return rows, info, radio, f"✗ {e}"
+    rows, info, radio, rounds = _refresh_mcp()
+    return rows, info, radio, f"✓ mode = {mode}"
+
+
+def _set_mcp_max_tool_rounds(rounds: float) -> Tuple[str, str]:
+    try:
+        _run(get_config_manager().set_mcp_max_tool_rounds(int(rounds)))
+    except Exception as e:
+        return f"✗ {e}", gr.update()
+    val = get_config_manager().get_mcp_max_tool_rounds()
+    return f"✓ max rounds = {val}", gr.update(value=val)
+
+
+# ---------------------------------------------------------------------------
+# Skill helpers
+# ---------------------------------------------------------------------------
+
+
+def _refresh_skills() -> Tuple[List[List[Any]], str]:
+    sm = get_skill_manager()
+    rows = [
+        [s["name"], s.get("version", ""), s.get("auto_inject", False), s.get("description", "")]
+        for s in sm.list_skills()
+    ]
+    return rows, f"{len(rows)} skill(s) loaded"
+
+
+def _reload_skills() -> Tuple[List[List[Any]], str]:
+    get_skill_manager().reload()
+    return _refresh_skills()
+
+
+def _read_skill(name: str) -> str:
+    if not name.strip():
+        return ""
+    body = get_skill_manager().read_skill(name.strip())
+    return body or "(skill not found)"
+
+
+def _read_skill_raw(name: str) -> str:
+    if not name.strip():
+        return ""
+    raw = get_skill_manager().read_skill_raw(name.strip())
+    return raw or "(skill not found)"
+
+
+def _save_skill(name: str, body: str) -> Tuple[List[List[Any]], str, str]:
+    name = name.strip()
+    if not name:
+        rows, info = _refresh_skills()
+        return rows, info, "✗ skill name is required"
+    ok = get_skill_manager().write_skill(name, body)
+    rows, info = _refresh_skills()
+    return rows, info, f"✓ saved `{name}`" if ok else f"✗ failed to save `{name}`"
+
+
+def _delete_skill(name: str) -> Tuple[List[List[Any]], str, str]:
+    name = name.strip()
+    if not name:
+        rows, info = _refresh_skills()
+        return rows, info, "✗ skill name is required"
+    ok = get_skill_manager().delete_skill(name)
+    rows, info = _refresh_skills()
+    return rows, info, f"✓ deleted `{name}`" if ok else f"✗ unknown skill `{name}`"
+
+
+def _create_skill(name: str) -> Tuple[List[List[Any]], str, str, str]:
+    name = name.strip()
+    if not name:
+        rows, info = _refresh_skills()
+        return rows, info, "", "✗ skill name is required"
+    template = f"---\nname: {name}\ndescription: \"\"\nversion: \"0.1.0\"\nauto_inject: false\ntriggers:\n  keywords: []\n  regex: []\n---\n"
+    ok = get_skill_manager().write_skill(name, template)
+    rows, info = _refresh_skills()
+    return rows, info, template if ok else "", f"✓ created `{name}`" if ok else f"✗ failed to create `{name}`"
+
+
+def _skill_table_select(evt: gr.SelectData, table) -> Tuple:
+    """Fill skill name + raw body when a table row is clicked."""
+    if evt.index is None:
+        return "", ""
+    row_idx = evt.index[0]
+    try:
+        import pandas as pd
+        if isinstance(table, pd.DataFrame):
+            if row_idx >= len(table):
+                return "", ""
+            row = table.iloc[row_idx].tolist()
+        else:
+            if row_idx >= len(table):
+                return "", ""
+            row = table[row_idx]
+    except Exception:
+        return "", ""
+    name = row[0] if len(row) > 0 else ""
+    raw = get_skill_manager().read_skill_raw(name) or ""
+    return name, raw
+
+
+# ---------------------------------------------------------------------------
+# Persona / Character helpers
+# ---------------------------------------------------------------------------
+
+
+def _persona_choices() -> List[str]:
+    return [p.character for p in get_persona_manager().list_personas()]
+
+
+def _refresh_personas() -> Tuple[List[List[Any]], gr.update, gr.update]:
+    pm = get_persona_manager()
+    active = get_config_manager().get_active_character()
+    rows = []
+    for p in pm.list_personas():
+        rows.append(
+            [
+                p.character,
+                p.display_name,
+                bool(p.setting),
+                bool(p.reply_instruction),
+                bool(p.image_setting),
+            ]
+        )
+    choices = [p.character for p in pm.list_personas()]
+    return rows, gr.update(choices=choices), gr.update(choices=choices, value=active)
+
+
+def _load_expression() -> Tuple:
+    """Load the global expression format config."""
+    ec = get_config_manager().get_expression_config()
+    return ec.format, ec.instruction, "✓ Loaded"
+
+
+def _save_expression(fmt: str, instruction: str) -> str:
+    """Save the global expression format config."""
+    fmt = (fmt or "").strip()
+    instruction = (instruction or "").strip()
+    if not fmt:
+        return "⚠ format must not be empty"
+    _run(get_config_manager().set_expression_config(fmt, instruction))
+    return "✓ Expression config saved"
+
+
+def _load_persona(character: str) -> Tuple:
+    character = (character or "").strip()
+    if not character:
+        return tuple("" for _ in range(9))
+    p = get_persona_manager().get_persona(character)
+    ac = get_config_manager().get_active_character()
+    is_active = ac == character
+    active_label = " **[active]**" if is_active else ""
+    if p is None:
+        return ("", "", "", "", "", "", "", "", f"✗ no persona.json for `{character}` (will create on save){active_label}")
+    return (
+        p.display_name,
+        p.setting,
+        p.reply_instruction,
+        p.image_setting,
+        str(p.max_chat_len or ""),
+        str(p.max_analysis_len or ""),
+        str(p.max_quick_reply or ""),
+        str(p.default_temperature or ""),
+        f"✓ loaded `{character}`{active_label}",
+    )
+
+
+def _load_persona_and_set_active(character: str) -> Tuple:
+    character = (character or "").strip()
+    if not character:
+        return tuple("" for _ in range(10))
+    p = get_persona_manager().get_persona(character)
+    try:
+        _run(get_config_manager().set_active_character(character))
+    except Exception:
+        pass
+    if p is None:
+        return ("", "", "", "", "", "", "", "", f"✗ no persona.json for `{character}`", character)
+    return (
+        p.display_name,
+        p.setting,
+        p.reply_instruction,
+        p.image_setting,
+        str(p.max_chat_len or ""),
+        str(p.max_analysis_len or ""),
+        str(p.max_quick_reply or ""),
+        str(p.default_temperature or ""),
+        f"✓ loaded & activated `{character}`",
+        character,
+    )
+
+
+def _save_persona(
+    character: str,
+    display_name: str,
+    setting: str,
+    reply_instruction: str,
+    image_setting: str,
+    max_chat_len: str,
+    max_analysis_len: str,
+    max_quick_reply: str,
+    default_temperature: str,
+) -> Tuple[List[List[Any]], gr.update, gr.update, str]:
+    character = (character or "").strip()
+    if not character:
+        rows, dd, radio = _refresh_personas()
+        return rows, dd, radio, "✗ character name is required"
+    body = {
+        "display_name": display_name,
+        "setting": setting,
+        "reply_instruction": reply_instruction,
+        "image_setting": image_setting,
+    }
+    for key, val in [
+        ("max_chat_len", max_chat_len),
+        ("max_analysis_len", max_analysis_len),
+        ("max_quick_reply", max_quick_reply),
+        ("default_temperature", default_temperature),
+    ]:
+        s = val.strip() if isinstance(val, str) else ""
+        if s:
+            try:
+                if key == "default_temperature":
+                    body[key] = float(s)
+                else:
+                    body[key] = int(s)
+            except ValueError:
+                pass
+    try:
+        _run(get_persona_manager().upsert_persona(character, body))
+    except Exception as e:
+        rows, dd, radio = _refresh_personas()
+        return rows, dd, radio, f"✗ {e}"
+    rows, dd, radio = _refresh_personas()
+    return rows, dd, radio, f"✓ saved `{character}`"
+
+
+def _delete_persona(character: str) -> Tuple[List[List[Any]], gr.update, gr.update, str]:
+    character = (character or "").strip()
+    if not character:
+        rows, dd, radio = _refresh_personas()
+        return rows, dd, radio, "✗ character name is required"
+    ok = _run(get_persona_manager().delete_persona(character))
+    rows, dd, radio = _refresh_personas()
+    return rows, dd, radio, ("✓ deleted" if ok else "✗ unknown character")
+
+
+def _preview_persona(character: str, user_text: str) -> str:
+    character = (character or "").strip()
+    if not character:
+        return "(pick a character first)"
+    from llm.chat import _build_persona_system_prefix
+    from embedding.embedding import process_embedding, remove_reference_url
+
+    embeddings_text = ""
+    user_text = (user_text or "").strip()
+    if user_text:
+        try:
+            embeddings_text, _ = process_embedding(
+                content=remove_reference_url(user_text),
+                top_k=5,
+                character=character,
+                client_buffer=[],
+                max_length=8,
+                client_information="",
+            )
+        except Exception as e:
+            sys_prefix, _ = _build_persona_system_prefix(character, "")
+            return f"(process_embedding failed: {e!r})\n\n" + sys_prefix
+    sys_prefix, img_setting = _build_persona_system_prefix(character, embeddings_text)
+    result = sys_prefix
+    if img_setting:
+        result += "\n\n" + img_setting + "\n\n----------------------CONVERSATION START FROM HERE------------------------------"
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Knowledge Base helpers
+# ---------------------------------------------------------------------------
+
+
+def _kb_character_choices() -> List[str]:
+    if not os.path.isdir(_EMBEDDING_ROOT):
+        return []
+    return sorted(
+        d for d in os.listdir(_EMBEDDING_ROOT)
+        if os.path.isdir(os.path.join(_EMBEDDING_ROOT, d))
+        and not d.startswith("__")
+        and d != "_shared"
+    )
+
+
+def _kb_refresh_choices() -> Tuple[gr.update, gr.update, str, str]:
+    choices = _kb_character_choices()
+    return (
+        gr.update(choices=choices),
+        gr.update(choices=_kb_subject_choices("")),
+        "",
+        "",
+    )
+
+
+def _kb_on_character_change(character: str) -> Tuple[gr.update, gr.update, gr.update, str]:
+    """When character changes, reset subject to first valid choice (no subject input validation)."""
+    subjects = _kb_subject_choices(character)
+    subject = subjects[0] if subjects else ""
+    if not character or not subject:
+        return (
+            gr.update(choices=[""], value=""),
+            gr.update(choices=subjects, value=""),
+            gr.update(),
+            f"Select both character and subject.",
+        )
+    subject_dir = os.path.join(_EMBEDDING_ROOT, character, subject)
+    if not os.path.isdir(subject_dir):
+        return (
+            gr.update(choices=[""], value=""),
+            gr.update(choices=subjects, value=subject),
+            gr.update(),
+            f"No `{subject}` directory for `{character}`.",
+        )
+    mem_files = sorted(f for f in os.listdir(subject_dir) if f.endswith(".mem"))
+    if not mem_files:
+        return (
+            gr.update(choices=[""], value=""),
+            gr.update(choices=subjects, value=subject),
+            gr.update(),
+            f"No `.mem` files in `{character}/{subject}`.",
+        )
+    return (
+        gr.update(choices=mem_files, value=mem_files[0]),
+        gr.update(choices=subjects, value=subject),
+        gr.update(),
+        f"{len(mem_files)} file(s).",
+    )
+
+
+def _kb_load_files(character: str, subject: str) -> Tuple[gr.update, gr.update, str, str]:
+    if not character or not subject:
+        return (
+            gr.update(choices=[""], value=""),
+            gr.update(choices=_kb_subject_choices(character)),
+            "",
+            f"Select both character and subject.",
+        )
+    subjects = _kb_subject_choices(character)
+    if subject not in subjects:
+        subject = subjects[0] if subjects else ""
+    subject_dir = os.path.join(_EMBEDDING_ROOT, character, subject)
+    if not os.path.isdir(subject_dir):
+        return (
+            gr.update(choices=[""], value=""),
+            gr.update(choices=subjects, value=subject),
+            "",
+            f"No `{subject}` directory for `{character}`.",
+        )
+    mem_files = sorted(f for f in os.listdir(subject_dir) if f.endswith(".mem"))
+    if not mem_files:
+        return (
+            gr.update(choices=[""], value=""),
+            gr.update(choices=subjects, value=subject),
+            "",
+            f"No `.mem` files in `{character}/{subject}`.",
+        )
+    return (
+        gr.update(choices=mem_files, value=mem_files[0]),
+        gr.update(choices=subjects, value=subject),
+        mem_files[0] if mem_files else "",
+        f"{len(mem_files)} file(s).",
+    )
+
+
+def _kb_read_file(character: str, subject: str, filename: str) -> str:
+    if not character or not subject or not filename:
+        return ""
+    filepath = os.path.join(_EMBEDDING_ROOT, character, subject, filename)
+    if not os.path.isfile(filepath):
+        return f"(file not found: {filename})"
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        return f"(read error: {e})"
+
+
+def _kb_save_file(character: str, subject: str, filename: str, content: str) -> str:
+    if not character or not subject or not filename:
+        return "✗ character, subject and filename required."
+    filepath = os.path.join(_EMBEDDING_ROOT, character, subject, filename)
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+        return f"✓ saved `{filename}`"
+    except Exception as e:
+        return f"✗ {e}"
+
+
+def _kb_new_file(character: str, subject: str, filename: str) -> Tuple[str, str]:
+    if not character or not subject or not filename:
+        return "", "✗ filename is required."
+    if not filename.endswith(".mem"):
+        filename = filename + ".mem"
+    filepath = os.path.join(_EMBEDDING_ROOT, character, subject, filename)
+    if os.path.isfile(filepath):
+        return "", f"✗ `{filename}` already exists."
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("")
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        return content, f"✓ created `{filename}`"
+    except Exception as e:
+        return "", f"✗ {e}"
+
+
+def _kb_rebuild_index(character: str, subject: str) -> str:
+    if not character or not subject:
+        return "✗ character and subject required."
+    from embedding.embedding import generate_vector
+    try:
+        result = generate_vector(character, subject)
+        if result == "success":
+            return f"✓ index rebuilt for `{character}/{subject}`"
+        elif result == "empty":
+            return f"⭘ no content, index removed for `{character}/{subject}`"
+        else:
+            return f"✗ rebuild failed: {result}"
+    except Exception as e:
+        return f"✗ rebuild error: {e}"
+
+
+def _kb_index_status(character: str, subject: str) -> str:
+    if not character or not subject:
+        return "Select a character and subject."
+    from embedding.data_store import load_materials, index_path
+    p = index_path(character, subject)
+    if not os.path.exists(p):
+        return "No index file."
+    try:
+        import faiss  # type: ignore
+        idx = faiss.read_index(p)
+        n_total = int(idx.ntotal)
+    except Exception:
+        n_total = 0
+    materials = load_materials(character, subject)
+    n_materials = len(materials) if materials else 0
+    return f"Index: {n_total} vectors | Materials: {n_materials} rows | File: `{os.path.basename(p)}`"
+
+
+# ---------------------------------------------------------------------------
+# Shared Knowledge helpers (_shared/knowledge)
+# ---------------------------------------------------------------------------
+
+_SK_CHARACTER = "_shared"
+_SK_SUBJECT = "knowledge"
+
+
+def _sk_refresh_files() -> Tuple[gr.update, str]:
+    subject_dir = os.path.join(_EMBEDDING_ROOT, _SK_CHARACTER, _SK_SUBJECT)
+    if not os.path.isdir(subject_dir):
+        os.makedirs(subject_dir, exist_ok=True)
+    mem_files = sorted(f for f in os.listdir(subject_dir) if f.endswith(".mem"))
+    if not mem_files:
+        return gr.update(choices=[""], value=""), f"No `.mem` files in `{_SK_CHARACTER}/{_SK_SUBJECT}`."
+    return gr.update(choices=mem_files, value=mem_files[0]), f"{len(mem_files)} file(s)."
+
+
+def _sk_read_file(filename: str) -> str:
+    if not filename:
+        return ""
+    filepath = os.path.join(_EMBEDDING_ROOT, _SK_CHARACTER, _SK_SUBJECT, filename)
+    if not os.path.isfile(filepath):
+        return f"(file not found: {filename})"
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        return f"(read error: {e})"
+
+
+def _sk_save_file(filename: str, content: str) -> str:
+    if not filename:
+        return "✗ filename required."
+    filepath = os.path.join(_EMBEDDING_ROOT, _SK_CHARACTER, _SK_SUBJECT, filename)
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
+        return f"✓ saved `{filename}`"
+    except Exception as e:
+        return f"✗ {e}"
+
+
+def _sk_new_file(filename: str) -> Tuple[str, str]:
+    if not filename:
+        return "", "✗ filename is required."
+    if not filename.endswith(".mem"):
+        filename = filename + ".mem"
+    filepath = os.path.join(_EMBEDDING_ROOT, _SK_CHARACTER, _SK_SUBJECT, filename)
+    if os.path.isfile(filepath):
+        return "", f"✗ `{filename}` already exists."
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("")
+        return "", f"✓ created `{filename}`"
+    except Exception as e:
+        return "", f"✗ {e}"
+
+
+def _sk_rebuild_index() -> str:
+    from embedding.embedding import generate_vector
+    try:
+        result = generate_vector(_SK_CHARACTER, _SK_SUBJECT)
+        if result == "success":
+            return f"✓ index rebuilt for `{_SK_CHARACTER}/{_SK_SUBJECT}`"
+        elif result == "empty":
+            return f"⭘ no content, index removed for `{_SK_CHARACTER}/{_SK_SUBJECT}`"
+        else:
+            return f"✗ rebuild failed: {result}"
+    except Exception as e:
+        return f"✗ rebuild error: {e}"
+
+
+def _sk_index_status() -> str:
+    from embedding.data_store import load_materials, index_path
+    p = index_path(_SK_CHARACTER, _SK_SUBJECT)
+    if not os.path.exists(p):
+        return "No index file."
+    try:
+        import faiss
+        idx = faiss.read_index(p)
+        n_total = int(idx.ntotal)
+    except Exception:
+        n_total = 0
+    materials = load_materials(_SK_CHARACTER, _SK_SUBJECT)
+    n_materials = len(materials) if materials else 0
+    return f"Index: {n_total} vectors | Materials: {n_materials} rows"
+
+
+# ---------------------------------------------------------------------------
+# Chat Logs helpers (kept for reference; new UI uses vLLM request log)
+# ---------------------------------------------------------------------------
+
+
+# ---------------------------------------------------------------------------
+# vLLM Request Log helpers (real-time console viewer)
+# ---------------------------------------------------------------------------
+
+
+def _format_vllm_request_log() -> str:
+    """Read the vLLM request log and return a terminal-style HTML string."""
+    if not os.path.isfile(_VLLM_REQUEST_LOG_FILE):
+        return _wrap_terminal_html(
+            "(no request log yet &mdash; send a chat request to see entries)"
+        )
+
+    try:
+        with open(_VLLM_REQUEST_LOG_FILE, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+    except Exception as e:
+        return _wrap_terminal_html(f"(error reading log: {html.escape(str(e))})")
+
+    if not lines:
+        return _wrap_terminal_html("(request log is empty)")
+
+    SEP_CHAR = "─"
+    SEP_LEN = 120
+    SEP = SEP_CHAR * SEP_LEN
+    C_SEP   = "#555555"
+    C_META  = "#8b8b8b"
+    C_HEAD  = "#3b8eea"
+    C_RESP  = "#16c60c"
+    C_ERR   = "#e74856"
+    C_TEXT  = "#cccccc"
+    C_TOOL  = "#c19c00"
+    C_RAW   = "#6a9955"
+
+    def _span(color: str, text: str, bold: bool = False) -> str:
+        fw = ";font-weight:bold" if bold else ""
+        return f'<span style="color:{color}{fw}">{html.escape(text)}</span>'
+
+    def _span_ns(color: str, text: str, bold: bool = False) -> str:
+        fw = ";font-weight:bold" if bold else ""
+        return f'<span style="color:{color}{fw}">{text}</span>'
+
+    def _msg_text(msg: Dict[str, Any]) -> str:
+        content = msg.get("content")
+        if isinstance(content, str):
+            return content
+        if isinstance(content, list):
+            pieces = []
+            for item in content:
+                if isinstance(item, dict):
+                    t = item.get("text") or ""
+                    if t:
+                        pieces.append(t)
+                    elif item.get("type") in ("image_url", "video_url", "audio_url"):
+                        pieces.append(f"[{item['type'].rstrip('_url')}]")
+            return "".join(pieces)
+        return str(content) if content else ""
+
+    def _fmt_tool_def(t: Dict[str, Any], idx: int) -> str:
+        fn = t.get("function") or t
+        name = html.escape(str(fn.get("name", "?")))
+        desc = fn.get("description", "") or ""
+        params = fn.get("parameters") or {}
+        props = params.get("properties") or {}
+        param_parts = []
+        if isinstance(props, dict):
+            for pn, pv in props.items():
+                pt = pv.get("type", "?") if isinstance(pv, dict) else "?"
+                param_parts.append(f"{pn}:{pt}")
+        params_str = ", ".join(param_parts)
+        line = f"    [{idx}] {name}({params_str})"
+        if desc:
+            line += f"  →  {desc[:120]}"
+        return line
+
+    parts: List[str] = []
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+
+        ts = html.escape(entry.get("ts", "")[:19].replace("T", " "))
+        req_type = html.escape(entry.get("type", "") or "")
+
+        # --- mcp_tool_execution has a different shape ---
+        if req_type == "mcp_tool_execution":
+            tool_name = html.escape(entry.get("tool_name", "?"))
+            args = html.escape(str(entry.get("arguments", ""))[:120])
+            result = html.escape(str(entry.get("result", ""))[:300])
+            parts.append(_span_ns(C_SEP, SEP))
+            parts.append(
+                f'{_span_ns(C_HEAD, ">>> TOOL EXECUTION", bold=True)}'
+                f'  {_span_ns(C_META, f"[{ts}]")}  '
+                f'{_span_ns(C_TOOL, tool_name)}'
+            )
+            parts.append(f'{_span_ns(C_META, "    args:")}  {args}')
+            parts.append(f'{_span_ns(C_META, "    result:")}  {result}')
+            parts.append(_span_ns(C_SEP, SEP))
+            continue
+
+        character = html.escape(entry.get("character", "") or "")
+        provider = html.escape(entry.get("provider", "") or "")
+        model = html.escape(entry.get("model", "") or "")
+        req = entry.get("request") or {}
+        resp = entry.get("response") or {}
+
+        parts.append(_span_ns(C_SEP, SEP))
+        parts.append(
+            f'{_span_ns(C_META, "[")}{ts}'
+            f'{_span_ns(C_META, "]  character=")}{character}'
+            f'{_span_ns(C_META, "  provider=")}{provider}'
+            f'{_span_ns(C_META, "  model=")}{model}'
+            f'{_span_ns(C_META, "  type=")}{req_type}'
+        )
+
+        # ---- SAMPLING ----
+        sampling = req.get("sampling") or {}
+        extra_body = req.get("extra_body") or {}
+        extra_inner = extra_body.get("chat_template_kwargs") or {}
+        enable_thinking = extra_inner.get("enable_thinking")
+
+        samp_parts: List[str] = []
+        for k in ("temperature", "top_p", "top_k", "max_tokens",
+                  "presence_penalty", "repetition_penalty"):
+            v = sampling.get(k)
+            if v is not None:
+                samp_parts.append(f"{k}={v}")
+        if enable_thinking is not None:
+            samp_parts.append(f"enable_thinking={enable_thinking}")
+        stop = sampling.get("stop")
+        if stop:
+            samp_parts.append(f"stop={html.escape(str(stop)[:40])}")
+
+        parts.append(_span_ns(C_HEAD, ">>> SAMPLING", bold=True))
+        if samp_parts:
+            parts.append(f'{_span_ns(C_TEXT, "    ")}{"  ".join(samp_parts)}')
+        else:
+            parts.append(_span_ns(C_META, "    (no sampling params)"))
+
+        # ---- TOOLS ----
+        tools = req.get("tools") or []
+        parts.append(_span_ns(C_HEAD, ">>> TOOLS", bold=True))
+        if tools:
+            for idx, t in enumerate(tools, 1):
+                parts.append(_span_ns(C_TEXT, _fmt_tool_def(t, idx)))
+        else:
+            parts.append(_span_ns(C_META, "    no tools defined"))
+
+        # ---- MESSAGES (history + latest) ----
+        messages = req.get("messages") or []
+        # Find the index of the last user message
+        last_user_idx = -1
+        for i in range(len(messages) - 1, -1, -1):
+            if messages[i].get("role") == "user":
+                last_user_idx = i
+                break
+
+        if last_user_idx >= 0:
+            history_msgs = messages[:last_user_idx]
+            latest_msg = messages[last_user_idx]
+        else:
+            history_msgs = messages
+            latest_msg = None
+
+        parts.append(_span_ns(C_HEAD, ">>> HISTORY", bold=True))
+        if history_msgs:
+            for msg in history_msgs:
+                role = msg.get("role", "?")
+                tool_calls = msg.get("tool_calls") or []
+                text = _msg_text(msg)
+                text_1l = text.replace("\n", "\\n").replace("\r", "")
+                if tool_calls:
+                    for tc in tool_calls:
+                        fc = tc.get("function") or {}
+                        tc_name = html.escape(str(fc.get("name", "?")))
+                        tc_args = html.escape(str(fc.get("arguments", ""))[:100])
+                        parts.append(
+                            _span_ns(C_TOOL, "    [" + role + " → tool_call: " + tc_name + "]")
+                            + "  " + _span(C_TEXT, tc_args)
+                        )
+                    if text_1l:
+                        parts.append(
+                            _span_ns(C_META, "    [" + role + "]")
+                            + "  " + _span(C_TEXT, text_1l)
+                        )
+                else:
+                    parts.append(
+                        _span_ns(C_META, "    [" + role + "]")
+                        + "  " + _span(C_TEXT, text_1l)
+                    )
+        else:
+            parts.append(_span_ns(C_META, "    (no history)"))
+
+        if latest_msg is not None:
+            latest_text = _msg_text(latest_msg)
+            role_label = html.escape(str(latest_msg.get("role", "?")))
+            indented = "\n    ".join(latest_text.split("\n"))
+            parts.append(_span_ns(C_HEAD, ">>> LATEST MESSAGE", bold=True))
+            parts.append(
+                _span_ns(C_META, "    [" + role_label + "]")
+                + "  " + _span(C_TEXT, indented)
+            )
+
+        parts.append(_span_ns(C_SEP, SEP_CHAR * 60))
+
+        # ---- RESPONSE ----
+        finish = resp.get("finish_reason", "")
+        resp_color = C_ERR if finish == "error" else C_RESP
+        parts.append(_span_ns(resp_color, "<<< RESPONSE", bold=True))
+
+        tokens = resp.get("tokens") or {}
+        if tokens:
+            parts.append(
+                _span_ns(C_META,
+                    f"    finish_reason={finish}  "
+                    f"prompt_tk={tokens.get('prompt','?')}  "
+                    f"completion_tk={tokens.get('completion','?')}"
+                )
+            )
+        else:
+            parts.append(_span_ns(C_META, f"    finish_reason={html.escape(str(finish))}"))
+
+        raw_text = resp.get("raw_text", "")
+        if raw_text:
+            indented = "\n    ".join(raw_text.split("\n"))
+            parts.append(_span(C_TEXT, "    " + indented))
+        if not raw_text:
+            parts.append(_span_ns(C_META, "    (empty response body)"))
+
+        # ---- RAW SSE EVENTS (collapsible) ----
+        raw_events = resp.get("raw_events") or []
+        if raw_events:
+            parts.append("")
+            parts.append('<details>')
+            parts.append(
+                '<summary style="cursor:pointer;color:#6a9955;font-weight:bold">'
+                '    ── RAW SSE EVENTS (' + str(len(raw_events)) + ' chunks) ──'
+                '</summary>'
+            )
+            for idx, ev in enumerate(raw_events, 1):
+                ev_str = json.dumps(ev, ensure_ascii=False)
+                if len(ev_str) > 500:
+                    ev_str = ev_str[:500] + "  ... (" + str(len(json.dumps(ev, ensure_ascii=False))) + " chars)"
+                parts.append(
+                    _span_ns(C_META, "    [" + str(idx) + "]")
+                    + "  " + _span(C_RAW, ev_str)
+                )
+            parts.append('</details>')
+
+        parts.append(_span_ns(C_SEP, SEP))
+
+    return _wrap_terminal_html("\n".join(parts))
+
+
+def _wrap_terminal_html(body: str) -> str:
+    return (
+        '<div style="'
+        'background:#0c0c0c;color:#cccccc;'
+        'font-family:\'Cascadia Code\',\'Fira Code\',\'JetBrains Mono\',\'Consolas\',monospace;'
+        'font-size:13px;line-height:1.55;padding:12px;'
+        'max-height:80vh;overflow:auto;'
+        'border:1px solid #333333;border-radius:4px'
+        '" id="term-console">'
+        '<pre style="'
+        'margin:0;background:transparent;border:none;color:inherit;font:inherit;'
+        'white-space:pre;word-wrap:normal'
+        '">'
+        + body +
+        '</pre>'
+        '</div>'
+        '<img src="" '
+        'onerror="var c=document.getElementById(\'term-console\');'
+        'if(c)c.scrollTop=c.scrollHeight;this.remove()"'
+        ' style="display:none">'
+    )
+
+
+_last_log_mtime = 0.0
+
+
+def _refresh_vllm_log_display() -> str:
+    global _last_log_mtime
+    if os.path.isfile(_VLLM_REQUEST_LOG_FILE):
+        try:
+            mtime = os.path.getmtime(_VLLM_REQUEST_LOG_FILE)
+            if mtime == _last_log_mtime:
+                return gr.update()
+            _last_log_mtime = mtime
+        except OSError:
+            pass
+    else:
+        _last_log_mtime = 0.0
+    return _format_vllm_request_log()
+
+
+# ---------------------------------------------------------------------------
+# Build the UI
+# ---------------------------------------------------------------------------
+
+
+def build_admin_ui() -> "gr.Blocks":
+    theme = gr.themes.Soft(font=gr.themes.GoogleFont("Inter"))
+    with gr.Blocks(title="QwenAIServiceCore Admin", theme=theme, css=_CUSTOM_CSS) as ui:
+        gr.Markdown("""# QwenAIServiceCore Admin
+
+OpenAI‑compatible LLM Gateway — Character‑aware chat with RAG, MCP tool integration & skill modules
+
+> Tip: Use the **LLM Providers** tab to configure upstream LLM services (vLLM, DashScope, DeepSeek, etc.). Select an active provider to route all chat requests.
+>
+> **Quick Start:** Head to **Characters** → pick a character → load & edit the persona config → your API is ready at `/v1/chat/completions`.
+""")
+
+        # ---------- Providers ----------
+        with gr.Tab("LLM Providers"):
+            gr.Markdown("## Active Provider")
+            prov_status = gr.Markdown()
+            with gr.Row():
+                prov_radio = gr.Radio(
+                    choices=_provider_choices(),
+                    label="Active Provider (select to activate)",
+                    info="切换活跃 provider。所有对话请求都会路由到选中的活跃 provider",
+                    interactive=True,
+                )
+            prov_table = gr.Dataframe(
+                headers=[
+                    "active", "name", "type", "model", "base_url",
+                    "vision", "audio", "video", "prefetch", "description",
+                ],
+                interactive=False,
+                wrap=True,
+            )
+            gr.Markdown("---")
+            gr.Markdown("## Add / Edit Provider")
+            with gr.Row():
+                p_name = gr.Textbox(
+                    label="name",
+                    info="唯一标识符，用于识别该 provider。例如 local_vllm",
+                )
+                p_type = gr.Textbox(
+                    label="type", value="openai_compatible",
+                    info="后端类型。目前固定为 openai_compatible",
+                )
+                p_base_url = gr.Textbox(
+                    label="base_url (e.g. http://localhost:8000/v1)",
+                    info="LLM 服务的完整地址（含 /v1 前缀），例如 http://localhost:8001/v1",
+                )
+                p_model = gr.Textbox(
+                    label="model",
+                    info="发送给 upstream 的模型名称。vLLM 的 --served-model-name 参数映射到此字段",
+                )
+            with gr.Row():
+                p_api_key = gr.Textbox(
+                    label="api_key", type="password",
+                    info="API 密钥。如不需要鉴权可留空",
+                )
+                p_description = gr.Textbox(
+                    label="description",
+                    info="用于文档展示，不影响运行逻辑",
+                )
+            with gr.Row():
+                p_v = gr.Checkbox(
+                    label="supports vision", value=True,
+                    info="勾选后图片 URL/data-uri 会传给模型。不勾选则替换为 [图片已省略] 占位文本",
+                )
+                p_a = gr.Checkbox(
+                    label="supports audio",
+                    info="勾选后音频内容传给模型。不勾选则替换为 [音频已省略] 占位文本",
+                )
+                p_video = gr.Checkbox(
+                    label="supports video",
+                    info="勾选后视频内容传给模型。不勾选则替换为 [视频已省略] 占位文本",
+                )
+                p_pre = gr.Checkbox(
+                    label="prefetch media URLs", value=True,
+                    info="开启后 HTTP(S) 媒体 URL 会被后台预取内联为 data: URI 再发给模型。解决 vLLM 无法访问 CDN 签名 URL 的问题",
+                )
+            p_extra = gr.Textbox(
+                label="extra_body (JSON merged into every request)",
+                placeholder='e.g. {"mm_processor_kwargs": {"fps": 2}}',
+                lines=3,
+                info='额外请求体参数（JSON），会合并到每次 LLM 调用中。例如 {"chat_template_kwargs": {"enable_thinking": false}}',
+            )
+            with gr.Row():
+                p_save = gr.Button("Save / Update", variant="primary")
+                p_delete = gr.Button("Delete by name", variant="stop")
+                p_refresh = gr.Button("Refresh")
+            p_message = gr.Markdown()
+
+            prov_table.select(
+                _provider_table_select,
+                [prov_table],
+                [p_name, p_base_url, p_model, p_api_key, p_type,
+                 p_v, p_a, p_video, p_pre, p_extra, p_description],
+            )
+
+            prov_radio.change(
+                _activate_provider,
+                [prov_radio],
+                [prov_table, prov_status, prov_radio, p_message],
+            )
+
+            p_save.click(
+                _save_provider,
+                [p_name, p_base_url, p_api_key, p_model, p_type,
+                 p_v, p_a, p_video, p_pre, p_extra, p_description],
+                [prov_table, prov_status, prov_radio, p_message],
+            )
+            p_delete.click(
+                _delete_provider, [p_name],
+                [prov_table, prov_status, prov_radio, p_message],
+            )
+            p_refresh.click(_refresh_providers, None, [prov_table, prov_status, prov_radio])
+            ui.load(_refresh_providers, None, [prov_table, prov_status, prov_radio])
+
+        # ---------- MCP ----------
+        with gr.Tab("MCP Servers"):
+            gr.Markdown("## Global Configuration")
+            mcp_status = gr.Markdown()
+            mcp_table = gr.Dataframe(
+                headers=["name", "enabled", "transport", "command/url",
+                         "connected", "tools", "description"],
+                interactive=False,
+                wrap=True,
+            )
+            with gr.Row():
+                mcp_radio = gr.Radio(
+                    choices=["passthrough", "server_side"],
+                    value="passthrough",
+                    label="tool_call_mode (select to apply)",
+                    info="passthrough: MCP tools 不注入给 LLM。server_side: MCP tools 注入给 LLM 并在后端循环执行",
+                    interactive=True,
+                )
+                mcp_rounds = gr.Number(
+                    value=5, minimum=1, maximum=20, step=1,
+                    label="max tool rounds",
+                    info="LLM 调用 MCP 工具的最大往返轮数。每轮 LLM 调一次工具，看到结果后决定是否再调用。防止无限循环",
+                    interactive=True,
+                )
+
+            gr.Markdown("---")
+            gr.Markdown("## Quick Setup (Paste JSON)")
+            gr.Markdown(
+                "Paste a complete MCP server JSON config below and click "
+                "**Parse & Fill Form** to auto-populate the form. "
+                "Review and click **Save / Update** to apply."
+            )
+            mjson_paste = gr.Textbox(
+                label="Paste JSON config",
+                info="粘贴完整的 MCP server JSON 配置。必须包含 enabled/transport/command/args 等字段",
+                lines=8,
+                placeholder='{\n    "enabled": true,\n    "transport": "stdio",\n    "command": "npx",\n    "args": ["-y", "@anthropic/mcp-server-fetch"],\n    "env": {},\n    "description": "Fetch web page content"\n}',
+            )
+            with gr.Row():
+                mjson_name = gr.Textbox(
+                    label="Server name (optional, falls back to JSON \"name\" field)",
+                    info='可留空。若 JSON 里含 "name" 字段会自动提取',
+                    placeholder="e.g. fetch_server",
+                )
+                mjson_parse_btn = gr.Button("Parse & Fill Form", variant="secondary")
+            mjson_msg = gr.Markdown()
+
+            gr.Markdown("---")
+            gr.Markdown("## Add / Edit Server")
+            with gr.Row():
+                m_name = gr.Textbox(
+                    label="name",
+                    info="唯一标识符，用于识别和查找该 MCP 服务器",
+                )
+                m_enabled = gr.Checkbox(
+                    label="enabled",
+                    info="勾选后 MCP 服务器生效。取消勾选后即使 tool_call_mode=server_side 该服务器工具也不可见",
+                )
+                m_transport = gr.Dropdown(
+                    choices=["stdio", "sse", "streamable_http"],
+                    value="stdio", label="transport",
+                    info="stdio: 子进程标准输入输出通信。sse/streamable_http: 连接远程 HTTP MCP 服务器",
+                )
+            with gr.Row():
+                m_command = gr.Textbox(
+                    label="command (stdio only)",
+                    info="仅 stdio 模式生效。要启动的进程命令，如 npx / python / uvx",
+                )
+                m_url = gr.Textbox(
+                    label="url (sse / streamable_http)",
+                    info="仅 sse/streamable_http 模式生效。远程 MCP 服务器的 HTTP 地址",
+                )
+            m_args = gr.Textbox(
+                label="args (one per line, stdio only)", lines=3,
+                info="仅 stdio 模式生效。每行一个命令行参数，例如 -y 和包名",
+            )
+            m_headers = gr.Textbox(
+                label="headers (JSON, remote only)", lines=2, placeholder="{}",
+                info='仅远程模式生效。JSON 格式的 HTTP 请求头，如 {"Authorization": "Bearer xxx"}',
+            )
+            m_description = gr.Textbox(
+                label="description",
+                info="用于文档展示，不影响运行逻辑",
+            )
+            with gr.Row():
+                m_save = gr.Button("Save / Update", variant="primary")
+                m_delete = gr.Button("Delete by name", variant="stop")
+                m_refresh = gr.Button("Refresh")
+            m_message = gr.Markdown()
+
+            mcp_table.select(
+                _mcp_table_select,
+                [mcp_table],
+                [m_name, m_enabled, m_transport, m_command, m_args, m_url, m_headers, m_description],
+            )
+
+            mcp_radio.change(
+                _set_mcp_mode, [mcp_radio],
+                [mcp_table, mcp_status, mcp_radio, m_message],
+            )
+
+            mcp_rounds.change(
+                _set_mcp_max_tool_rounds, [mcp_rounds],
+                [m_message, mcp_rounds],
+            )
+
+            mjson_parse_btn.click(
+                _mcp_parse_json,
+                [mjson_paste, mjson_name],
+                [m_name, m_enabled, m_transport, m_command,
+                 m_args, m_url, m_headers, m_description, mjson_msg],
+            )
+
+            m_save.click(
+                _save_mcp,
+                [m_name, m_enabled, m_transport, m_command, m_args, m_url,
+                 m_headers, m_description],
+                [mcp_table, mcp_status, mcp_radio, m_message],
+            )
+            m_delete.click(_delete_mcp, [m_name], [mcp_table, mcp_status, mcp_radio, m_message])
+            m_refresh.click(_refresh_mcp, None, [mcp_table, mcp_status, mcp_radio, mcp_rounds])
+            ui.load(_refresh_mcp, None, [mcp_table, mcp_status, mcp_radio, mcp_rounds])
+
+        # ---------- Skills ----------
+        with gr.Tab("Skills"):
+            gr.Markdown("## Skill Management")
+            gr.Markdown(
+                "Browse and edit skill modules. Each skill is a directory under `skills/` "
+                "containing a `SKILL.md` file with YAML front matter and markdown body."
+            )
+            sk_status = gr.Markdown()
+            sk_table = gr.Dataframe(
+                headers=["name", "version", "auto_inject", "description"],
+                interactive=False,
+                wrap=True,
+            )
+            with gr.Row():
+                sk_name = gr.Textbox(
+                    label="skill name (folder name, e.g. 'example')",
+                    placeholder="e.g. my_skill",
+                    info="skills/ 目录下的子文件夹名。每个 skill 是一个文件夹，内含 SKILL.md 文件",
+                )
+                sk_new_btn = gr.Button("Create new skill")
+            sk_body = gr.Code(label="SKILL.md content", language="markdown", lines=18)
+            with gr.Row():
+                sk_save = gr.Button("Save / Update", variant="primary")
+                sk_delete = gr.Button("Delete by name", variant="stop")
+                sk_reload = gr.Button("Reload from disk")
+            sk_message = gr.Markdown()
+
+            sk_table.select(
+                _skill_table_select,
+                [sk_table],
+                [sk_name, sk_body],
+            )
+
+            sk_save.click(
+                _save_skill,
+                [sk_name, sk_body],
+                [sk_table, sk_status, sk_message],
+            )
+            sk_delete.click(
+                _delete_skill, [sk_name],
+                [sk_table, sk_status, sk_message],
+            )
+            sk_new_btn.click(
+                _create_skill, [sk_name],
+                [sk_table, sk_status, sk_body, sk_message],
+            )
+            sk_reload.click(_reload_skills, None, [sk_table, sk_status])
+            ui.load(_refresh_skills, None, [sk_table, sk_status])
+
+        # ---------- Characters (Persona + Knowledge Base) ----------
+        with gr.Tab("Characters"):
+            gr.Markdown(
+                "Manage per-character persona settings and knowledge base files. "
+                "Persona config at `embedding/<character>/persona.json`; "
+                "knowledge `.mem` files at `embedding/<character>/<subject>/`."
+            )
+
+            # --- Expression Format (Global Core Config) ---
+            gr.Markdown("### Expression Format (Global)")
+            gr.Markdown(
+                "Core expression format shared across all characters. "
+                "The `{expression}` placeholder will be replaced with the "
+                "actual emotion label. This instruction is automatically "
+                "injected into every system prompt."
+            )
+            with gr.Row():
+                exp_format = gr.Textbox(
+                    label="Format template",
+                    value=_load_expression()[0],
+                    placeholder="【{'expression': '{expression}'}】",
+                    info="输出模板。{expression} 是占位符，会被替换为实际情感标签。修改后 AI 输出的情感标记格式同步变更",
+                )
+                exp_status = gr.Markdown("✓ Loaded")
+            exp_instruction = gr.Textbox(
+                label="Instruction (injected into system prompt)",
+                value=_load_expression()[1],
+                lines=6,
+                info="注入到所有角色 system prompt 末尾的格式规范。告诉 LLM 如何正确输出情感标记（含示例）",
+            )
+            with gr.Row():
+                exp_save = gr.Button("Save Expression Config", variant="primary")
+                exp_reload = gr.Button("Reload")
+            exp_message = gr.Markdown()
+
+            exp_save.click(
+                _save_expression, [exp_format, exp_instruction], [exp_message],
+            )
+            exp_reload.click(
+                _load_expression, [], [exp_format, exp_instruction, exp_message],
+            )
+
+            gr.Markdown("---")
+            gr.Markdown("### Persona Configuration")
+            pe_status = gr.Markdown()
+            pe_table = gr.Dataframe(
+                headers=["character", "display_name", "has_setting",
+                         "has_reply_instruction", "has_image_setting"],
+                interactive=False,
+                wrap=True,
+            )
+            with gr.Row():
+                pc_radio = gr.Radio(
+                    choices=_persona_choices(),
+                    label="Active Character (select to load & activate)",
+                    info="切换活跃角色。选择后自动加载该角色的 persona 配置并设为当前使用角色",
+                    interactive=True,
+                )
+                pe_refresh = gr.Button("Refresh")
+            with gr.Row():
+                pe_character = gr.Textbox(
+                    label="character (folder name under embedding/)",
+                    placeholder="e.g. tendou_arisu",
+                    info="embedding/ 下的目录名。每个角色的 persona.json 和知识库文件都放在对应目录下",
+                )
+                pe_display_name = gr.Textbox(
+                    label="display_name",
+                    info="前端展示的昵称。例如 天童爱丽丝",
+                )
+            pe_setting = gr.Textbox(
+                label="setting (system prompt; may include {embeddings})",
+                lines=12,
+                info="角色的世界观和性格设定（system prompt 主体）。支持 {embeddings} 占位符，运行时会动态注入 RAG 检索到的知识库文本",
+            )
+            pe_reply_instruction = gr.Textbox(
+                label="reply_instruction (appended after setting)",
+                lines=4,
+                info="追加在 system prompt 末尾的回复规范。格式规范已移至上方 Expression Format 全局配置",
+            )
+            pe_image_setting = gr.Textbox(
+                label="image_setting (optional figure framing)",
+                lines=4,
+                info="角色的形象描述（含图片占位符）。以 user 角色消息而非 system 消息注入",
+            )
+            with gr.Row():
+                pe_max_chat_len = gr.Textbox(
+                    label="max_chat_len", placeholder="e.g. 15000",
+                    info="普通对话请求的 max_tokens 上限。留空则使用全局 max_chat_len 配置",
+                )
+                pe_max_analysis_len = gr.Textbox(
+                    label="max_analysis_len", placeholder="e.g. 6000",
+                    info="assistant 端点分析请求的 max_tokens 上限。留空则使用全局 max_analysis_len 配置",
+                )
+                pe_max_quick_reply = gr.Textbox(
+                    label="max_quick_reply", placeholder="e.g. 600",
+                    info="WebSocket 快速回复请求的 max_tokens 上限。留空则使用全局 max_quick_reply 配置",
+                )
+                pe_default_temperature = gr.Textbox(
+                    label="default_temperature", placeholder="e.g. 0.7",
+                    info="该角色的默认采样温度。范围 0~2，越高回复越随机",
+                )
+            with gr.Row():
+                pe_save = gr.Button("Save / Update", variant="primary")
+                pe_delete = gr.Button("Delete by name", variant="stop")
+            with gr.Accordion("Preview rendered system prompt", open=False):
+                pe_preview_input = gr.Textbox(
+                    label="simulated user message (used to call process_embedding)",
+                    lines=2,
+                    info="模拟用户消息文本。用于触发 process_embedding 展示 RAG 检索结果在渲染后的 system prompt 中的效果",
+                )
+                pe_preview_btn = gr.Button("Render preview", variant="primary")
+                pe_preview_out = gr.Code(label="rendered system prompt", lines=20)
+            pe_message = gr.Markdown()
+
+            pc_radio.change(
+                _load_persona_and_set_active,
+                [pc_radio],
+                [pe_display_name, pe_setting, pe_reply_instruction,
+                 pe_image_setting, pe_max_chat_len, pe_max_analysis_len,
+                 pe_max_quick_reply, pe_default_temperature,
+                 pe_message, pe_character],
+            )
+
+            pe_save.click(
+                _save_persona,
+                [pe_character, pe_display_name, pe_setting, pe_reply_instruction,
+                 pe_image_setting, pe_max_chat_len, pe_max_analysis_len,
+                 pe_max_quick_reply, pe_default_temperature],
+                [pe_table, pc_radio, pc_radio, pe_message],
+            )
+            pe_delete.click(
+                _delete_persona, [pe_character],
+                [pe_table, pc_radio, pc_radio, pe_message],
+            )
+            pe_refresh.click(_refresh_personas, None, [pe_table, pc_radio, pc_radio])
+            pe_preview_btn.click(
+                _preview_persona, [pe_character, pe_preview_input], [pe_preview_out],
+            )
+
+            gr.Markdown("---")
+            gr.Markdown("### Knowledge Base")
+            kb_status = gr.Markdown("Select a character and subject.")
+            with gr.Row():
+                kb_character = gr.Dropdown(
+                    choices=_kb_character_choices(),
+                    label="Character",
+                    info="选择要管理的角色知识库",
+                )
+                kb_subject = gr.Dropdown(
+                    choices=_kb_subject_choices(""),
+                    value="setting",
+                    label="Subject (knowledge type)",
+                    info="知识类别。setting: 世界观补充。knowledge: 动态学到的知识。expression: 情感标签库",
+                )
+                kb_refresh_list = gr.Button("Refresh file list")
+            kb_file_list = gr.Dropdown(
+                choices=[""], value="",
+                label=".mem file",
+                info="选择知识库文件进行查看/编辑。.mem 是纯文本格式，每行一条知识记录",
+                interactive=True,
+            )
+            with gr.Row():
+                kb_new_filename = gr.Textbox(
+                    label="New file name (e.g. new_chat.mem)",
+                    placeholder=".mem extension auto-added",
+                    info="新文件名（含 .mem 后缀）。会自动创建到对应角色和 subject 目录下",
+                )
+                kb_new_btn = gr.Button("Create new file")
+            kb_content = gr.Code(
+                label="File content",
+                language="markdown",
+                lines=25,
+            )
+            with gr.Row():
+                kb_save = gr.Button("Save file", variant="primary")
+                kb_delete_file = gr.Button("Delete file", variant="stop")
+            with gr.Row():
+                kb_rebuild = gr.Button("Rebuild FAISS index")
+                kb_index_status_btn = gr.Button("Show index status")
+            kb_index_info = gr.Markdown()
+            kb_action_msg = gr.Markdown()
+
+            kb_character.change(
+                _kb_on_character_change, [kb_character],
+                [kb_file_list, kb_subject, kb_file_list, kb_status],
+            )
+            kb_subject.change(
+                _kb_load_files, [kb_character, kb_subject],
+                [kb_file_list, kb_subject, kb_file_list, kb_status],
+            )
+            kb_refresh_list.click(
+                _kb_load_files, [kb_character, kb_subject],
+                [kb_file_list, kb_subject, kb_file_list, kb_status],
+            )
+            kb_file_list.change(
+                _kb_read_file, [kb_character, kb_subject, kb_file_list], [kb_content],
+            )
+            kb_save.click(
+                _kb_save_file,
+                [kb_character, kb_subject, kb_file_list, kb_content],
+                [kb_action_msg],
+            )
+            kb_new_btn.click(
+                _kb_new_file,
+                [kb_character, kb_subject, kb_new_filename],
+                [kb_content, kb_action_msg],
+            ).then(
+                _kb_load_files, [kb_character, kb_subject],
+                [kb_file_list, kb_subject, kb_file_list, kb_status],
+            )
+            kb_rebuild.click(
+                _kb_rebuild_index, [kb_character, kb_subject], [kb_action_msg],
+            )
+            kb_index_status_btn.click(
+                _kb_index_status, [kb_character, kb_subject], [kb_index_info],
+            )
+
+            ui.load(_refresh_personas, None, [pe_table, pc_radio, pc_radio])
+            ui.load(_kb_refresh_choices, None, [kb_character, kb_subject, kb_status, kb_content])
+
+        # ---------- Shared Knowledge ----------
+        with gr.Tab("Shared Knowledge"):
+            gr.Markdown("## Shared Knowledge Base")
+            gr.Markdown(
+                "Shared knowledge base stored at `embedding/_shared/knowledge/`. "
+                "Knowledge here is available to all characters during retrieval. "
+                "Use `##tag` suffixes in `.mem` files to add tags to paragraphs."
+            )
+            sk_status = gr.Markdown()
+            sk_file_list = gr.Dropdown(
+                choices=[""], value="",
+                label=".mem file",
+                interactive=True,
+            )
+            with gr.Row():
+                sk_new_filename = gr.Textbox(
+                    label="New file name (e.g. new_knowledge.mem)",
+                    placeholder=".mem extension auto-added",
+                )
+                sk_new_btn = gr.Button("Create new file")
+            sk_content = gr.Code(
+                label="File content",
+                language="markdown",
+                lines=25,
+            )
+            with gr.Row():
+                sk_save = gr.Button("Save file", variant="primary")
+                sk_delete_file = gr.Button("Delete file", variant="stop")
+                sk_refresh = gr.Button("Refresh")
+            with gr.Row():
+                sk_rebuild = gr.Button("Rebuild FAISS index")
+                sk_index_status_btn = gr.Button("Show index status")
+            sk_index_info = gr.Markdown()
+            sk_action_msg = gr.Markdown()
+
+            sk_file_list.change(_sk_read_file, [sk_file_list], [sk_content])
+            sk_save.click(
+                _sk_save_file, [sk_file_list, sk_content], [sk_action_msg],
+            )
+            sk_new_btn.click(
+                _sk_new_file, [sk_new_filename], [sk_content, sk_action_msg],
+            ).then(
+                _sk_refresh_files, None, [sk_file_list, sk_status],
+            )
+            sk_refresh.click(_sk_refresh_files, None, [sk_file_list, sk_status])
+            sk_rebuild.click(_sk_rebuild_index, None, [sk_action_msg])
+            sk_index_status_btn.click(_sk_index_status, None, [sk_index_info])
+            ui.load(_sk_refresh_files, None, [sk_file_list, sk_status])
+
+        # ---------- Request Monitor (real-time vLLM request log) ----------
+        with gr.Tab("Request Monitor"):
+            gr.Markdown("## Request Monitor")
+            gr.Markdown(
+                "Structured console showing sampling params, tools, "
+                "history, latest message, response and raw SSE events. "
+                "Log file: `logs/vllm_request_log.jsonl` (cleared on each startup). "
+                "Chronological order (oldest first)."
+            )
+            with gr.Row():
+                log_interval = gr.Slider(
+                    0.5, 30, value=3, step=0.5,
+                    label="Refresh interval (seconds)",
+                    info="日志刷新间隔（秒）。值越小刷新越快但浏览器负载越大。建议 3 秒",
+                )
+                log_force = gr.Button("Refresh now")
+            monitor_status = gr.Markdown()
+            monitor_display = gr.HTML(
+                value="(waiting for requests &mdash; auto-refreshes every few seconds)",
+                sanitize_html=False,
+            )
+            timer = gr.Timer(value=3, active=True)
+
+            timer.tick(_refresh_vllm_log_display, None, [monitor_display])
+            log_force.click(
+                _format_vllm_request_log, None, [monitor_display],
+            )
+            log_interval.change(
+                lambda val: gr.Timer(value=float(val), active=True),
+                [log_interval], [timer],
+            )
+
+        # ---------- Channels ----------
+
+        def _channel_status_table() -> str:
+            cs = get_channel_supervisor()
+            channels = cs.list_status()
+            if not channels:
+                return "*No channels configured. Edit `config/channels.json`.*"
+            lines = [
+                "| Channel | Status | PID | Uptime | Restarts |\n"
+                "|---------|--------|-----|--------|----------|"
+            ]
+            for ch in channels:
+                name = ch["name"]
+                plat = ch.get("platform_restricted")
+                plat_note = f" ({'+'.join(plat)})" if plat else ""
+                if ch.get("platform_blocked"):
+                    status_html = "🚫 Blocked"
+                elif ch.get("running"):
+                    status_html = "🟢 Running"
+                else:
+                    status_html = "🔴 Stopped"
+                pid = str(ch.get("pid") or "-")
+                started = ch.get("started_at", "")
+                uptime = "-"
+                if started and ch.get("running"):
+                    try:
+                        dt = datetime.fromisoformat(started)
+                        delta = datetime.now(dt.tzinfo or timezone.utc) - dt
+                        m = int(delta.total_seconds() // 60)
+                        s = int(delta.total_seconds() % 60)
+                        uptime = f"{m}m {s}s" if m > 0 else f"{s}s"
+                    except Exception:
+                        pass
+                restarts = str(ch.get("restart_count", 0))
+                lines.append(
+                    f"| **{name}**{plat_note} | {status_html} | {pid} | {uptime} | {restarts} |"
+                )
+            return "\n".join(lines)
+
+        def _action_btn(name: str, action: str):
+            cs = get_channel_supervisor()
+            if action == "start":
+                _run(cs.start_channel(name))
+            elif action == "stop":
+                _run(cs.stop_channel(name))
+            else:
+                _run(cs.restart_channel(name))
+            return _channel_status_table()
+
+        with gr.Tab("Channels"):
+            gr.Markdown("## Channel Manager")
+            gr.Markdown(
+                "Manage external service processes. "
+                "Channels do **not** auto-start. "
+                "Click &#128196; to open live log in a new tab."
+            )
+
+            cs = get_channel_supervisor()
+            _channel_configs = cs._configs
+
+            status_table = gr.Markdown(_channel_status_table())
+
+            for _ch_name, _ch_cfg in _channel_configs.items():
+                with gr.Row():
+                    label_md = gr.Markdown(f"**{_ch_name}**")
+                    start_btn = gr.Button("Start", size="sm", variant="primary")
+                    stop_btn = gr.Button("Stop", size="sm", variant="stop")
+                    restart_btn = gr.Button("Restart", size="sm")
+                    log_html = gr.HTML(
+                        f'<a href="/admin/logs/{_ch_name}" target="_blank">'
+                        f'<button style="padding:4px 8px;cursor:pointer;border:1px solid #555;'
+                        f'border-radius:4px;background:#2a2a3e;color:#ccc;font-size:12px">&#128196; log</button></a>'
+                    )
+                start_btn.click(
+                    lambda n=_ch_name: _action_btn(n, "start"),
+                    None, [status_table],
+                    js="(x) => { window.open('/admin/logs/" + _ch_name + "', '_blank') }",
+                )
+                stop_btn.click(
+                    lambda n=_ch_name: _action_btn(n, "stop"),
+                    None, [status_table],
+                )
+                restart_btn.click(
+                    lambda n=_ch_name: _action_btn(n, "restart"),
+                    None, [status_table],
+                )
+
+            channel_refresh_btn = gr.Button("Refresh all")
+            channel_refresh_btn.click(
+                lambda: _channel_status_table(), None, [status_table],
+            )
+
+            channel_timer = gr.Timer(value=3, active=True)
+            channel_timer.tick(
+                lambda: _channel_status_table(), None, [status_table],
+            )
+
+        gr.Markdown("---")
+        gr.Markdown(
+            "*Powered by [QwenAIServiceCore]"
+            "(https://github.com/your-org/QwenAIServiceCore)"
+            " — OpenAI‑compatible LLM Gateway with Character‑aware RAG*"
+        )
+
+    return ui
+
+
+if __name__ == "__main__":  # pragma: no cover -- standalone dev mode
+    build_admin_ui().launch()

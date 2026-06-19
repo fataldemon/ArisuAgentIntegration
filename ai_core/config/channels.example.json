@@ -1,0 +1,35 @@
+{
+  "channels": {
+    "qq_bot": {
+      "command": "nb",
+      "args": ["run", "--reload"],
+      "python": "../qq_bot/.venv",
+      "cwd": "../qq_bot",
+      "env": {"PYTHONIOENCODING": "utf-8"},
+      "log_file": "../qq_bot/logs/channel.log",
+      "restart_on_crash": true,
+      "restart_delay": 3,
+      "platforms": []
+    },
+    "bilibili": {
+      "command": "streamlit",
+      "args": ["run", "webui.py", "--server.port", "8501"],
+      "python": "../bilibili/.venv",
+      "cwd": "../bilibili",
+      "env": {"PYTHONIOENCODING": "utf-8"},
+      "log_file": "../bilibili/logs/channel.log",
+      "restart_on_crash": true,
+      "restart_delay": 3,
+      "platforms": []
+    },
+    "unity": {
+      "command": "AliceBotDesktop.exe",
+      "args": [],
+      "cwd": "../unity",
+      "log_file": "../unity/pipe_debug.log",
+      "restart_on_crash": false,
+      "restart_delay": 3,
+      "platforms": ["win32"]
+    }
+  }
+}
