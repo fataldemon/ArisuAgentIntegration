@@ -191,7 +191,6 @@ const channelFieldDefs: Record<string, Array<{ key: string; label: string; passw
     { key: 'ONEBOT_WS_URLS', label: 'channels.onebotWsUrls' },
     { key: 'master_id', label: 'channels.masterQqId' },
     { key: 'bot_user_id', label: 'channels.botQqId' },
-    { key: 'SQLALCHEMY_DATABASE_URL', label: 'channels.databaseUrl' },
     { key: 'baidu_trans_appid', label: 'channels.baiduAppid', password: true },
     { key: 'baidu_trans_apikey', label: 'channels.baiduApikey', password: true },
     { key: 'QWEATHER_APIKEY', label: 'channels.weatherApikey', password: true },

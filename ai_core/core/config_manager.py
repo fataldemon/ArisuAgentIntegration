@@ -452,12 +452,15 @@ class ConfigManager:
         port = os.environ.get("PORT", "8000")
         base = f"http://{host}:{port}"
         ws = f"ws://{host}:{port}"
+        project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        db_path = os.path.join(project_root, "db", "tendou_arisu.db").replace("\\", "/")
         return {
             "AI_CORE_URL": base,
             "CHAT_ENDPOINT": f"{base}/v1/chat/completions",
             "ASSISTANT_ENDPOINT": f"{base}/assistant/v1/chat/completions",
             "WS_ENDPOINT": f"{ws}/ws/binary",
             "ADMIN_URL": f"{base}/admin",
+            "DB_URL": f"sqlite:///{db_path}",
         }
 
     def get_all_globals(self) -> Dict[str, Any]:
