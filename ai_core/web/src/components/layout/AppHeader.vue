@@ -35,6 +35,7 @@ const pageTitle = computed(() => {
     '/characters': t('sidebar.characters'),
     '/shared-knowledge': t('sidebar.sharedKnowledge'),
     '/monitor': t('sidebar.monitor'),
+    '/globals': t('sidebar.globals'),
     '/channels': t('sidebar.channels'),
   }
   return map[route.path] || 'Admin'

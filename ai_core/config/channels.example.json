@@ -29,7 +29,14 @@
       "log_file": "../unity/pipe_debug.log",
       "restart_on_crash": false,
       "restart_delay": 3,
-      "platforms": ["win32"]
+      "platforms": ["win32"],
+      "config_file": "%USERPROFILE%/AppData/LocalLow/DefaultCompany/AliceBotDesktop/settings.json",
+      "config_mappings": {
+        "websocketUrl": "${WS_ENDPOINT}",
+        "gptSovitsUrl": "${GPT_SOVITS_URL}/tts",
+        "translationAppId": "${BAIDU_TRANS_APPID}",
+        "translationKey": "${BAIDU_TRANS_APIKEY}"
+      }
     }
   }
 }

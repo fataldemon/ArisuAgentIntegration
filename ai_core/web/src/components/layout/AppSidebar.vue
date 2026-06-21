@@ -53,6 +53,7 @@ const menuItems = computed(() => [
   { path: '/characters', icon: '\uD83D\uDC64', label: t('sidebar.characters') },
   { path: '/shared-knowledge', icon: '\uD83D\uDCDA', label: t('sidebar.sharedKnowledge') },
   { path: '/monitor', icon: '\uD83D\uDCCA', label: t('sidebar.monitor') },
+  { path: '/globals', icon: '\uD83C\uDF10', label: t('sidebar.globals') },
   { path: '/channels', icon: '\uD83D\uDCE1', label: t('sidebar.channels') },
 ])
 

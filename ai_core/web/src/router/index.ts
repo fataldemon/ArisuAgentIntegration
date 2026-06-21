@@ -14,6 +14,7 @@ export const routes: RouteRecordRaw[] = [
       { path: 'characters', name: 'Characters', component: () => import('../views/CharactersView.vue') },
       { path: 'shared-knowledge', name: 'SharedKnowledge', component: () => import('../views/SharedKnowledgeView.vue') },
       { path: 'monitor', name: 'Monitor', component: () => import('../views/MonitorView.vue') },
+      { path: 'globals', name: 'Globals', component: () => import('../views/GlobalsView.vue') },
       { path: 'channels', name: 'Channels', component: () => import('../views/ChannelsView.vue') },
     ],
   },

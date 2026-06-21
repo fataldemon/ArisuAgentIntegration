@@ -1,7 +1,7 @@
 import asyncio
 import json
 import logging
-import os.path
+import os
 import re
 import time
 from datetime import datetime
@@ -110,8 +110,8 @@ class Qwen(LLM):
     cut_point: int = 20
 
     # 部署地址
-    url: str = "http://localhost:8000/v1/chat/completions"
-    url_assistant: str = "http://localhost:8000/assistant/v1/chat/completions"
+    url: str = os.environ.get("AI_CORE_URL", "http://localhost:8000") + "/v1/chat/completions"
+    url_assistant: str = os.environ.get("AI_CORE_URL", "http://localhost:8000") + "/assistant/v1/chat/completions"
 
     def __init__(self, **data):
         # 先调用父类初始化（Pydantic 会处理字段赋值）

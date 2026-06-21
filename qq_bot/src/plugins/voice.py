@@ -11,6 +11,13 @@ import random
 from requests_toolbelt.multipart.encoder import MultipartEncoder
 from src.plugins.gradio_call import get_audio_from_gradio
 import string
+from dotenv import load_dotenv
+
+load_dotenv()
+
+_BAIDU_APPID = os.environ.get("baidu_trans_appid", "")
+_BAIDU_APIKEY = os.environ.get("baidu_trans_apikey", "")
+_VITS_URL = os.environ.get("VITS_URL", "http://127.0.0.1:23456")
 
 voice_file_name = "voice/alice.silk"
 speaker = on_command("说话 ")
@@ -81,14 +88,14 @@ def get_translation(query: str, lang: str) -> str:
     """
     _headers = {"Content-Type": "application/x-www-form-urlencoded"}
     salt = "1435660288"
-    sign_raw = f"20231223001919435{query}{salt}sCAog1XZepdaQmhflyWm"
+    sign_raw = f"{_BAIDU_APPID}{query}{salt}{_BAIDU_APIKEY}"
     md5 = hashlib.md5()
     md5.update(sign_raw.encode('utf-8'))
     sign = md5.hexdigest()
     print(sign)
     with requests.session() as sess:
         resp = sess.get(
-            f"http://api.fanyi.baidu.com/api/trans/vip/translate?q={query}&from=auto&to={lang}&appid=20231223001919435&salt={salt}&sign={sign}",
+            f"http://api.fanyi.baidu.com/api/trans/vip/translate?q={query}&from=auto&to={lang}&appid={_BAIDU_APPID}&salt={salt}&sign={sign}",
             headers=_headers,
             timeout=60,
         )
@@ -134,7 +141,7 @@ def get_audio(line: str) -> str:
     _headers = {"Content-Type": "application/json"}
     with requests.session() as sess:
         resp = sess.get(
-            f"http://127.0.0.1:23456/voice/bert-vits2?text={line}&id=0&format=silk&emotion=0&lang=ja",
+            f"{_VITS_URL}/voice/bert-vits2?text={line}&id=0&format=silk&emotion=0&lang=ja",
             headers=_headers,
             timeout=60,
         )
@@ -163,7 +170,7 @@ def voice_bert_vits2(text, id=0, format="wav", lang="auto", length=1, noise=0.66
 
     m = MultipartEncoder(fields=fields, boundary=boundary)
     headers = {"Content-Type": m.content_type}
-    url = "http://127.0.0.1:23456/voice/bert-vits2"
+    url = f"{_VITS_URL}/voice/bert-vits2"
 
     res = requests.post(url=url, data=m, headers=headers)
     if save_audio:
@@ -186,7 +193,7 @@ def voice_gpt_sovits(text, id=0, format="wav", lang="auto", preset="default", sa
 
     m = MultipartEncoder(fields=fields, boundary=boundary)
     headers = {"Content-Type": m.content_type}
-    url = "http://127.0.0.1:23456/voice/gpt-sovits"
+    url = f"{_VITS_URL}/voice/gpt-sovits"
 
     res = requests.post(url=url, data=m, headers=headers)
     if save_audio:
@@ -218,7 +225,7 @@ def get_audio_auto(line: str) -> str:
     _headers = {"Content-Type": "application/json"}
     with requests.session() as sess:
         resp = sess.get(
-            f" http://127.0.0.1:23456/voice/bert-vits2?text={line}&id=0&format=silk&emotion=0&lang=auto&length_zh=1&length_en=1",
+            f"{_VITS_URL}/voice/bert-vits2?text={line}&id=0&format=silk&emotion=0&lang=auto&length_zh=1&length_en=1",
             headers=_headers,
             timeout=60,
         )

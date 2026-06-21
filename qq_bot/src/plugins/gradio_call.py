@@ -1,8 +1,11 @@
+import os
 from gradio_client import Client
+
+_GRADIO_URL = os.environ.get("GRADIO_URL", "http://127.0.0.1:7860/")
 
 
 def formatter(text):
-    client = Client("http://127.0.0.1:7860/", verbose=False)
+    client = Client(_GRADIO_URL, verbose=False)
     result = client.predict(
         text,  # str  in '输入文本内容' Textbox component
         "alice",  # str (Option from: [('alice', 'alice')]) in 'Speaker' Dropdown component
@@ -12,7 +15,7 @@ def formatter(text):
 
 
 def get_audio_from_gradio(raw_text):
-    client = Client("http://127.0.0.1:7860/")
+    client = Client(_GRADIO_URL)
     text = formatter(raw_text)
     result = client.predict(
         text,  # str  in '输入文本内容' Textbox component

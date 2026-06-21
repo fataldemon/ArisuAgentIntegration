@@ -503,3 +503,248 @@ def register_admin_routes(app: FastAPI) -> None:
             return {"entries": entries}
         except Exception as e:
             raise HTTPException(500, str(e))
+
+    # ------------------- identity -------------------
+
+    @app.get("/admin/api/identity")
+    async def get_identity():
+        return {"identity": get_config_manager().get_identity()}
+
+    @app.put("/admin/api/identity")
+    async def set_identity(body: Dict[str, Any]):
+        identity = (body.get("identity") or "").strip()
+        await get_config_manager().set_identity(identity)
+        return {"ok": True, "identity": identity}
+
+    # ------------------- globals -------------------
+
+    @app.get("/admin/api/globals")
+    async def get_globals():
+        return get_config_manager().get_all_globals()
+
+    @app.put("/admin/api/globals")
+    async def set_globals(body: Dict[str, Any]):
+        variables = body.get("variables", {})
+        await get_config_manager().set_globals(variables)
+        _propagate_all_mappings()
+        return {"ok": True}
+
+    @app.get("/admin/api/globals/flat")
+    async def get_globals_flat():
+        return {"variables": get_config_manager().get_globals_flat()}
+
+    # ------------------- channel config -------------------
+
+    _CHANNELS_FILE = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "channels.json"
+    )
+
+    def _find_channel_config_path(name: str):
+        cs = get_channel_supervisor()
+        cfg = cs._configs.get(name)
+        if not cfg:
+            return None, None
+        if cfg.config_file:
+            resolved = os.path.expandvars(cfg.config_file)
+            resolved = os.path.normpath(resolved)
+            if os.path.isfile(resolved):
+                ext = os.path.splitext(resolved)[1].lower()
+                fmt = "json" if ext == ".json" else "dotenv"
+                return resolved, fmt
+        cwd = cfg.resolve_cwd()
+        if not cwd:
+            return None, None
+        env_path = os.path.join(cwd, ".env")
+        if os.path.isfile(env_path):
+            return env_path, "dotenv"
+        json_path = os.path.join(cwd, "settings.json")
+        if os.path.isfile(json_path):
+            return json_path, "json"
+        env_example = os.path.join(cwd, ".env.example")
+        if os.path.isfile(env_example):
+            import shutil
+            shutil.copy2(env_example, env_path)
+            return env_path, "dotenv"
+        return None, None
+
+    def _read_dotenv(path: str) -> Dict[str, str]:
+        config: Dict[str, str] = {}
+        with open(path, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                if "=" in line:
+                    key, _, value = line.partition("=")
+                    config[key.strip()] = value.strip()
+        return config
+
+    def _write_dotenv(path: str, config: Dict[str, str]) -> None:
+        lines: List[str] = []
+        if os.path.isfile(path):
+            with open(path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+        written_keys: set = set()
+        new_lines: List[str] = []
+        for line in lines:
+            stripped = line.strip()
+            if stripped and not stripped.startswith("#") and "=" in stripped:
+                key = stripped.partition("=")[0].strip()
+                if key in config:
+                    new_lines.append(f"{key}={config[key]}\n")
+                    written_keys.add(key)
+                else:
+                    new_lines.append(line if line.endswith("\n") else line + "\n")
+            else:
+                new_lines.append(line if line.endswith("\n") else line + "\n")
+        for key, value in config.items():
+            if key not in written_keys:
+                new_lines.append(f"{key}={value}\n")
+        with open(path, "w", encoding="utf-8") as f:
+            f.writelines(new_lines)
+
+    def _read_json_config(path: str) -> Dict[str, Any]:
+        for enc in ("utf-8-sig", "utf-8", "gbk", "latin-1"):
+            try:
+                with open(path, "r", encoding=enc) as f:
+                    return json.load(f)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                continue
+        return {}
+
+    def _write_json_config_safe(path: str, config: Dict[str, Any]) -> None:
+        import shutil
+        import tempfile
+        if os.path.isfile(path):
+            shutil.copy2(path, path + ".bak")
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(config, f, indent=4, ensure_ascii=False)
+            os.replace(tmp, path)
+        except Exception:
+            if os.path.exists(tmp):
+                os.remove(tmp)
+            raise
+
+    def _save_channel_mappings(name: str, mappings: Dict[str, str]) -> None:
+        cs = get_channel_supervisor()
+        cfg = cs._configs.get(name)
+        if cfg:
+            cfg.config_mappings = mappings
+        try:
+            with open(_CHANNELS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            ch = data.get("channels", {}).get(name)
+            if ch is not None:
+                ch["config_mappings"] = mappings
+                with open(_CHANNELS_FILE, "w", encoding="utf-8") as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
+
+    def _propagate_channel_mapping(name: str) -> None:
+        cs = get_channel_supervisor()
+        cfg = cs._configs.get(name)
+        if not cfg or not cfg.config_mappings:
+            return
+        path, fmt = _find_channel_config_path(name)
+        if not path or fmt != "json":
+            return
+        cm = get_config_manager()
+        try:
+            full = _read_json_config(path)
+            changed = False
+            for key, mapping in cfg.config_mappings.items():
+                resolved = cm.resolve_variables(mapping)
+                if full.get(key) != resolved:
+                    full[key] = resolved
+                    changed = True
+            if changed:
+                _write_json_config_safe(path, full)
+        except Exception:
+            pass
+
+    def _propagate_all_mappings() -> None:
+        cs = get_channel_supervisor()
+        for name in cs._configs:
+            _propagate_channel_mapping(name)
+
+    @app.get("/admin/api/channels/{name}/config")
+    async def get_channel_config(name: str):
+        path, fmt = _find_channel_config_path(name)
+        if not path:
+            raise HTTPException(404, f"no config file found for channel '{name}'")
+        try:
+            if fmt == "json":
+                config = _read_json_config(path)
+                if not config:
+                    raise HTTPException(500, "cannot decode config file")
+            else:
+                config = _read_dotenv(path)
+                prod_path = os.path.join(os.path.dirname(path), ".env.prod")
+                if os.path.isfile(prod_path):
+                    config.update(_read_dotenv(prod_path))
+            cm = get_config_manager()
+            cs = get_channel_supervisor()
+            cfg = cs._configs.get(name)
+            mappings = cfg.config_mappings if cfg else {}
+            display_config = dict(config)
+            for key, mapping in mappings.items():
+                expected = cm.resolve_variables(mapping)
+                actual = config.get(key)
+                if actual is not None and str(actual) == str(expected):
+                    display_config[key] = mapping
+            resolved = {}
+            for k, v in display_config.items():
+                resolved[k] = cm.resolve_variables(str(v)) if isinstance(v, str) else v
+            return {"format": fmt, "config": display_config, "resolved": resolved}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(500, str(e))
+
+    @app.put("/admin/api/channels/{name}/config")
+    async def set_channel_config(name: str, body: Dict[str, Any]):
+        path, fmt = _find_channel_config_path(name)
+        if not path:
+            raise HTTPException(404, f"no config file found for channel '{name}'")
+        config = body.get("config", {})
+        cm = get_config_manager()
+        resolved_config = {}
+        new_mappings: Dict[str, str] = {}
+        for k, v in config.items():
+            sv = str(v) if v is not None else ""
+            if "${" in sv:
+                new_mappings[k] = sv
+                resolved_config[k] = cm.resolve_variables(sv)
+            else:
+                resolved_config[k] = sv
+        try:
+            if fmt == "json":
+                existing = _read_json_config(path)
+                existing.update(resolved_config)
+                _write_json_config_safe(path, existing)
+                cs = get_channel_supervisor()
+                cfg = cs._configs.get(name)
+                if cfg:
+                    updated_mappings = dict(cfg.config_mappings)
+                    for k in config:
+                        if k in new_mappings:
+                            updated_mappings[k] = new_mappings[k]
+                        elif k in updated_mappings:
+                            del updated_mappings[k]
+                    _save_channel_mappings(name, updated_mappings)
+            else:
+                env_keys = set(_read_dotenv(path).keys())
+                prod_path = os.path.join(os.path.dirname(path), ".env.prod")
+                prod_keys = set(_read_dotenv(prod_path).keys()) if os.path.isfile(prod_path) else set()
+                env_part = {k: str(v) for k, v in resolved_config.items() if k not in prod_keys}
+                prod_part = {k: str(v) for k, v in resolved_config.items() if k in prod_keys}
+                if env_part:
+                    _write_dotenv(path, env_part)
+                if prod_part and os.path.isfile(prod_path):
+                    _write_dotenv(prod_path, prod_part)
+            return {"ok": True, "name": name}
+        except Exception as e:
+            raise HTTPException(500, str(e))

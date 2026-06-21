@@ -1,4 +1,5 @@
 import base64
+import os
 import random
 import re
 import subprocess
@@ -9,6 +10,8 @@ from playwright.async_api import async_playwright, Browser
 import playwright
 import time
 import asyncio
+
+_CHROME_DEBUG_PORT = os.environ.get("CHROME_DEBUG_PORT", "9222")
 
 # 访问网页前，请保证你有装Chrome
 # 打开终端（cmd、PowerShell 或 Terminal），执行以下命令（根据你的系统选择）：
@@ -45,7 +48,7 @@ def _launch_debug_chrome():
     cmd = [
         chrome_path,
         f"--user-data-dir={user_data_dir}",
-        "--remote-debugging-port=9222",
+        f"--remote-debugging-port={_CHROME_DEBUG_PORT}",
         "--remote-allow-origins=*",
         "--noerrdialogs",
         "--disable-session-crashed-bubble",   # 禁用恢复弹窗
@@ -73,14 +76,14 @@ async def _get_browser() -> Browser:
 
     # 尝试连接到已存在的调试浏览器
     try:
-        _browser = await _playwright.chromium.connect_over_cdp("http://localhost:9222")
+        _browser = await _playwright.chromium.connect_over_cdp(f"http://localhost:{_CHROME_DEBUG_PORT}")
         print("连接到已存在的 Chrome 调试实例")
         return _browser
     except:
         # 连接失败，启动新的浏览器实例
         print("未检测到 Chrome 调试实例，正在启动...")
         _launch_debug_chrome()
-        _browser = await _playwright.chromium.connect_over_cdp("http://localhost:9222")
+        _browser = await _playwright.chromium.connect_over_cdp(f"http://localhost:{_CHROME_DEBUG_PORT}")
         print("新 Chrome 调试实例已启动并连接")
         return _browser
 

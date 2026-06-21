@@ -214,7 +214,6 @@ function saveParams() {
     maxTokens: maxTokensStr.value,
     enableThinking: enableThinking.value,
     onEmbedding: onEmbedding.value,
-    identity: identity.value,
   }))
 }
 
@@ -228,9 +227,30 @@ function loadParams() {
       if (p.maxTokens !== undefined) maxTokensStr.value = p.maxTokens
       if (p.enableThinking !== undefined) enableThinking.value = p.enableThinking
       if (p.onEmbedding !== undefined) onEmbedding.value = p.onEmbedding
-      if (p.identity !== undefined) identity.value = p.identity
     }
   } catch {}
+}
+
+async function loadIdentity() {
+  try {
+    const res = await fetch('/admin/api/identity')
+    const data = await res.json()
+    if (data.identity) identity.value = data.identity
+  } catch {}
+}
+
+let _identitySaveTimer: ReturnType<typeof setTimeout> | null = null
+function saveIdentityDebounced() {
+  if (_identitySaveTimer) clearTimeout(_identitySaveTimer)
+  _identitySaveTimer = setTimeout(async () => {
+    try {
+      await fetch('/admin/api/identity', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identity: identity.value }),
+      })
+    } catch {}
+  }, 500)
 }
 
 function generateId(): string {
@@ -573,13 +593,16 @@ watch(
 )
 
 watch(
-  [temperature, topP, maxTokensStr, enableThinking, onEmbedding, identity],
+  [temperature, topP, maxTokensStr, enableThinking, onEmbedding],
   () => saveParams(),
   { deep: true }
 )
 
+watch(identity, () => saveIdentityDebounced())
+
 onMounted(() => {
   loadParams()
+  loadIdentity()
   fetchCharacters()
 })
 </script>

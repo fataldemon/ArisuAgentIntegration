@@ -1,13 +1,14 @@
 import base64
 import datetime
 import json
+import os
 from nonebot import on_command, on_message
 from nonebot.adapters.onebot.v11.event import MessageEvent
 import requests
 from src.dao.user import query_user
 from src.dao.status import master_id, bot_id
 
-ocr_url = "http://127.0.0.1:12345/func/ocr"
+ocr_url = os.environ.get("OCR_URL", "http://127.0.0.1:12345/func/ocr")
 glm_url = "https://open.bigmodel.cn/api/paas/v4/chat/completions"
 glm_key = ""
 img_url_buffer = {}

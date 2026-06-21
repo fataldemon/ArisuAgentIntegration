@@ -24,6 +24,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import shutil
 import tempfile
 from copy import deepcopy
@@ -36,6 +37,8 @@ PROVIDERS_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "providers.example.json")
 MCP_FILE = os.path.join(CONFIG_DIR, "mcp_servers.json")
 MCP_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "mcp_servers.example.json")
 EXPRESSION_FILE = os.path.join(CONFIG_DIR, "expression.json")
+GLOBALS_FILE = os.path.join(CONFIG_DIR, "globals.json")
+GLOBALS_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "globals.example.json")
 
 
 # ----------------------------------------------------------------------------
@@ -219,6 +222,7 @@ class ConfigManager:
         self._providers: Dict[str, ProviderConfig] = {}
         self._active_provider: str = ""
         self._active_character: str = ""
+        self._globals: Dict[str, Dict[str, Any]] = {}
         self._mcp_servers: Dict[str, MCPServerConfig] = {}
         self._mcp_tool_call_mode: str = "passthrough"
         self._mcp_tool_call_timeout: float = 30.0
@@ -230,6 +234,7 @@ class ConfigManager:
         self._reload_providers_sync()
         self._reload_mcp_sync()
         self._reload_expression_sync()
+        self._reload_globals_sync()
 
     # ----- providers ---------------------------------------------------------
 
@@ -409,6 +414,75 @@ class ConfigManager:
                 "providers": {name: p.to_dict() for name, p in self._providers.items()},
             }
             _atomic_write_json(PROVIDERS_FILE, data)
+
+
+    # ----- identity (backed by globals) --------------------------------------
+
+    def get_identity(self) -> str:
+        v = self._globals.get("IDENTITY", {})
+        return v.get("value", "")
+
+    async def set_identity(self, identity: str) -> None:
+        async with self._lock:
+            if "IDENTITY" not in self._globals:
+                self._globals["IDENTITY"] = {"value": "", "sensitive": False, "description": "用户身份"}
+            self._globals["IDENTITY"]["value"] = identity
+            self._dump_globals_sync()
+
+
+    # ----- globals -----------------------------------------------------------
+
+    def _reload_globals_sync(self) -> None:
+        _ensure_file_from_example(GLOBALS_FILE, GLOBALS_EXAMPLE_FILE)
+        if not os.path.exists(GLOBALS_FILE):
+            self._globals = {}
+            return
+        try:
+            with open(GLOBALS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self._globals = data.get("variables", {})
+        except Exception:
+            self._globals = {}
+
+    def _dump_globals_sync(self) -> None:
+        _atomic_write_json(GLOBALS_FILE, {"variables": self._globals})
+
+    def _auto_endpoints(self) -> Dict[str, str]:
+        host = os.environ.get("HOST", "127.0.0.1")
+        port = os.environ.get("PORT", "8000")
+        base = f"http://{host}:{port}"
+        ws = f"ws://{host}:{port}"
+        return {
+            "AI_CORE_URL": base,
+            "CHAT_ENDPOINT": f"{base}/v1/chat/completions",
+            "ASSISTANT_ENDPOINT": f"{base}/assistant/v1/chat/completions",
+            "WS_ENDPOINT": f"{ws}/ws/binary",
+            "ADMIN_URL": f"{base}/admin",
+        }
+
+    def get_all_globals(self) -> Dict[str, Any]:
+        endpoints = {
+            k: {"value": v, "sensitive": False, "readonly": True}
+            for k, v in self._auto_endpoints().items()
+        }
+        return {"endpoints": endpoints, "variables": deepcopy(self._globals)}
+
+    def get_globals_flat(self) -> Dict[str, str]:
+        result = dict(self._auto_endpoints())
+        for name, info in self._globals.items():
+            result[name] = str(info.get("value", ""))
+        return result
+
+    async def set_globals(self, variables: Dict[str, Dict[str, Any]]) -> None:
+        async with self._lock:
+            self._globals = variables
+            self._dump_globals_sync()
+
+    def resolve_variables(self, text: str) -> str:
+        flat = self.get_globals_flat()
+        def _replacer(m):
+            return flat.get(m.group(1), m.group(0))
+        return re.sub(r'\$\{(\w+)\}', _replacer, str(text))
 
 
     # ----- expression format -------------------------------------------------

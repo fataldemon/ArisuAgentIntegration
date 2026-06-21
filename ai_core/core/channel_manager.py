@@ -68,6 +68,8 @@ class ChannelConfig:
     restart_on_crash: bool = True
     restart_delay: int = 3
     platforms: List[str] = field(default_factory=list)
+    config_file: str = ""
+    config_mappings: Dict[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_dict(cls, name: str, data: Dict[str, Any]) -> "ChannelConfig":
@@ -82,6 +84,8 @@ class ChannelConfig:
             restart_on_crash=bool(data.get("restart_on_crash", True)),
             restart_delay=int(data.get("restart_delay", 3)),
             platforms=[str(p) for p in data.get("platforms", [])],
+            config_file=str(data.get("config_file", "")),
+            config_mappings={str(k): str(v) for k, v in data.get("config_mappings", {}).items()},
         )
 
     def resolve_cwd(self) -> str:
@@ -217,6 +221,23 @@ class ChannelSupervisor:
             env["PATH"] = scripts_path + os.pathsep + env.get("PATH", "")
             env["VIRTUAL_ENV"] = venv_dir
             LOG.info("Channel %s: using venv %s", name, venv_dir)
+
+        try:
+            from core.config_manager import get_config_manager
+            cm = get_config_manager()
+            for env_name in (".env", ".env.prod"):
+                env_file = os.path.join(cwd, env_name) if cwd else None
+                if env_file and os.path.isfile(env_file):
+                    with open(env_file, "r", encoding="utf-8") as _f:
+                        for _line in _f:
+                            _line = _line.strip()
+                            if not _line or _line.startswith("#") or "=" not in _line:
+                                continue
+                            _k, _, _v = _line.partition("=")
+                            _resolved = cm.resolve_variables(_v.strip())
+                            env[_k.strip()] = _resolved
+        except Exception as _e:
+            LOG.warning("Channel %s: variable resolution failed: %r", name, _e)
 
         log_file = open(log_path, "a", encoding="utf-8")
         header = f"\n{'='*60}\n[{datetime.now(timezone.utc).isoformat()}] Channel '{name}' started\n{'='*60}\n"
