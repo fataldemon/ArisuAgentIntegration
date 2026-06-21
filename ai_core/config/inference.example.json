@@ -1,0 +1,22 @@
+{
+  "chat": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "repetition_penalty": 1.05,
+    "presence_penalty": 1.1,
+    "enable_thinking": true,
+    "on_embedding": true
+  },
+  "assistant": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "repetition_penalty": 1.05,
+    "presence_penalty": 1.1,
+    "enable_thinking": true,
+    "on_embedding": true
+  },
+  "max_history": 40,
+  "max_tool_rounds": 6
+}

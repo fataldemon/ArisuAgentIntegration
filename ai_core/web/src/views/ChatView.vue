@@ -153,6 +153,25 @@
         </div>
 
         <div class="param-item">
+          <label class="param-label">{{ $t('inference.topK') }} <HelpTip>Top-k 采样参数</HelpTip></label>
+          <n-input v-model:value="topKStr" placeholder="20" size="small" />
+        </div>
+
+        <div class="param-item">
+          <label class="param-label">{{ $t('inference.repetitionPenalty') }} <HelpTip>重复惩罚系数</HelpTip></label>
+          <n-input v-model:value="repetitionPenaltyStr" placeholder="1.05" size="small" />
+        </div>
+
+        <div class="param-item">
+          <label class="param-label">{{ $t('inference.presencePenalty') }} <HelpTip>存在惩罚系数</HelpTip></label>
+          <n-input v-model:value="presencePenaltyStr" placeholder="1.1" size="small" />
+        </div>
+
+        <div class="param-item">
+          <n-button type="info" block @click="saveToGlobal">{{ $t('inference.saveToGlobal') }}</n-button>
+        </div>
+
+        <div class="param-item">
           <n-button type="error" block @click="clearHistory">{{ $t('chat.clearHistory') }}</n-button>
         </div>
       </n-card>
@@ -173,11 +192,14 @@ import {
   NCollapseItem,
   NSpin,
   NTag,
+  useMessage,
 } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import HelpTip from '../components/HelpTip.vue'
+import { inferenceApi } from '../api/inference'
 
 const { t } = useI18n()
+const message = useMessage()
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -200,35 +222,60 @@ const characterOptions = ref<Array<{ label: string; value: string }>>([])
 const character = ref('')
 const temperature = ref(0.6)
 const topP = ref(0.95)
+const topK = ref(20)
+const repetitionPenalty = ref(1.05)
+const presencePenalty = ref(1.1)
 const maxTokensStr = ref('15000')
 const enableThinking = ref(true)
 const onEmbedding = ref(true)
 const identity = ref('老师')
+
+const topKStr = computed({
+  get: () => String(topK.value),
+  set: (v: string) => { topK.value = Number(v) || 0 },
+})
+const repetitionPenaltyStr = computed({
+  get: () => String(repetitionPenalty.value),
+  set: (v: string) => { repetitionPenalty.value = Number(v) || 0 },
+})
+const presencePenaltyStr = computed({
+  get: () => String(presencePenalty.value),
+  set: (v: string) => { presencePenalty.value = Number(v) || 0 },
+})
 const abortController = ref<AbortController | null>(null)
 const currentAbortId = ref('')
 
-function saveParams() {
-  localStorage.setItem('arisu-chat-params', JSON.stringify({
-    temperature: temperature.value,
-    topP: topP.value,
-    maxTokens: maxTokensStr.value,
-    enableThinking: enableThinking.value,
-    onEmbedding: onEmbedding.value,
-  }))
+async function loadInferenceParams() {
+  try {
+    const data = await inferenceApi.get()
+    const chatParams = data.chat || {}
+    if (chatParams.temperature !== undefined) temperature.value = chatParams.temperature
+    if (chatParams.top_p !== undefined) topP.value = chatParams.top_p
+    if (chatParams.top_k !== undefined) topK.value = chatParams.top_k
+    if (chatParams.repetition_penalty !== undefined) repetitionPenalty.value = chatParams.repetition_penalty
+    if (chatParams.presence_penalty !== undefined) presencePenalty.value = chatParams.presence_penalty
+    if (chatParams.enable_thinking !== undefined) enableThinking.value = chatParams.enable_thinking
+    if (chatParams.on_embedding !== undefined) onEmbedding.value = chatParams.on_embedding
+  } catch {}
 }
 
-function loadParams() {
+async function saveToGlobal() {
   try {
-    const raw = localStorage.getItem('arisu-chat-params')
-    if (raw) {
-      const p = JSON.parse(raw)
-      if (p.temperature !== undefined) temperature.value = p.temperature
-      if (p.topP !== undefined) topP.value = p.topP
-      if (p.maxTokens !== undefined) maxTokensStr.value = p.maxTokens
-      if (p.enableThinking !== undefined) enableThinking.value = p.enableThinking
-      if (p.onEmbedding !== undefined) onEmbedding.value = p.onEmbedding
+    const current = await inferenceApi.get()
+    current.chat = {
+      temperature: temperature.value,
+      top_p: topP.value,
+      top_k: Number(topK.value) || 20,
+      repetition_penalty: Number(repetitionPenalty.value) || 1.05,
+      presence_penalty: Number(presencePenalty.value) || 1.1,
+      enable_thinking: enableThinking.value,
+      on_embedding: onEmbedding.value,
     }
-  } catch {}
+    await inferenceApi.save(current)
+    message.success(t('inference.saved'))
+  } catch (e: any) {
+    message.error(e?.message || 'Failed to save')
+  }
 }
 
 async function loadIdentity() {
@@ -492,6 +539,9 @@ async function sendMessage() {
         stream: true,
         temperature: temperature.value,
         top_p: topP.value,
+        top_k: topK.value ? Number(topK.value) : undefined,
+        repetition_penalty: repetitionPenalty.value ? Number(repetitionPenalty.value) : undefined,
+        presence_penalty: presencePenalty.value ? Number(presencePenalty.value) : undefined,
         max_tokens: parseInt(maxTokensStr.value) || 15000,
         on_embedding: onEmbedding.value,
         enable_thinking: enableThinking.value,
@@ -592,16 +642,10 @@ watch(
   () => scrollToBottom()
 )
 
-watch(
-  [temperature, topP, maxTokensStr, enableThinking, onEmbedding],
-  () => saveParams(),
-  { deep: true }
-)
-
 watch(identity, () => saveIdentityDebounced())
 
 onMounted(() => {
-  loadParams()
+  loadInferenceParams()
   loadIdentity()
   fetchCharacters()
 })

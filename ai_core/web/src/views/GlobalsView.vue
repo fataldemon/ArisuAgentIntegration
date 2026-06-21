@@ -17,6 +17,59 @@
       </div>
     </n-card>
 
+    <n-card :title="$t('inference.title')" :bordered="true">
+      <n-text depth="3" style="display: block; margin-bottom: 16px">
+        {{ $t('inference.desc') }}
+      </n-text>
+
+      <n-grid :cols="2" :x-gap="24" :y-gap="0">
+        <n-gi v-for="mode in (['chat', 'assistant'] as const)" :key="mode">
+          <n-card
+            :title="mode === 'chat' ? $t('inference.chatParams') : $t('inference.assistantParams')"
+            size="small"
+            style="margin-bottom: 16px"
+          >
+            <div class="param-grid">
+              <n-text>{{ $t('inference.temperature') }}: {{ inference[mode].temperature.toFixed(2) }}</n-text>
+              <n-slider v-model:value="inference[mode].temperature" :min="0" :max="2" :step="0.01" />
+
+              <n-text>{{ $t('inference.topP') }}: {{ inference[mode].top_p.toFixed(2) }}</n-text>
+              <n-slider v-model:value="inference[mode].top_p" :min="0" :max="1" :step="0.01" />
+
+              <n-text>{{ $t('inference.topK') }}</n-text>
+              <n-input-number v-model:value="inference[mode].top_k" :min="0" size="small" style="width: 100%" />
+
+              <n-text>{{ $t('inference.repetitionPenalty') }}</n-text>
+              <n-input-number v-model:value="inference[mode].repetition_penalty" :min="0" :step="0.01" size="small" style="width: 100%" />
+
+              <n-text>{{ $t('inference.presencePenalty') }}</n-text>
+              <n-input-number v-model:value="inference[mode].presence_penalty" :min="0" :step="0.01" size="small" style="width: 100%" />
+
+              <n-text>{{ $t('inference.enableThinking') }}</n-text>
+              <n-switch v-model:value="inference[mode].enable_thinking" />
+
+              <n-text>{{ $t('inference.onEmbedding') }}</n-text>
+              <n-switch v-model:value="inference[mode].on_embedding" />
+            </div>
+          </n-card>
+        </n-gi>
+      </n-grid>
+
+      <n-card :title="$t('inference.globalParams')" size="small" style="margin-bottom: 16px">
+        <div class="param-grid">
+          <n-text>{{ $t('inference.maxHistory') }}</n-text>
+          <n-input-number v-model:value="inference.max_history" :min="1" size="small" style="width: 200px" />
+
+          <n-text>{{ $t('inference.maxToolRounds') }}</n-text>
+          <n-input-number v-model:value="inference.max_tool_rounds" :min="1" :max="20" size="small" style="width: 200px" />
+        </div>
+      </n-card>
+
+      <n-button type="primary" @click="saveInference" :loading="savingInference">
+        {{ $t('inference.save') }}
+      </n-button>
+    </n-card>
+
     <n-card :title="$t('globals.sharedVars')" :bordered="true">
       <n-text depth="3" style="display: block; margin-bottom: 12px">
         {{ $t('globals.sharedVarsDesc') }}
@@ -68,12 +121,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import {
-  NSpace, NCard, NInput, NSwitch, NButton, NText, NDivider, useMessage,
+  NSpace, NCard, NInput, NSwitch, NButton, NText, NDivider,
+  NSlider, NInputNumber, NGrid, NGi, useMessage,
 } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { globalsApi } from '../api/globals'
+import { inferenceApi } from '../api/inference'
 
 interface GlobalVar {
   name: string
@@ -93,6 +148,7 @@ const ENDPOINT_NAMES = [
   'ASSISTANT_ENDPOINT',
   'WS_ENDPOINT',
   'ADMIN_URL',
+  'DB_URL',
 ]
 
 const { t } = useI18n()
@@ -100,6 +156,30 @@ const message = useMessage()
 const variables = ref<GlobalVar[]>([])
 const endpointList = ref<EndpointEntry[]>([])
 const saving = ref(false)
+const savingInference = ref(false)
+
+const inference = reactive({
+  chat: {
+    temperature: 0.6,
+    top_p: 0.95,
+    top_k: 20,
+    repetition_penalty: 1.05,
+    presence_penalty: 1.1,
+    enable_thinking: true,
+    on_embedding: true,
+  },
+  assistant: {
+    temperature: 0.6,
+    top_p: 0.95,
+    top_k: 20,
+    repetition_penalty: 1.05,
+    presence_penalty: 1.1,
+    enable_thinking: true,
+    on_embedding: true,
+  },
+  max_history: 40,
+  max_tool_rounds: 6,
+})
 
 async function fetchData() {
   try {
@@ -124,6 +204,33 @@ async function fetchData() {
     }
   } catch (e: any) {
     message.error(e?.message || 'Failed to load globals')
+  }
+}
+
+async function loadInference() {
+  try {
+    const data = await inferenceApi.get()
+    if (data.chat) Object.assign(inference.chat, data.chat)
+    if (data.assistant) Object.assign(inference.assistant, data.assistant)
+    if (data.max_history !== undefined) inference.max_history = data.max_history
+    if (data.max_tool_rounds !== undefined) inference.max_tool_rounds = data.max_tool_rounds
+  } catch {}
+}
+
+async function saveInference() {
+  savingInference.value = true
+  try {
+    await inferenceApi.save({
+      chat: { ...inference.chat },
+      assistant: { ...inference.assistant },
+      max_history: inference.max_history,
+      max_tool_rounds: inference.max_tool_rounds,
+    })
+    message.success(t('inference.saved'))
+  } catch (e: any) {
+    message.error(e?.message || 'Failed to save')
+  } finally {
+    savingInference.value = false
   }
 }
 
@@ -158,7 +265,10 @@ async function handleSave() {
   }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  fetchData()
+  loadInference()
+})
 </script>
 
 <style scoped>
@@ -190,5 +300,12 @@ onMounted(fetchData)
   align-items: center;
   gap: 10px;
   flex-wrap: nowrap;
+}
+
+.param-grid {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  align-items: center;
+  gap: 10px 16px;
 }
 </style>

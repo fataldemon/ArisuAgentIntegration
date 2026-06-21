@@ -39,6 +39,31 @@ MCP_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "mcp_servers.example.json")
 EXPRESSION_FILE = os.path.join(CONFIG_DIR, "expression.json")
 GLOBALS_FILE = os.path.join(CONFIG_DIR, "globals.json")
 GLOBALS_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "globals.example.json")
+INFERENCE_FILE = os.path.join(CONFIG_DIR, "inference.json")
+INFERENCE_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "inference.example.json")
+
+_DEFAULT_INFERENCE = {
+    "chat": {
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 20,
+        "repetition_penalty": 1.05,
+        "presence_penalty": 1.1,
+        "enable_thinking": True,
+        "on_embedding": True,
+    },
+    "assistant": {
+        "temperature": 0.6,
+        "top_p": 0.95,
+        "top_k": 20,
+        "repetition_penalty": 1.05,
+        "presence_penalty": 1.1,
+        "enable_thinking": True,
+        "on_embedding": True,
+    },
+    "max_history": 40,
+    "max_tool_rounds": 6,
+}
 
 
 # ----------------------------------------------------------------------------
@@ -223,6 +248,7 @@ class ConfigManager:
         self._active_provider: str = ""
         self._active_character: str = ""
         self._globals: Dict[str, Dict[str, Any]] = {}
+        self._inference: Dict[str, Any] = dict(_DEFAULT_INFERENCE)
         self._mcp_servers: Dict[str, MCPServerConfig] = {}
         self._mcp_tool_call_mode: str = "passthrough"
         self._mcp_tool_call_timeout: float = 30.0
@@ -235,6 +261,7 @@ class ConfigManager:
         self._reload_mcp_sync()
         self._reload_expression_sync()
         self._reload_globals_sync()
+        self._reload_inference_sync()
 
     # ----- providers ---------------------------------------------------------
 
@@ -514,6 +541,35 @@ class ConfigManager:
             )
             self._dump_expression_sync()
             return deepcopy(self._expression_config)
+
+
+    # ----- inference params --------------------------------------------------
+
+    def _reload_inference_sync(self) -> None:
+        _ensure_file_from_example(INFERENCE_FILE, INFERENCE_EXAMPLE_FILE)
+        if not os.path.exists(INFERENCE_FILE):
+            self._inference = dict(_DEFAULT_INFERENCE)
+            return
+        try:
+            with open(INFERENCE_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            merged = dict(_DEFAULT_INFERENCE)
+            merged.update(data)
+            self._inference = merged
+        except Exception:
+            self._inference = dict(_DEFAULT_INFERENCE)
+
+    def _dump_inference_sync(self) -> None:
+        _atomic_write_json(INFERENCE_FILE, self._inference)
+
+    def get_inference_config(self) -> Dict[str, Any]:
+        return deepcopy(self._inference)
+
+    async def set_inference_config(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        async with self._lock:
+            self._inference.update(config)
+            self._dump_inference_sync()
+            return deepcopy(self._inference)
 
 
 _singleton: Optional[ConfigManager] = None

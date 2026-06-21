@@ -546,6 +546,17 @@ def register_admin_routes(app: FastAPI) -> None:
     async def get_globals_flat():
         return {"variables": get_config_manager().get_globals_flat()}
 
+    # ------------------- inference params -------------------
+
+    @app.get("/admin/api/inference")
+    async def get_inference():
+        return get_config_manager().get_inference_config()
+
+    @app.put("/admin/api/inference")
+    async def set_inference(body: Dict[str, Any]):
+        result = await get_config_manager().set_inference_config(body)
+        return result
+
     # ------------------- channel config -------------------
 
     _CHANNELS_FILE = os.path.join(

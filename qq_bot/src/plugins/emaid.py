@@ -162,12 +162,7 @@ def getLLM(group_id: str) -> ChatGLM:
         # llm = Qwen(temperature=0.93, top_p=0.7, top_k=20, max_history=30, repetition_penalty=1.05)
         llm = Qwen(
             group_id=group_id,
-            temperature=0.6,
-            top_p=0.95,
-            top_k=20,
             max_history=40,
-            repetition_penalty=1.05,
-            presence_penalty=1.1,
             enable_thinking=True
         )
         llm_list[group_id] = llm

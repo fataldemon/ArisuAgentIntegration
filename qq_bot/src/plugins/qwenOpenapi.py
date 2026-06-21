@@ -271,17 +271,9 @@ class Qwen(LLM):
             "on_embedding": True,
             "enable_thinking": self.enable_thinking,
             "embeddings_buffer": self.embedding_buffer,
-            "temperature": self.temperature,
-            "top_p": self.top_p,
             "request_id": request_id,
             "stream": False,
         }
-        if self.repetition_penalty is not None:
-            query["repetition_penalty"] = self.repetition_penalty
-        if self.presence_penalty is not None:
-            query["presence_penalty"] = self.presence_penalty
-        if self.top_k is not None:
-            query["top_k"] = self.top_k
         if abort_id:
             query["abort_id"] = abort_id
         return query
@@ -364,8 +356,6 @@ class Qwen(LLM):
             "model": "gpt-3.5-turbo",
             "messages": messages,
             "embeddings": embedding,
-            "temperature": 0.6,
-            "top_p": 0.95,
             "stream": False,
             "type": type_id
         }

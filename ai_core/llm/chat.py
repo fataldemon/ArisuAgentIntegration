@@ -138,12 +138,16 @@ def truncate_vllm_request_log() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _sampling_from_request(req: ChatCompletionRequest, max_tokens: int) -> Dict[str, Any]:
+def _sampling_from_request(req: ChatCompletionRequest, max_tokens: int, mode: str = "chat") -> Dict[str, Any]:
+    inference = get_config_manager().get_inference_config()
+    mode_params = inference.get(mode, inference.get("chat", {}))
     s: Dict[str, Any] = {"max_tokens": max_tokens}
     for k in ("temperature", "top_p", "top_k", "presence_penalty", "repetition_penalty"):
         v = getattr(req, k, None)
         if v is not None:
             s[k] = v
+        elif isinstance(mode_params, dict) and k in mode_params and mode_params[k] is not None:
+            s[k] = mode_params[k]
     if req.stop:
         s["stop"] = req.stop
     return s
@@ -509,7 +513,7 @@ async def chat(
     try:
         result = await backend.generate(
             messages=messages,
-            sampling=_sampling_from_request(request, max_tokens),
+            sampling=_sampling_from_request(request, max_tokens, mode="assistant"),
             tools=tools,
             request_id=request_id,
             extra_body=extra_body,
@@ -527,7 +531,7 @@ async def chat(
             "type": "assistant",
             "request": {
                 "messages": messages,
-                "sampling": _sampling_from_request(request, max_tokens),
+                "sampling": _sampling_from_request(request, max_tokens, mode="assistant"),
                 "tools": tools,
                 "extra_body": extra_body,
             },
