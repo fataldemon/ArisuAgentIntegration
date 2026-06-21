@@ -121,9 +121,21 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Eager singletons -- catches obvious config errors on boot.
-    get_config_manager()
+    cm = get_config_manager()
     get_skill_manager()
     persona_manager = get_persona_manager()
+    try:
+        import sys as _sys
+        _db_init_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "db"))
+        if _db_init_dir not in _sys.path:
+            _sys.path.insert(0, _db_init_dir)
+        from init_db import init_database
+        _db_url = cm.get_globals_flat().get("DB_URL", "")
+        if _db_url:
+            _result = init_database(_db_url)
+            LOG.info("Database init: %s", _result)
+    except Exception as e:
+        LOG.warning("Database init failed: %r", e)
     # Seed the legacy "Tendou Arisu" persona on first boot of an
     # upgraded deployment so existing front-ends keep getting the same
     # character behaviour without manual file authoring. Idempotent.

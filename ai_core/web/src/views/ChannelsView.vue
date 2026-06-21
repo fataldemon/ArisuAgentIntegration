@@ -204,6 +204,8 @@ const channelFieldDefs: Record<string, Array<{ key: string; label: string; passw
   ],
   unity: [
     { key: 'websocketUrl', label: 'channels.websocketUrl' },
+    { key: 'translationAppId', label: 'channels.baiduAppid', password: true },
+    { key: 'translationKey', label: 'channels.baiduApikey', password: true },
     { key: 'msgMaxWidth', label: 'channels.bubbleWidth' },
     { key: 'msgHeight', label: 'channels.bubbleHeight' },
   ],

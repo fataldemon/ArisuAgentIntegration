@@ -12,7 +12,10 @@ venv/
 .venv/
 
 # Database
-db/
+db/*.db
+db/*.db-journal
+db/*.db-wal
+db/*.db.bak
 
 # IDE
 .idea/

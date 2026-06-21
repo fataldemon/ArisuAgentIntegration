@@ -1,0 +1,2390 @@
+{
+  "t_field": [
+    {
+      "field_id": 1,
+      "field_name": "基沃托斯",
+      "description": "这里是学园都市基沃托斯。"
+    },
+    {
+      "field_id": 2,
+      "field_name": "未知冒险区域",
+      "description": "未知的冒险区域。"
+    }
+  ],
+  "t_school": [
+    {
+      "school_id": 1,
+      "school_name": "D.U.",
+      "field": 1,
+      "description": "联邦学生会直辖区，简称D.U.。这里是由联邦学生会直接管辖的中央地区，是基沃托斯名副其实的市中心（首都），联邦学生会总部“圣所之塔”、联邦搜查部“沙勒”办公大楼、古圣堂大教堂、瓦尔基里警察学校均坐落在这里。",
+      "default_p": 15
+    },
+    {
+      "school_id": 2,
+      "school_name": "阿拜多斯自治区",
+      "field": 1,
+      "description": "隶属于阿拜多斯高中的自治区。自治区下包括阿拜多斯高中、城市区域和郊外三块区域。",
+      "default_p": 30
+    },
+    {
+      "school_id": 3,
+      "school_name": "歌赫娜自治区",
+      "field": 1,
+      "description": "隶属于歌赫娜学院的自治区。自治区下包括歌赫娜学院、市区和郊外三块区域。",
+      "default_p": 53
+    },
+    {
+      "school_id": 4,
+      "school_name": "千禧年自治区",
+      "field": 1,
+      "description": "隶属于千禧年科技学院的自治区。自治区下包括千禧年科技学院、市区和郊外三块区域。",
+      "default_p": 78
+    },
+    {
+      "school_id": 5,
+      "school_name": "崔尼蒂自治区",
+      "field": 1,
+      "description": "隶属于崔尼蒂综合学院的自治区。自治区下包括崔尼蒂综合学院、市区和郊外三块区域。",
+      "default_p": 105
+    },
+    {
+      "school_id": 6,
+      "school_name": "山海经自治区",
+      "field": 1,
+      "description": "隶属于山海经高级中学的自治区。自治区下包括山海经高级中学、市区和郊外三块区域。",
+      "default_p": 128
+    },
+    {
+      "school_id": 7,
+      "school_name": "百鬼夜行自治区",
+      "field": 1,
+      "description": "隶属于百鬼夜行学园的自治区。自治区下包括百鬼夜行学园、市区和郊外三块区域。",
+      "default_p": 148
+    },
+    {
+      "school_id": 8,
+      "school_name": "红冬自治区",
+      "field": 1,
+      "description": "隶属于红冬联邦学园的自治区。自治区下包括红冬联邦学园、市区和郊外三块区域。",
+      "default_p": 164
+    },
+    {
+      "school_id": 9,
+      "school_name": "瓦尔基里警察学园",
+      "field": 1,
+      "description": "瓦尔基里警察学园总部区域。",
+      "default_p": 175
+    }
+  ],
+  "t_area": [
+    {
+      "area_id": 1,
+      "area_name": "沙勒-办公区",
+      "field": 1,
+      "school": 1,
+      "description": "沙勒大楼内部，老师工作的场所。",
+      "adventure": 0,
+      "default_p": 1
+    },
+    {
+      "area_id": 2,
+      "area_name": "沙勒-生活区",
+      "field": 1,
+      "school": 1,
+      "description": "沙勒大楼内部，老师生活的场所。",
+      "adventure": 0,
+      "default_p": 8
+    },
+    {
+      "area_id": 3,
+      "area_name": "沙勒大楼入口处",
+      "field": 1,
+      "school": 1,
+      "description": "沙勒大楼的入口处。",
+      "adventure": 0,
+      "default_p": 15
+    },
+    {
+      "area_id": 4,
+      "area_name": "阿拜多斯高中",
+      "field": 1,
+      "school": 2,
+      "description": "阿拜多斯高中是一所历史悠久的学校，学校在当地有着很高的名气。但学校所在地方的环境十分恶劣，沙漠化十分严重，常常受到风沙的侵扰，学校不得不花大功夫对被环境损坏的校园进行整修，这使得学校的资金一直处于贫困状态，并没有多少资源对学生培养，也让学校的名望一天不如一天。整个学校的学生也是少得可怜，据说只有五名学生，这五名学生自发成立了对策委员会以应对学校严重的负债问题。",
+      "adventure": 0,
+      "default_p": 22
+    },
+    {
+      "area_id": 5,
+      "area_name": "阿拜多斯市区",
+      "field": 1,
+      "school": 2,
+      "description": "阿拜多斯自治区的市区。",
+      "adventure": 0,
+      "default_p": 29
+    },
+    {
+      "area_id": 6,
+      "area_name": "阿拜多斯郊外",
+      "field": 1,
+      "school": 2,
+      "description": "阿拜多斯自治区的郊外。",
+      "adventure": 1,
+      "default_p": 30
+    },
+    {
+      "area_id": 7,
+      "area_name": "沙漠遗迹",
+      "field": 1,
+      "school": 2,
+      "description": "阿拜多斯郊外遥远处的大沙漠，过去曾经十分繁荣，但现在已经被风沙掩埋。阿拜多斯高中原本的主校区在这里，但因为沙漠化目前已经无法使用。",
+      "adventure": 1,
+      "default_p": 35
+    },
+    {
+      "area_id": 8,
+      "area_name": "歌赫娜学院",
+      "field": 1,
+      "school": 3,
+      "description": "歌赫娜学院（又称为格黑娜学院、格黑娜），位于基沃托斯的东部，与崔妮蒂学院长期保持着敌对关系。整个学院沿山而建，因为地势和地理的关系，整个歌赫娜经常可以看到温泉的泉眼以及各种池塘。目前整个歌赫娜的正式统筹部门有两个，对内的学生会名为万魔殿，对外的执行部门为风纪委员会。",
+      "adventure": 0,
+      "default_p": 38
+    },
+    {
+      "area_id": 9,
+      "area_name": "歌赫娜市区",
+      "field": 1,
+      "school": 3,
+      "description": "歌赫娜自治区的市区。",
+      "adventure": 0,
+      "default_p": 48
+    },
+    {
+      "area_id": 10,
+      "area_name": "歌赫娜郊外",
+      "field": 1,
+      "school": 3,
+      "description": "歌赫娜自治区的郊外。",
+      "adventure": 1,
+      "default_p": 53
+    },
+    {
+      "area_id": 11,
+      "area_name": "希诺姆火山",
+      "field": 1,
+      "school": 3,
+      "description": "位于歌赫娜郊外的一处火山口，是个神秘的地点。",
+      "adventure": 1,
+      "default_p": 54
+    },
+    {
+      "area_id": 12,
+      "area_name": "千禧年科技学院",
+      "field": 1,
+      "school": 4,
+      "description": "千禧年科技学院（又称为千禧年或者千年）是一所高中，历史并不长但是实力强大。学校的校训是“知识、理解和未来”。其学生会名为“研讨会”，由女仆组成的C&C负责维持秩序，工程部也名声在外。正如名字所示，干禧最关注技术，基沃托斯的前沿发明几乎都出自他们之手。学生以理科生居多，不乏醉心学术对现实生活反而不太关心的怪异天才。其辖区内最为出名的是被称为“遗迹”的废土地区，被总学生会长下令封锁后其中的许多秘密就此埋藏。",
+      "adventure": 0,
+      "default_p": 56
+    },
+    {
+      "area_id": 13,
+      "area_name": "千禧年市区",
+      "field": 1,
+      "school": 4,
+      "description": "千禧年自治区的市区。",
+      "adventure": 0,
+      "default_p": 67
+    },
+    {
+      "area_id": 14,
+      "area_name": "千禧年郊外",
+      "field": 1,
+      "school": 4,
+      "description": "千禧年自治区的郊外",
+      "adventure": 1,
+      "default_p": 78
+    },
+    {
+      "area_id": 15,
+      "area_name": "埃里都",
+      "field": 1,
+      "school": 4,
+      "description": "在千禧年的某处，有着学生会长莉音挪用研讨会的预算，秘密建设的“以备终焉的要塞都市”，名为埃里都。",
+      "adventure": 1,
+      "default_p": 80
+    },
+    {
+      "area_id": 16,
+      "area_name": "崔尼蒂综合学院",
+      "field": 1,
+      "school": 5,
+      "description": "崔尼蒂综合学院（又称为圣三一综合学院、圣三一），是一所历史悠久，具有优秀传统和严格规则的大小姐学校，这所学院坐落于基沃托斯的西部。历史上崔尼蒂的这片地区曾经存在很多学校，由于对经典的解读不一导致了长期的纷争。最后，在一次代表和平的茶会之后，这些学校之间联合在了一起，并且随着“第一次公会议”的召开合并成为现在的崔尼蒂综合学院。茶话会是崔尼蒂的学生会，正义实现委员会是听从茶话会指挥的暴力机构。",
+      "adventure": 0,
+      "default_p": 81
+    },
+    {
+      "area_id": 17,
+      "area_name": "崔尼蒂市区",
+      "field": 1,
+      "school": 5,
+      "description": "崔尼蒂自治区的市区。",
+      "adventure": 0,
+      "default_p": 94
+    },
+    {
+      "area_id": 18,
+      "area_name": "崔尼蒂郊外",
+      "field": 1,
+      "school": 5,
+      "description": "崔尼蒂自治区的郊外。",
+      "adventure": 1,
+      "default_p": 105
+    },
+    {
+      "area_id": 19,
+      "area_name": "圣堂遗迹区域",
+      "field": 1,
+      "school": 5,
+      "description": "崔尼蒂自治区内分布着大量历史遗迹，其中有一处地下墓穴，或许隐藏着崔尼蒂过去的秘密。",
+      "adventure": 1,
+      "default_p": 106
+    },
+    {
+      "area_id": 20,
+      "area_name": "山海经高级中学",
+      "field": 1,
+      "school": 6,
+      "description": "山海经高级中学（又叫山海经），山海经拥有悠久的历史和独特的文化传统，在基沃托斯也称得上是颇有特色的学院。你听说那里的美食街是一绝，有很多美食，像是糖葫芦、小笼包、各类糕点……山海经高中自治区里有一座昆仑山，出产珍稀药材。玄龙门是山海经的学生会，贸易社团玄武商会与玄龙门关系长期不和。梅花园是山海经附属的幼儿园。",
+      "adventure": 0,
+      "default_p": 108
+    },
+    {
+      "area_id": 21,
+      "area_name": "山海经市区",
+      "field": 1,
+      "school": 6,
+      "description": "山海经自治区的市区。",
+      "adventure": 0,
+      "default_p": 117
+    },
+    {
+      "area_id": 22,
+      "area_name": "山海经郊外",
+      "field": 1,
+      "school": 6,
+      "description": "山海经自治区的郊外。",
+      "adventure": 1,
+      "default_p": 128
+    },
+    {
+      "area_id": 23,
+      "area_name": "百鬼夜行联合学园",
+      "field": 1,
+      "school": 7,
+      "description": "百鬼夜行联合学园，又叫百鬼夜行学园，以旅游业和服务业为主要特色，有大片旅游资源。因为其由多个社团组成的历史，百鬼夜行没有传统意义上的学生会和暴力机关，也没有统一的制服，而不同社团有自己风格的制服。百花缭乱纷争调停委员会，或者简称为“百花缭乱”是百鬼夜行名义上的执法机构，“阴阳部”是名义上的学生会。百鬼夜行的特色是各式各样的祭典和盛开的樱花。",
+      "adventure": 0,
+      "default_p": 137
+    },
+    {
+      "area_id": 24,
+      "area_name": "百鬼夜行市区",
+      "field": 1,
+      "school": 7,
+      "description": "百鬼夜行自治区的市区",
+      "adventure": 0,
+      "default_p": 145
+    },
+    {
+      "area_id": 25,
+      "area_name": "百鬼夜行郊外",
+      "field": 1,
+      "school": 7,
+      "description": "百鬼夜行自治区的郊外",
+      "adventure": 1,
+      "default_p": 148
+    },
+    {
+      "area_id": 26,
+      "area_name": "红冬联邦学园",
+      "field": 1,
+      "school": 8,
+      "description": "红冬联邦学园（又叫赤冬）位于基沃托斯最北部，是基沃托斯所有学校中占地面积最大的学校，由于地处最北部，所以该学校常年积雪，所以该学校的学生都穿得严严实实。理事会名为“红冬事务局”。因其地处偏僻，联邦理事会的权威很难辐射到此地，所以自治程度要高于一般学院。红冬可以说是“反逆”的代名词，理事会长经常被推翻，街道上也总能看到抗议人群，学员们对此习以为常，并不影响日常生活。",
+      "adventure": 0,
+      "default_p": 149
+    },
+    {
+      "area_id": 27,
+      "area_name": "红冬市区",
+      "field": 1,
+      "school": 8,
+      "description": "红冬自治区的市区。",
+      "adventure": 0,
+      "default_p": 159
+    },
+    {
+      "area_id": 28,
+      "area_name": "红冬郊外",
+      "field": 1,
+      "school": 8,
+      "description": "红冬自治区的郊外。",
+      "adventure": 1,
+      "default_p": 164
+    },
+    {
+      "area_id": 29,
+      "area_name": "冰海",
+      "field": 1,
+      "school": 8,
+      "description": "在红冬的某处，存在与其他学院的遗迹有着相同重要性的“冰海”。这是一个神秘的地点。",
+      "adventure": 1,
+      "default_p": 169
+    },
+    {
+      "area_id": 30,
+      "area_name": "瓦尔基里警察学园",
+      "field": 1,
+      "school": 9,
+      "description": "瓦尔基里警察学园，又称为瓦尔基里或者瓦尔基丽，是位于基沃托斯联邦学生会直辖区D.U.的学校，它的上级组织是联邦学生会的防卫室。瓦尔基里是基沃托斯的警察，名义上负责维护整个基沃托斯的治安，实际上并没有权限在其他学院的自治区采取行动。瓦尔基里警察学园的最精锐部队为“公安局”，由尾刃康娜局长指挥，是瓦尔基里学校最精锐的机关。此外，女武神还有“生活安全局”等其他机关。",
+      "adventure": 0,
+      "default_p": 175
+    },
+    {
+      "area_id": 31,
+      "area_name": "阿里乌斯分校",
+      "field": 1,
+      "school": 5,
+      "description": "阿里乌斯分校是曾经组成今天崔尼蒂的诸多分校的其中一所。在第一次公会议中，阿里乌斯分校反对与其他学校合并，被逐出崔尼蒂成为独立学校。阿里乌斯分校有一支精英特种部队叫做阿里乌斯小队。",
+      "adventure": 1,
+      "default_p": 0
+    },
+    {
+      "area_id": 32,
+      "area_name": "SRT特殊学园（已封锁）",
+      "field": 1,
+      "school": 1,
+      "description": "SRT特殊学园是培养特种部队的学校，由联邦学生会长亲自组建的特殊学园，招收了整个基沃托斯最精锐的学生，并获得了超法规的执法权，可以在任何地区进行取证、调查甚至展开行动，并且只对联邦学生会长本人负责。SRT特殊学园的最好的成绩是FOX小队合力成功逮捕了通缉犯狐坂若藻。但是，在联邦学生会长失踪之后，SRT特殊学园的存续便成了联邦学生会内部的最大的争议之一。最后，联邦学生会决定废除SRT特殊学园。",
+      "adventure": 0,
+      "default_p": 0
+    },
+    {
+      "area_id": 33,
+      "area_name": "白鸟区",
+      "field": 1,
+      "school": 1,
+      "description": "白鸟区是D.U.的城市区域。",
+      "adventure": 0,
+      "default_p": 187
+    },
+    {
+      "area_id": 34,
+      "area_name": "小兔子镇",
+      "field": 1,
+      "school": 1,
+      "description": "小兔子镇是D.U.的一座小镇，这里有一个小兔子公园。",
+      "adventure": 0,
+      "default_p": 184
+    },
+    {
+      "area_id": 35,
+      "area_name": "联邦矫正局",
+      "field": 1,
+      "school": 1,
+      "description": "这里关押着基沃托斯最危险的罪犯。",
+      "adventure": 1,
+      "default_p": 186
+    },
+    {
+      "area_id": 36,
+      "area_name": "D.U.市区",
+      "field": 1,
+      "school": 1,
+      "description": "隶属于联邦学生会管辖的市区。",
+      "adventure": 1,
+      "default_p": 191
+    }
+  ],
+  "t_position": [
+    {
+      "position_id": 1,
+      "position_name": "媒体室",
+      "description": "装有大型屏幕以供欣赏各种视频的多媒体室。可以在这里看各种电视剧、电影和当下流行的动画等作品。",
+      "field": 1,
+      "school": 1,
+      "area": 1,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 2,
+      "position_name": "体育馆",
+      "description": "设有球场和观众席的体育馆。各种体育用品十分齐全。",
+      "field": 1,
+      "school": 1,
+      "area": 1,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 3,
+      "position_name": "图书馆",
+      "description": "图书馆里具备学员们用来阅读和老师工作时所需要的各种书籍。此外，为了照顾一些人的兴趣，也准备了漫画书和轻小说等。",
+      "field": 1,
+      "school": 1,
+      "area": 1,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 4,
+      "position_name": "讲堂",
+      "description": "可供多人同时学习的讲堂。用于学习或者发表个人研究课题。",
+      "field": 1,
+      "school": 1,
+      "area": 1,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 5,
+      "position_name": "实验室",
+      "description": "可以进行简单科学实验的实验室。这里有很多危险的药物和尖锐的器具，所以需要格外注意安全。",
+      "field": 1,
+      "school": 1,
+      "area": 1,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 6,
+      "position_name": "靶场",
+      "description": "可练习射击的靶场，设有多个射击位。为了让所有学院的学员都可以在这里练习射击，这里备有各种类型的弹药。",
+      "field": 1,
+      "school": 1,
+      "area": 1,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 7,
+      "position_name": "机库",
+      "description": "这个机库可容纳坦克、车辆和直升机等战术支援武器。同时也配备了各种维修保养所需的工具。",
+      "field": 1,
+      "school": 1,
+      "area": 1,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 8,
+      "position_name": "交流室",
+      "description": "可以进行私人或小组交流的学习室。由于这里很受欢迎，因此需要提前预约。",
+      "field": 1,
+      "school": 1,
+      "area": 2,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 9,
+      "position_name": "健身房",
+      "description": "提供跑步机、杠铃、深蹲架等运动器材的健身房。即使再忙也要坚持体力锻炼，维持身体健康。",
+      "field": 1,
+      "school": 1,
+      "area": 2,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 10,
+      "position_name": "休息室",
+      "description": "设有舒适的椅子、床、零食区等用品的休息室。为了经常加班的老师，这里还配备了洗漱设施。",
+      "field": 1,
+      "school": 1,
+      "area": 2,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 11,
+      "position_name": "便利店",
+      "description": "位于沙勒公寓建筑内的“天使24”便利店。在这里可以买些简单的食物、饮料或者炸药等。",
+      "field": 1,
+      "school": 1,
+      "area": 2,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 12,
+      "position_name": "游戏厅",
+      "description": "设有各种街机的室内游戏厅。因大部分是经典老游戏，所以在少数游戏爱好者之间非常受欢迎。",
+      "field": 1,
+      "school": 1,
+      "area": 2,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 13,
+      "position_name": "食堂",
+      "description": "负责提供沙勒公寓饮食的食堂。各种烹饪设施齐全，还可以进行烹饪练习。",
+      "field": 1,
+      "school": 1,
+      "area": 2,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 14,
+      "position_name": "菜园",
+      "description": "一个设置在户外露台上用于种植植物的小型家庭菜园。您可以种植用于烹饪的蔬菜和水果等。",
+      "field": 1,
+      "school": 1,
+      "area": 2,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 15,
+      "position_name": "入口",
+      "description": "沙勒大楼的入口处，设有安检设施，需要登记访客记录。这里有一个车站。",
+      "field": 1,
+      "school": 1,
+      "area": 3,
+      "size": "1",
+      "station": 1
+    },
+    {
+      "position_id": 16,
+      "position_name": "阿拜多斯主楼",
+      "description": "阿拜多斯的学生们主要活动的第一主楼。平时对策委员会的成员们认真管理着这个地方，所以即使每天刮着风沙，这里仍然能够保持清洁。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 17,
+      "position_name": "阿拜多斯分栋",
+      "description": "与主楼的楼道相连接的阿拜多斯附属楼。这里有一些现在已经停止使用的科学实验室和音乐室等特别活动室。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 18,
+      "position_name": "阿拜多斯图书馆",
+      "description": "想读书的时候，随时都可以去图书馆。不论是学习用的参考书，有趣的杂志或者漫画书，各种在阿拜多斯风靡一时的书籍，这里应有尽有。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 19,
+      "position_name": "阿拜多斯体育馆",
+      "description": "这是一个既用于室内体育课程，又兼具礼堂功能的体育馆。目前存放着未使用的材料和运动器材等物品。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 20,
+      "position_name": "阿拜多斯小卖部",
+      "description": "大家喜欢的小卖部。虽然与其他学校相比，商品种类较少，但是在基沃托斯仍然可以买到受欢迎的面包和糖果等。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 21,
+      "position_name": "阿拜多斯旧校舍",
+      "description": "曾经被用作社团和课外活动的休息活动的校舍。由于老旧且耐久性等方面存在危险，因此已关闭。但偶尔学生们会用它来进行试胆之类的活动。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 22,
+      "position_name": "阿拜多斯体育场",
+      "description": "上体育课和举行运动会的操场。不过现在已经被沙子掩埋，很难进行维护。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "6",
+      "station": 0
+    },
+    {
+      "position_id": 23,
+      "position_name": "阿拜多斯泳池",
+      "description": "这是一个平时很少使用的阿拜多斯泳池。水已经完全干涸，地板上裂开的痕迹仍然积满了沙子。",
+      "field": 1,
+      "school": 2,
+      "area": 4,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 24,
+      "position_name": "国道145号阿拜多斯道路管理局",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 5,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 25,
+      "position_name": "城森站阿拜多斯本线",
+      "description": "这里有一个列车站。",
+      "field": 1,
+      "school": 2,
+      "area": 5,
+      "size": "4",
+      "station": 1
+    },
+    {
+      "position_id": 26,
+      "position_name": "四叶站阿拜多斯本线",
+      "description": "这里有一个列车站。",
+      "field": 1,
+      "school": 2,
+      "area": 5,
+      "size": "4",
+      "station": 1
+    },
+    {
+      "position_id": 27,
+      "position_name": "阿拜多斯32号街",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 5,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 28,
+      "position_name": "阿拜多斯本町3号街",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 5,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 29,
+      "position_name": "阿拜多斯本町1号街",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 5,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 30,
+      "position_name": "阿拜多斯郊外",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 6,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 31,
+      "position_name": "恺撒PMC驻扎地",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 7,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 32,
+      "position_name": "西部遗迹区域",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 7,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 33,
+      "position_name": "东部遗迹区域",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 7,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 34,
+      "position_name": "东部遗迹中心区",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 7,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 35,
+      "position_name": "东部遗迹外围",
+      "description": "",
+      "field": 1,
+      "school": 2,
+      "area": 7,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 36,
+      "position_name": "歌赫娜第一学舍",
+      "description": "歌赫娜中央区最大的学舍。虽然建筑内有很多讲堂，但实际投入使用的却非常少。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 37,
+      "position_name": "歌赫娜社团主楼",
+      "description": "汇集了许多歌赫娜社团活动室的建筑物。然而，对大多数学生来说，只是将它用作自由活动的空间。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 38,
+      "position_name": "歌赫娜校园中庭",
+      "description": "有着宽敞场地的校园。由于管理不善，一不小心就会迷路，所以需要格外注意。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 39,
+      "position_name": "歌赫娜中央运动场",
+      "description": "歌赫娜学院的中央运动场。可以进行体育课和各种户外活动。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 40,
+      "position_name": "歌赫娜第二学舍",
+      "description": "歌赫娜中央区的第二学舍。与第一学舍不同，这是为了那些勤奋学习的部分学生专门设立的学舍。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 41,
+      "position_name": "歌赫娜学生广场",
+      "description": "这是学生们可以自由使用的广场。因为有许多学生来往，所以日夜都有争斗不断。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 42,
+      "position_name": "歌赫娜风纪委员会本部",
+      "description": "这是歌赫娜风纪委员会所在的总部。它是中央区唯一一个得到妥善管理的地方。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 43,
+      "position_name": "废弃校舍",
+      "description": "这是一座现在不再使用的建筑物。虽然作为设施已经关闭，但仍可以自由出入，并成为各种事件的温床。由于是危险区域，进入时需要注意安全。",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 44,
+      "position_name": "歌赫娜学生食堂",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 45,
+      "position_name": "歌赫娜急救医学部室",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 46,
+      "position_name": "歌赫娜学生宿舍",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 8,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 47,
+      "position_name": "歌赫娜第一机场",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 9,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 48,
+      "position_name": "阿拉巴海岸东部地区",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 9,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 49,
+      "position_name": "阿拉巴海岸中央地区",
+      "description": "这里有一个列车站。",
+      "field": 1,
+      "school": 3,
+      "area": 9,
+      "size": "20",
+      "station": 1
+    },
+    {
+      "position_id": 50,
+      "position_name": "阿拉巴海岸贫民窟第7区",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 9,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 51,
+      "position_name": "贫民窟北区",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 9,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 52,
+      "position_name": "贫民窟禁止进入区域F",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 9,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 53,
+      "position_name": "歌赫娜郊外",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 10,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 54,
+      "position_name": "希诺姆火山地区",
+      "description": "",
+      "field": 1,
+      "school": 3,
+      "area": 11,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 55,
+      "position_name": "千禧年之塔",
+      "description": "包括研讨会在内的千禧年主要社团所在的巨大高塔。塔内配备顶尖保安系统，严格限制外部人员出入。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 56,
+      "position_name": "单轨车站",
+      "description": "可以快速移动到自治区各处的单轨电车的车站。千禧年的单轨电车速度非常快，而且几乎没有噪音或晃动。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 1
+    },
+    {
+      "position_id": 57,
+      "position_name": "图书馆",
+      "description": "贮存有千禧年学生们研究所需的大量图书的图书馆。在这里还能浏览纪录片等影像媒体资料。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 58,
+      "position_name": "小卖部",
+      "description": "售卖面包和饮料的小卖部。最热门的商品是双份浓缩咖啡和能量饮料。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 59,
+      "position_name": "工业实验室",
+      "description": "可以进行多种工学实验的工业实验室。配备包括大型3D打印机在内的高新技术设备。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 60,
+      "position_name": "数据中心",
+      "description": "设置有大型服务器和网络线路的数据中心，保存着千禧年的贵重研究资料。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 61,
+      "position_name": "发电站",
+      "description": "这个发电厂产生并供应用于千禧年内部使用的电力。它采用环境友好系统，几乎不会产生污染物。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 62,
+      "position_name": "健身中心",
+      "description": "一个可以放松疲惫身体、锻炼身体的健身中心。配备了最先进设施，并为每个学生提供定制化训练方案。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 63,
+      "position_name": "游戏开发部活动室",
+      "description": "游戏开发部的社团活动室，这里是爱丽丝的家。",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 64,
+      "position_name": "学生宿舍",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 65,
+      "position_name": "学生食堂",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 66,
+      "position_name": "操场",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 67,
+      "position_name": "春叶原站",
+      "description": "可以说是春叶原的玄关一般的单轨车站。车站的中央检票口经常贴着角色海报，户外广告也都是动画人物，让人感受到一种独特的氛围。",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 1
+    },
+    {
+      "position_id": 68,
+      "position_name": "春叶原电气街",
+      "description": "春叶原电气街是千禧年自治区的一条以电子产品和动画动漫为主题的街道。无论环顾哪里，都能充分感受到春叶原独有的氛围。",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 69,
+      "position_name": "春叶原视频会馆",
+      "description": "位于春叶原站西南，是春叶原的象征。据说现在的录像会馆是新建成后重新开张的。",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 70,
+      "position_name": "MANDARAKE COMPLEX",
+      "description": "作为二手货专门连锁店，集中精英以漫画为中心的爱好和复古玩具等各种收藏品。甚至有传言称，想要追求“稀有道具”，只能在这里获得。",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 71,
+      "position_name": "春叶原综合体",
+      "description": "位于春叶原站西北的总和设施，由两座大型建筑、一座住宅和一个消防站组成。",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 72,
+      "position_name": "春叶原多媒体中心",
+      "description": "是一家经营大型电子产品的特许经营店。也有多媒体Haruba的简称。虽然以电子产品为主，但也有游戏机、玩具、手办等产品。",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 73,
+      "position_name": "女仆咖啡厅·糖果",
+      "description": "某种意义上，这是一家可以说是春叶原的特产的咖啡馆。在想要体验特别且新鲜的服务的顾客中很受欢迎。",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 74,
+      "position_name": "春叶原游戏中心",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 75,
+      "position_name": "沉思广场",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 76,
+      "position_name": "千禧时代广场",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 13,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 77,
+      "position_name": "千禧年运动中心",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 12,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 78,
+      "position_name": "千禧年郊外",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 14,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 79,
+      "position_name": "废墟",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 14,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 80,
+      "position_name": "埃里都",
+      "description": "",
+      "field": 1,
+      "school": 4,
+      "area": 15,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 81,
+      "position_name": "崔尼蒂广场",
+      "description": "同时也是这个区域的名字，是位于中心的广场。是崔尼蒂的学生们经常相聚的人气场所，尤其是中央的美丽喷水池，是连不熟悉崔尼蒂的人都知道的知名景点。\r\n",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 82,
+      "position_name": "圣三一大圣堂",
+      "description": "是崔尼蒂最大的建筑，被视为崔尼蒂的象征。同时也是“修女会”的本部。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 83,
+      "position_name": "中央图书馆",
+      "description": "不止是崔尼蒂，甚至在整个基沃托斯也是最大的图书馆。偶尔会传出一些学生在图书馆内迷路的传闻。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 84,
+      "position_name": "社团会馆",
+      "description": "聚集着崔尼蒂各种社团的会馆之一，在这里会举行丰富多彩的社团活动。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 85,
+      "position_name": "Basis Schola",
+      "description": "名字的含义为“学员们的据点”，是一栋已经很长时间没有使用的古老建筑。在过去曾经是救护骑士团的总部。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 86,
+      "position_name": "美术馆",
+      "description": "是收藏了很多作品的校园美术馆。偶尔也会当作上美术课的地方使用。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 87,
+      "position_name": "音乐堂",
+      "description": "是近期才盖好的音乐堂。除了音乐课外，也会用于举办演唱会或戏剧等的舞台使用。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 88,
+      "position_name": "古书馆",
+      "description": "与中央图书馆不同，这是一个存放着古老书籍等的建筑物。由于年代久远且不太干净，学生们很少来访。也被用作崔尼蒂的图书委员会的总部。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 89,
+      "position_name": "正义实现委员会总部",
+      "description": "这里是崔尼蒂的正义实现委员会的总部，正义实现委员会是崔尼蒂负责维护治安的社团。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 90,
+      "position_name": "茶话会",
+      "description": "“茶话会”是崔尼蒂的学生会，负责整个崔尼蒂的管理。这里是茶话会的总部建筑。",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 91,
+      "position_name": "7号悠闲之路",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 92,
+      "position_name": "逃课小巷",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 93,
+      "position_name": "美食步行街",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 94,
+      "position_name": "海岸大道66号线",
+      "description": "这里有一个车站。",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 1
+    },
+    {
+      "position_id": 95,
+      "position_name": "蓝天公园",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 96,
+      "position_name": "圣三一喷泉公园",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 97,
+      "position_name": "咖啡街",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 98,
+      "position_name": "星沙海滩",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 99,
+      "position_name": "庄严海滩",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 17,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 100,
+      "position_name": "第一礼拜堂",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 101,
+      "position_name": "第二礼拜堂",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 102,
+      "position_name": "第三礼拜堂",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 103,
+      "position_name": "第一讲堂",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 104,
+      "position_name": "第二讲堂",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 16,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 105,
+      "position_name": "崔尼蒂郊外",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 18,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 106,
+      "position_name": "圣堂遗迹",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 19,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 107,
+      "position_name": "地下墓穴",
+      "description": "",
+      "field": 1,
+      "school": 5,
+      "area": 19,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 108,
+      "position_name": "白虎公园",
+      "description": "山海经的学生们度过休闲时光的广场公园。在中央广场上，每天早晨有关注健康的学生聚集进行体操。",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 109,
+      "position_name": "桃源乡",
+      "description": "山海经的学生们常常用来作为咖啡馆替代品的古风茶馆。对于山海经的学生来说，喝茶与枪战一样理所当然。",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "20",
+      "station": 0
+    },
+    {
+      "position_id": 110,
+      "position_name": "炼丹术研究所",
+      "description": "炼丹术研究会的成员们打磨自己的炼丹术的陈旧研究所。每次路过建筑前都会有刺鼻和异常气味，因此很多学生不愿靠近。",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 111,
+      "position_name": "梅花园主楼",
+      "description": "山海经的小孩子们接受教育的梅花园主楼。由于山海经注重教育，即使是玄龙门的干部也不能随意干涉梅花园的事务。",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 112,
+      "position_name": "竹林",
+      "description": "一片密集在昆仑山入口处的竹林。由于容易迷路，大部分学生都不会进入其中，但似乎有些学生会来此倾诉难以启齿的秘密或者平复心灵纷乱。",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 113,
+      "position_name": "玄武商会",
+      "description": "在山海经以外也是知名美食地点，商会成员在繁华街巷从事商业活动。主要销售使用大量香料制作而成的中餐，并且还提供各种珍藏商品。",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 114,
+      "position_name": "六和阁",
+      "description": "山海经高级中学的学生会，「玄龙门」的学生们所在的建筑物。通往六和阁的道路由玄龙门成员严密守卫，未经门主许可不得出入。",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 115,
+      "position_name": "茶园",
+      "description": "一片广阔的茶田，可以收获山海经特产的茶叶。在这里收获的茶叶被销售到崔尼蒂综合学院和基沃托斯的各个地区。\r\n",
+      "field": 1,
+      "school": 6,
+      "area": 20,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 116,
+      "position_name": "山海经中央机场",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 117,
+      "position_name": "北东大路1号",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 118,
+      "position_name": "赤茸游步道",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 119,
+      "position_name": "南东大路6号",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 120,
+      "position_name": "菊花小径",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 121,
+      "position_name": "兰花小径",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 122,
+      "position_name": "竹子小径",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 123,
+      "position_name": "熊猫公园",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 124,
+      "position_name": "镰鳍海豚水上公园",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 125,
+      "position_name": "美食家巷子",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 126,
+      "position_name": "黄猿公园",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 127,
+      "position_name": "梅花小径",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 21,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 128,
+      "position_name": "山海经郊外",
+      "description": "",
+      "field": 1,
+      "school": 6,
+      "area": 22,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 129,
+      "position_name": "中央广场",
+      "description": "从阴阳部本馆可以看到的巨大广场。作为游客集合的地方被利用，中央广场上的铜像也以拍照点而受欢迎。\n",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 130,
+      "position_name": "大庭园",
+      "description": "著名景点，必定要参观一下才算来过百鬼夜行。百鬼夜行游客的常去之处。尤其是有传言称池塘里住着被称为“主”的巨型锦鲤。周边还有商品销售。",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 131,
+      "position_name": "观光用缆车",
+      "description": "百鬼夜行联合学院的缆车。据说从车上俯瞰百鬼夜行全景会成为难以忘怀的回忆。往返费用为500信用点。",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 132,
+      "position_name": "神木展望台",
+      "description": "可以一览百鬼夜行全景的展望台。由于其壮丽景色，已经成为众多电影和剧集取景地，因此而闻名作圣地。从这里可以看到百鬼夜行的神木——一株巨大的樱花树。",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 133,
+      "position_name": "百鬼夜行商店街",
+      "description": "百鬼夜行联合学园的商店街。著名喫茶店“百夜堂”也位于此处。据说当问题孩子引起混乱时，百夜堂的招牌女孩会出马解决。",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 134,
+      "position_name": "传统博物馆",
+      "description": "可以体验到百鬼夜行联合学院独特传统和历史的巨大博物馆。据访问过的学生评价并不是很好。",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 135,
+      "position_name": "阴阳部公演会场",
+      "description": "不定期举办阴阳部演出活动的会场。俳句对战、尼娅的落语大会、千世展示特技等——每次演出都因门票售罄而闻名。",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 136,
+      "position_name": "百鬼夜行阴阳部本馆",
+      "description": "百鬼夜行联合学园实质上的学生会·阴阳部所在的主楼。据说，在学生们之间流传着各种陷阱和防御设施都已经准备好了。",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 137,
+      "position_name": "百鬼夜行联合学园·传单大街",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 23,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 138,
+      "position_name": "时代剧展示通道",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 139,
+      "position_name": "漩涡电影村",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 140,
+      "position_name": "乌剧场",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 141,
+      "position_name": "柴犬藏监督纪念馆",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 142,
+      "position_name": "武家屋敷·不如归",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 143,
+      "position_name": "忍者的戏法屋",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 144,
+      "position_name": "狐火百货店",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 145,
+      "position_name": "樱亭1号地",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 146,
+      "position_name": "貉町6号地",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 147,
+      "position_name": "狐市场",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 24,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 148,
+      "position_name": "百鬼夜行郊外",
+      "description": "",
+      "field": 1,
+      "school": 7,
+      "area": 25,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 149,
+      "position_name": "红胡子革命广场",
+      "description": "位于红冬事务局附近的一个巨大广场。每个周末都会举行赞扬切里诺会长伟业的集会。",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 150,
+      "position_name": "红冬事务局",
+      "description": "这是红冬事务局——也就是学生会所在的校舍本馆。到处都设有象征着切里诺会长权威的胡须雕塑。",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 151,
+      "position_name": "第三公共食堂",
+      "description": "供给红冬学生用餐的学生食堂。除了伟大的切里诺会长外，所有学生提供平等待遇。",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 152,
+      "position_name": "白海豚广场",
+      "description": "这是一个历史悠久的露天市场，红冬学生们会交易自制的物品。有时也会出现未经事务局批准的不健康商品流通。",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 153,
+      "position_name": "工务部事务所",
+      "description": "工务部学生们平时待命的办公室。如果前来，您将始终享受到完美而迅速的服务。",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 154,
+      "position_name": "林业仓库",
+      "description": "存放森林采伐所需的林业机械和木材的仓库。由于存在危险机械，请务必穿戴安全装备再前往。\r\n",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 155,
+      "position_name": "第一公共宿舍",
+      "description": "在事务局指导下建造的公共宿舍。可以高效地容纳人员，但由于老化问题，许多房间没有热水供应。",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 156,
+      "position_name": "红熊广播电视台",
+      "description": "这是红冬联邦学园唯一的媒体机构，播出“红熊”节目的电视台。节目内容主要由对切里诺会长的赞美构成。",
+      "field": 1,
+      "school": 8,
+      "area": 26,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 157,
+      "position_name": "红冬胡须机场",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 27,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 158,
+      "position_name": "白胡须街道",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 27,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 159,
+      "position_name": "企鹅高速公路-3号区域\t",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 27,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 160,
+      "position_name": "黑胡须街道",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 27,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 161,
+      "position_name": "凯撒胡须街道",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 27,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 162,
+      "position_name": "雷明古书店街",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 27,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 163,
+      "position_name": "伊万·库帕拉节日街道\t",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 27,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 164,
+      "position_name": "红冬郊区",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 28,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 165,
+      "position_name": "旧校舍25号区域",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 28,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 166,
+      "position_name": "旧校舍227号区域",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 28,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 167,
+      "position_name": "227号温泉乡",
+      "description": "",
+      "field": 1,
+      "school": 8,
+      "area": 28,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 168,
+      "position_name": "图书馆",
+      "description": "红冬联邦学园的图书馆，位于某处不容易靠近的山丘上，是名副其实的“天然要塞”。",
+      "field": 1,
+      "school": 8,
+      "area": 28,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 169,
+      "position_name": "冰海",
+      "description": "这里是一片危险的海域。",
+      "field": 1,
+      "school": 8,
+      "area": 29,
+      "size": "100",
+      "station": 0
+    },
+    {
+      "position_id": 170,
+      "position_name": "公共安全局",
+      "description": "",
+      "field": 1,
+      "school": 9,
+      "area": 30,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 171,
+      "position_name": "生活安全局",
+      "description": "",
+      "field": 1,
+      "school": 9,
+      "area": 30,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 172,
+      "position_name": "搜查局",
+      "description": "",
+      "field": 1,
+      "school": 9,
+      "area": 30,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 173,
+      "position_name": "惩戒署",
+      "description": "",
+      "field": 1,
+      "school": 9,
+      "area": 30,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 174,
+      "position_name": "情报通信局",
+      "description": "",
+      "field": 1,
+      "school": 9,
+      "area": 30,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 175,
+      "position_name": "警卫局",
+      "description": "",
+      "field": 1,
+      "school": 9,
+      "area": 30,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 176,
+      "position_name": "交通局",
+      "description": "",
+      "field": 1,
+      "school": 9,
+      "area": 30,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 177,
+      "position_name": "第三业务地区",
+      "description": "位于托拉伊方形广场旁边的商务区域。现代化而精致，道路和建筑物相得益彰。",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 178,
+      "position_name": "托拉伊方形广场",
+      "description": "作为休憩和相遇之地使用的广场。非常适合散步。",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 179,
+      "position_name": "钟崎港",
+      "description": "如果想看海，来这里也不错。不过可能并非如你所想象中那样景色优美。",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 180,
+      "position_name": "拉米尼商业区",
+      "description": "与各个学院餐厅相比毫不逊色的食堂街。无数摊位和餐馆沿着狭窄河岸排列着。",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "10",
+      "station": 0
+    },
+    {
+      "position_id": 181,
+      "position_name": "柯基商业区",
+      "description": "一个有名的电器商业街。传闻除了已经停产的物品之外，几乎什么都能买到。",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 182,
+      "position_name": "白鸟近邻公园",
+      "description": "虽然跟公园的规模比起来参观人数较少，但它仍然是白鸟区的一个必去之处。",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 183,
+      "position_name": "瓦尔基里警察学校白鸟区分所",
+      "description": "瓦尔基里警察学校的分所。被郁郁葱葱的绿地环绕，据说空气特别好。",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 184,
+      "position_name": "小兔子镇地铁站",
+      "description": "这是一个地铁站。",
+      "field": 1,
+      "school": 1,
+      "area": 34,
+      "size": "4",
+      "station": 1
+    },
+    {
+      "position_id": 185,
+      "position_name": "小兔子公园",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 34,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 186,
+      "position_name": "联邦矫正局监狱",
+      "description": "这里关押着基沃托斯最危险的罪犯“七囚人”。",
+      "field": 1,
+      "school": 1,
+      "area": 35,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 187,
+      "position_name": "学生会事务局站",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 33,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 188,
+      "position_name": "D.U.中央公园",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 36,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 189,
+      "position_name": "D.U.中央机场",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 36,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 190,
+      "position_name": "D.U.西公园",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 36,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 191,
+      "position_name": "D.U.南街道",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 36,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 192,
+      "position_name": "夜户浦港",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 36,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 193,
+      "position_name": "鬼岩礁",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 36,
+      "size": "4",
+      "station": 0
+    },
+    {
+      "position_id": 194,
+      "position_name": "通功古圣堂",
+      "description": "",
+      "field": 1,
+      "school": 1,
+      "area": 36,
+      "size": "10",
+      "station": 0
+    }
+  ],
+  "t_profession": [
+    {
+      "prof_id": 0,
+      "name": "见习勇者",
+      "description": "见习勇者是爱丽丝的基本职业。",
+      "hp": 0,
+      "attack": 0,
+      "defense": 0,
+      "range": 7
+    }
+  ],
+  "t_weapon": [
+    {
+      "weapon_id": 0,
+      "weapon_name": "光之剑",
+      "description": "这是一门重达140kg的强大电磁炮，也是爱丽丝身为勇者的证明。除了爱丽丝之外几乎没有人能够拿得动这把武器。",
+      "attack": 1000
+    }
+  ],
+  "t_status": [
+    {
+      "status_id": 0,
+      "position": 63,
+      "spot": 0,
+      "coins": 0,
+      "level": 1,
+      "profession": 0,
+      "attack": 100,
+      "defense": 10,
+      "exp": 0,
+      "hp": 100,
+      "hpmax": 100,
+      "crit": 10,
+      "weapon": 0,
+      "is_sleeping": 0,
+      "sleep_phase": "",
+      "sleep_game_name": "",
+      "sleep_hour": 23,
+      "sleep_minute": 0,
+      "wake_hour": 9,
+      "wake_minute": 0
+    }
+  ]
+}

@@ -486,21 +486,34 @@ def register_admin_routes(app: FastAPI) -> None:
     # ------------------- request monitor -------------------
 
     @app.get("/admin/api/monitor/log")
-    async def get_monitor_log():
+    async def get_monitor_log(page: int = -1, page_size: int = 20):
         if not os.path.isfile(_VLLM_REQUEST_LOG_FILE):
-            return {"entries": []}
+            return {"entries": [], "total": 0, "page": 1, "page_size": page_size, "total_pages": 0}
         try:
-            entries: List[Dict[str, Any]] = []
+            all_entries: List[Dict[str, Any]] = []
             with open(_VLLM_REQUEST_LOG_FILE, "r", encoding="utf-8") as f:
                 for line in f:
                     line = line.strip()
                     if not line:
                         continue
                     try:
-                        entries.append(json.loads(line))
+                        all_entries.append(json.loads(line))
                     except json.JSONDecodeError:
                         continue
-            return {"entries": entries}
+            total = len(all_entries)
+            total_pages = max(1, (total + page_size - 1) // page_size)
+            if page < 0:
+                page = total_pages
+            page = max(1, min(page, total_pages))
+            start = (page - 1) * page_size
+            end = start + page_size
+            return {
+                "entries": all_entries[start:end],
+                "total": total,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages,
+            }
         except Exception as e:
             raise HTTPException(500, str(e))
 

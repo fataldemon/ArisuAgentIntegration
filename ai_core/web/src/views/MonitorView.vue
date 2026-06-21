@@ -23,12 +23,22 @@
       class="monitor-terminal"
       v-html="renderedHtml"
     />
+
+    <n-space justify="center" align="center" :size="12" style="padding: 8px 0">
+      <n-button size="small" :disabled="currentPage <= 1" @click="goToPage(1)">&laquo;</n-button>
+      <n-button size="small" :disabled="currentPage <= 1" @click="goToPage(currentPage - 1)">&lsaquo;</n-button>
+      <span style="font-size: 13px">{{ currentPage }} / {{ totalPages }}</span>
+      <n-button size="small" :disabled="currentPage >= totalPages" @click="goToPage(currentPage + 1)">&rsaquo;</n-button>
+      <n-button size="small" :disabled="currentPage >= totalPages" @click="goToPage(totalPages)">&raquo;</n-button>
+      <n-select v-model:value="pageSize" :options="pageSizeOptions" size="small" style="width: 90px" @update:value="onPageSizeChange" />
+      <span style="font-size: 12px; color: #999">{{ totalEntries }} entries</span>
+    </n-space>
   </n-space>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import { NSpace, NCard, NButton, NSlider, useMessage } from 'naive-ui'
+import { NSpace, NCard, NButton, NSlider, NSelect, useMessage } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { monitorApi } from '../api/monitor'
 import HelpTip from '../components/HelpTip.vue'
@@ -41,6 +51,19 @@ const loading = ref(false)
 const intervalValue = ref(3)
 const terminalRef = ref<HTMLDivElement | null>(null)
 let timer: ReturnType<typeof setInterval> | null = null
+
+const currentPage = ref(1)
+const totalPages = ref(0)
+const pageSize = ref(20)
+const totalEntries = ref(0)
+const trackLatest = ref(true)
+
+const pageSizeOptions = [
+  { label: '10', value: 10 },
+  { label: '20', value: 20 },
+  { label: '50', value: 50 },
+  { label: '100', value: 100 },
+]
 
 const SEP = '\u2500'.repeat(120)
 const SEP_SHORT = '\u2500'.repeat(60)
@@ -294,10 +317,13 @@ function scrollToBottom() {
 async function fetchLog() {
   loading.value = true
   try {
-    const res = await monitorApi.getLog()
-    const prevLen = entries.value.length
+    const reqPage = trackLatest.value ? -1 : currentPage.value
+    const res = await monitorApi.getLog(reqPage, pageSize.value)
     entries.value = res.entries
-    if (res.entries.length !== prevLen) {
+    currentPage.value = res.page
+    totalPages.value = res.total_pages
+    totalEntries.value = res.total
+    if (trackLatest.value) {
       scrollToBottom()
     }
   } catch (e: any) {
@@ -305,6 +331,18 @@ async function fetchLog() {
   } finally {
     loading.value = false
   }
+}
+
+function goToPage(page: number) {
+  trackLatest.value = page >= totalPages.value
+  currentPage.value = page
+  fetchLog()
+}
+
+function onPageSizeChange() {
+  currentPage.value = 1
+  trackLatest.value = true
+  fetchLog()
 }
 
 function startPolling() {
