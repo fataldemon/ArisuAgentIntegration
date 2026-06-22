@@ -220,6 +220,8 @@ const isStreaming = ref(false)
 const rawStreamText = ref('')
 const characterOptions = ref<Array<{ label: string; value: string }>>([])
 const character = ref('')
+// label -> image filename, fetched from the active character's persona.expressions
+const expressionMap = ref<Record<string, string>>({})
 const temperature = ref(0.6)
 const topP = ref(0.95)
 const topK = ref(20)
@@ -370,8 +372,13 @@ const emotionImageMap: Record<string, string> = {
 }
 
 function getEmotionAvatar(emotions: string[]): string {
-  if (emotions.length === 0) return '/admin/emoji/plain.png'
-  return `/admin/emoji/${emotionImageMap[emotions[0]] || 'plain.png'}`
+  const label = emotions.length ? emotions[0] : ''
+  const img = expressionMap.value[label]
+  if (img && character.value) {
+    return `/admin/characters/${character.value}/expression/${img}`
+  }
+  // fallback to the legacy static emoji set when persona has no expressions
+  return `/admin/emoji/${emotionImageMap[label] || 'plain.png'}`
 }
 
 const userAvatar = '/admin/emoji/sensei.jpg'
@@ -475,6 +482,7 @@ async function fetchCharacters() {
     }))
     if (characterOptions.value.length > 0 && !character.value) {
       character.value = characterOptions.value[0].value
+      fetchExpressions(character.value)
       loadMessages()
       scrollToBottom()
     }
@@ -483,7 +491,28 @@ async function fetchCharacters() {
   }
 }
 
+async function fetchExpressions(char: string) {
+  if (!char) {
+    expressionMap.value = {}
+    return
+  }
+  try {
+    const res = await fetch(`/admin/api/personas/${char}`)
+    const data = await res.json()
+    const exprs = data.expressions || {}
+    const m: Record<string, string> = {}
+    for (const k in exprs) {
+      const v = exprs[k]
+      if (v && v.image) m[k] = v.image
+    }
+    expressionMap.value = m
+  } catch {
+    expressionMap.value = {}
+  }
+}
+
 function onCharacterChange() {
+  fetchExpressions(character.value)
   loadMessages()
   scrollToBottom()
 }

@@ -10,7 +10,7 @@ from nonebot.adapters.onebot.v11 import Message, MessageSegment, Event, MessageE
 from src.dao.chat_history import init_fts
 from src.plugins.chatglmOpenapi import ChatGLM
 from src.plugins.qwenOpenapi import Qwen, SLEEP_INFORMATION
-from src.plugins.emotion import remove_emotion, check_emotion
+from src.plugins.emotion import remove_emotion, check_emotion, fetch_expressions
 from src.plugins.voice import remove_action, get_translation, voice_generate
 from src.skills.image_process import recent_img_buffer
 from src.dao.tomb import clear_graveyard, check_death
@@ -145,6 +145,7 @@ llm_list: dict = {}
 @get_driver().on_startup
 async def startup():
     init_fts()
+    fetch_expressions()
     from src.plugins.reminder_scheduler import start_scheduler
     start_scheduler()
     from src.dao.status import load_sleep_state

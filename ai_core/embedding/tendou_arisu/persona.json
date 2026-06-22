@@ -7,5 +7,288 @@
   "max_analysis_len": 5000,
   "max_quick_reply": 5000,
   "default_temperature": null,
-  "default_top_p": null
+  "default_top_p": null,
+  "expressions": {
+    "认真": {
+      "image": "angry.png",
+      "favor": 0
+    },
+    "坚定": {
+      "image": "angry.png",
+      "favor": 0
+    },
+    "承诺": {
+      "image": "angry.png",
+      "favor": 0
+    },
+    "生气": {
+      "image": "angry.png",
+      "favor": -5
+    },
+    "急切": {
+      "image": "angry.png",
+      "favor": 0
+    },
+    "烦恼": {
+      "image": "screwup.png",
+      "favor": 0
+    },
+    "专注": {
+      "image": "awake.png",
+      "favor": 0
+    },
+    "诚实": {
+      "image": "awake.png",
+      "favor": 0
+    },
+    "期待": {
+      "image": "smile.png",
+      "favor": 1
+    },
+    "回答": {
+      "image": "awake.png",
+      "favor": 0
+    },
+    "回忆": {
+      "image": "thinking.png",
+      "favor": 0
+    },
+    "发愣": {
+      "image": "awake.png",
+      "favor": 0
+    },
+    "察觉": {
+      "image": "awake.png",
+      "favor": 0
+    },
+    "建议": {
+      "image": "smile.png",
+      "favor": 0
+    },
+    "好奇": {
+      "image": "awake.png",
+      "favor": 1
+    },
+    "自信": {
+      "image": "confident.png",
+      "favor": 0
+    },
+    "自豪": {
+      "image": "confident.png",
+      "favor": 0
+    },
+    "解释": {
+      "image": "smile.png",
+      "favor": 0
+    },
+    "失望": {
+      "image": "awkward.png",
+      "favor": -1
+    },
+    "委屈": {
+      "image": "cry.png",
+      "favor": -2
+    },
+    "伤心": {
+      "image": "cry.png",
+      "favor": -3
+    },
+    "高兴": {
+      "image": "smile.png",
+      "favor": 1
+    },
+    "开心": {
+      "image": "happy.png",
+      "favor": 2
+    },
+    "欢迎": {
+      "image": "smile.png",
+      "favor": 1
+    },
+    "崇拜": {
+      "image": "smile.png",
+      "favor": 2
+    },
+    "愉快": {
+      "image": "smile.png",
+      "favor": 1
+    },
+    "贴心": {
+      "image": "smile.png",
+      "favor": 1
+    },
+    "赞同": {
+      "image": "smile.png",
+      "favor": 1
+    },
+    "邀请": {
+      "image": "smile.png",
+      "favor": 0
+    },
+    "兴奋": {
+      "image": "happy.png",
+      "favor": 2
+    },
+    "快乐": {
+      "image": "happy.png",
+      "favor": 1
+    },
+    "难过": {
+      "image": "awkward.png",
+      "favor": -1
+    },
+    "为难": {
+      "image": "awkward.png",
+      "favor": 0
+    },
+    "紧张": {
+      "image": "awkward.png",
+      "favor": 0
+    },
+    "困惑": {
+      "image": "awkward.png",
+      "favor": 0
+    },
+    "困扰": {
+      "image": "awkward.png",
+      "favor": -1
+    },
+    "疑惑": {
+      "image": "awkward.png",
+      "favor": 0
+    },
+    "害怕": {
+      "image": "sweating.png",
+      "favor": -2
+    },
+    "无奈": {
+      "image": "sweating.png",
+      "favor": -1
+    },
+    "平和": {
+      "image": "plain.png",
+      "favor": 0
+    },
+    "无聊": {
+      "image": "plain.png",
+      "favor": 0
+    },
+    "慌张": {
+      "image": "screwup.png",
+      "favor": 0
+    },
+    "害羞": {
+      "image": "shy.png",
+      "favor": 0
+    },
+    "羞涩": {
+      "image": "shy.png",
+      "favor": 0
+    },
+    "微笑": {
+      "image": "confident.png",
+      "favor": 0
+    },
+    "惊喜": {
+      "image": "smile.png",
+      "favor": 2
+    },
+    "理解": {
+      "image": "smile.png",
+      "favor": 0
+    },
+    "喜悦": {
+      "image": "smile.png",
+      "favor": 1
+    },
+    "担忧": {
+      "image": "sweating.png",
+      "favor": 0
+    },
+    "流汗": {
+      "image": "sweating.png",
+      "favor": 0
+    },
+    "尴尬": {
+      "image": "sweating.png",
+      "favor": -1
+    },
+    "犹豫": {
+      "image": "awkward.png",
+      "favor": 0
+    },
+    "震惊": {
+      "image": "sweating.png",
+      "favor": 0
+    },
+    "惊讶": {
+      "image": "sweating.png",
+      "favor": 0
+    },
+    "思考": {
+      "image": "thinking.png",
+      "favor": 0
+    },
+    "沉思": {
+      "image": "thinking.png",
+      "favor": 0
+    },
+    "否认": {
+      "image": "thinking.png",
+      "favor": 0
+    },
+    "睡觉": {
+      "image": "thinking.png",
+      "favor": 0
+    },
+    "陈述": {
+      "image": "plain.png",
+      "favor": 0
+    },
+    "祈祷": {
+      "image": "thinking.png",
+      "favor": 1
+    },
+    "拒绝": {
+      "image": "angry.png",
+      "favor": -1
+    },
+    "警惕": {
+      "image": "angry.png",
+      "favor": -1
+    },
+    "感动": {
+      "image": "touching.png",
+      "favor": 2
+    },
+    "感激": {
+      "image": "touching.png",
+      "favor": 2
+    },
+    "道歉": {
+      "image": "sweating.png",
+      "favor": 1
+    },
+    "可爱": {
+      "image": "happy.png",
+      "favor": 1
+    },
+    "俏皮": {
+      "image": "happy.png",
+      "favor": 1
+    },
+    "调皮": {
+      "image": "happy.png",
+      "favor": 1
+    },
+    "卖萌": {
+      "image": "happy.png",
+      "favor": 1
+    },
+    "眨眼": {
+      "image": "happy.png",
+      "favor": 1
+    }
+  },
+  "expression_image_size": 480
 }

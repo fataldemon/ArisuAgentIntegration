@@ -53,8 +53,8 @@ import json
 import os
 from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException, Body
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, HTTPException, Body, UploadFile, File
+from fastapi.responses import HTMLResponse, FileResponse
 
 from core.channel_manager import get_channel_supervisor
 from core.config_manager import get_config_manager
@@ -220,6 +220,54 @@ def register_admin_routes(app: FastAPI) -> None:
         if not ok:
             raise HTTPException(404, "persona not found")
         return {"ok": True}
+
+    @app.post("/admin/api/personas/{character}/expression/image")
+    async def upload_expression_image(character: str, file: UploadFile = File(...)):
+        """Upload an emoji image for a character's expressions.
+
+        The image is normalised to the character's ``expression_image_size``
+        (longest edge, default 480) and saved as PNG under
+        ``embedding/<character>/expression/image/``. Returns the saved
+        filename + public URL. The persona's ``expressions`` mapping still
+        has to reference this filename (edit persona.json).
+        """
+        if not character or "/" in character or "\\" in character:
+            raise HTTPException(400, "invalid character name")
+        from core.expression_image import save_expression_image, expression_image_url
+
+        data = await file.read()
+        if not data:
+            raise HTTPException(400, "empty file")
+        max_size = 480
+        p = get_persona_manager().get_persona(character)
+        if p is not None:
+            try:
+                max_size = int(p.extra.get("expression_image_size") or 480)
+            except (TypeError, ValueError):
+                max_size = 480
+        try:
+            saved = save_expression_image(
+                character, file.filename or "expr.png", data, max_size
+            )
+        except Exception as e:
+            raise HTTPException(400, f"image processing failed: {e}")
+        return {
+            "ok": True,
+            "filename": saved,
+            "url": expression_image_url(character, saved),
+        }
+
+    @app.get("/admin/characters/{character}/expression/{filename}")
+    async def get_expression_image(character: str, filename: str):
+        """Serve a character's expression image (shared by Chat UI + QQ bot)."""
+        from core.expression_image import expression_image_path
+
+        if "/" in character or "\\" in character or ".." in character:
+            raise HTTPException(404, "not found")
+        path = expression_image_path(character, filename)  # basename'd internally
+        if not os.path.isfile(path):
+            raise HTTPException(404, "not found")
+        return FileResponse(path)
 
     @app.post("/admin/api/personas/{character}/preview")
     async def preview_persona(character: str, body: Dict[str, Any]):
