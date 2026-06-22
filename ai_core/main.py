@@ -62,6 +62,7 @@ from core.persona_manager import get_persona_manager
 from core.skill_manager import get_skill_manager
 from embedding.embedding import _get_model
 from embedding.migrate import migrate_all
+from hippocampus.router import register_hippocampus_routes
 from llm.chat import (
     _split_thought_and_answer,
     abort_request,
@@ -136,6 +137,16 @@ async def lifespan(app: FastAPI):
             LOG.info("Database init: %s", _result)
     except Exception as e:
         LOG.warning("Database init failed: %r", e)
+    # hippocampus: own chat-history schema + FTS init over the shared db.
+    try:
+        _hd = cm.get_globals_flat().get("DB_URL", "")
+        if _hd:
+            os.environ.setdefault("DB_URL", _hd)
+        from hippocampus.dao.chat_history import init_fts as _hippo_init_fts
+        _hippo_init_fts()
+        LOG.info("hippocampus FTS init done")
+    except Exception as e:
+        LOG.warning("hippocampus FTS init failed: %r", e)
     # Seed the legacy "Tendou Arisu" persona on first boot of an
     # upgraded deployment so existing front-ends keep getting the same
     # character behaviour without manual file authoring. Idempotent.
@@ -294,6 +305,7 @@ async def admin_abort(abort_id: str):
 # ---------------------------------------------------------------------------
 
 register_admin_routes(app)
+register_hippocampus_routes(app)
 
 _DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "dist")
 
