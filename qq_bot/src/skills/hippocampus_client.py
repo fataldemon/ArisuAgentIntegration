@@ -22,8 +22,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 AI_CORE_URL = os.environ.get("AI_CORE_URL", "http://localhost:8000")
-USE_HIPPOCAMPUS = os.environ.get("USE_HIPPOCAMPUS", "0") in ("1", "true", "True")
-
 _TIMEOUT = aiohttp.ClientTimeout(total=30)
 
 

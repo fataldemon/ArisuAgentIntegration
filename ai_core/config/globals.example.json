@@ -4,7 +4,6 @@
     "BAIDU_TRANS_APPID": { "value": "", "sensitive": true, "description": "百度翻译 App ID" },
     "BAIDU_TRANS_APIKEY": { "value": "", "sensitive": true, "description": "百度翻译 API Key" },
     "GPT_SOVITS_URL": { "value": "http://127.0.0.1:9880", "sensitive": false, "description": "GPT-SoVITS 地址" },
-    "QWEATHER_APIKEY": { "value": "", "sensitive": true, "description": "和风天气 API Key" },
-    "USE_HIPPOCAMPUS": { "value": "0", "sensitive": false, "description": "启用 hippocampus 上下文委托（0=关, 1=开）" }
+    "QWEATHER_APIKEY": { "value": "", "sensitive": true, "description": "和风天气 API Key" }
   }
 }

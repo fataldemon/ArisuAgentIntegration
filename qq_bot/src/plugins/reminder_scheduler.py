@@ -6,8 +6,6 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 
-from src.skills import hippocampus_client as hippo
-
 scheduler = AsyncIOScheduler()
 
 
@@ -126,21 +124,13 @@ async def _sleep_check():
     # 4. 找最近 10 分钟内 bot 回复过的群
     best_group = None
     best_time = None
-    if hippo.USE_HIPPOCAMPUS:
-        sessions = await hippo.list_sessions()
-        best_time = None
-        best_group = None
-        for s in sessions:
-            sid = s["session_id"]
-            lr = s["last_reply"]
-            if best_time is None or lr > best_time:
-                best_time = lr
-                best_group = sid
-    else:
-        for gid, llm in emaid.llm_list.items():
-            if best_time is None or llm.last_reply > best_time:
-                best_time = llm.last_reply
-                best_group = gid
+    sessions = await hippo.list_sessions()
+    for s in sessions:
+        sid = s["session_id"]
+        lr = s["last_reply"]
+        if best_time is None or lr > best_time:
+            best_time = lr
+            best_group = sid
 
     if best_group and (now - best_time).total_seconds() < 600:
         emaid.message_buffer.setdefault(best_group, []).append(
