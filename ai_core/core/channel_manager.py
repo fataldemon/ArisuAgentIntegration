@@ -333,13 +333,27 @@ class ChannelSupervisor:
             if proc is None or proc.returncode is not None:
                 return False
             try:
-                proc.terminate()
-                try:
-                    await asyncio.wait_for(proc.wait(), timeout=5)
-                except asyncio.TimeoutError:
-                    LOG.warning("Channel %s: force killing", name)
-                    proc.kill()
-                    await proc.wait()
+                if sys.platform == "win32":
+                    # nb run spawns a child uvicorn that holds the port.
+                    # Kill the whole process tree first while the parent is
+                    # still alive so /T can walk down to the children.
+                    import subprocess
+                    subprocess.run(
+                        ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                        capture_output=True,
+                    )
+                    try:
+                        await asyncio.wait_for(proc.wait(), timeout=5)
+                    except (asyncio.TimeoutError, ProcessLookupError):
+                        pass
+                else:
+                    proc.terminate()
+                    try:
+                        await asyncio.wait_for(proc.wait(), timeout=5)
+                    except asyncio.TimeoutError:
+                        LOG.warning("Channel %s: force killing", name)
+                        proc.kill()
+                        await proc.wait()
             except ProcessLookupError:
                 pass
             for t in self._tasks.pop(name, []):
