@@ -317,7 +317,7 @@ class ChannelSupervisor:
                         status.pid = None
                         status.restart_count += 0
 
-            if cfg.restart_on_crash and proc.returncode != 0:
+            if cfg.restart_on_crash and proc.returncode != 0 and name in self._processes:
                 delay = cfg.restart_delay
                 LOG.info("Channel %s: restarting in %ss (rc=%s)", name, delay, rc)
                 await asyncio.sleep(delay)
