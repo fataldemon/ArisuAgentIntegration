@@ -4,52 +4,66 @@
 
 将 QQ Bot 中的**上下文管理**和**工具调用**模块提取为 AI Core 的公共模块。所有渠道（QQ Bot、Bilibili、Unity、Chat 页面）共享同一套上下文管理和工具系统。
 
-## 核心原则
+---
 
-1. **API 端点暂时不变** — 不新增 `/v2/chat` 等新端点，现有 `/v1/chat/completions` 和 `/assistant/v1/chat/completions` 保持不变
-2. **QQ Bot 主动调取公共模块** — 不是 AI Core 全权处理，而是 QQ Bot 从自己这边调用公共模块的接口，然后再和原来一样发 API 请求。处理流程和原来区别不大，改动可控
-3. **公共数据库** — `t_chat_history` 已在共享数据库 `db/tendou_arisu.db` 中，是上下文管理的基础
-4. **分阶段实施** — 逐步迁移，每个阶段可独立测试验证
+## ✅ Phase 1：上下文管理模块提取 — 已完成
+
+**实际形态**：`ai_core/hippocampus/` — 内嵌于 AI Core 进程的独立模块（非原计划的 `shared/`）。channels 通过 HTTP 调用，后续 AI Core 可直接进程内 import。
+
+### 已完成项
+
+| 功能 | 状态 |
+|---|---|
+| 独立 chat_history DAO + 引擎（裸 sqlite3, WAL） | ✅ `hippocampus/db/engine.py` + `hippocampus/dao/chat_history.py` |
+| ContextManager：会话 / 历史 / 摘要 / 时间标注 / recall / 数据集 | ✅ `hippocampus/context/manager.py` |
+| 后台自管截断 + 摘要（渠道无感） | ✅ 每次 save_message 后自动触发 |
+| FTS5 全文搜索初始化 | ✅ AI Core 启动时 `init_fts()` |
+| HTTP 端点（turn-context / message / history / recall / clear / sessions） | ✅ `hippocampus/router.py`，挂 `/ctx` |
+| QQ Bot 完全委托（去掉开关，唯一路径） | ✅ `qwenOpenapi.py` / `emaid.py` / `reminder_scheduler.py` 改造 |
+| per-session 截断锁 + drop_count 边界保护 | ✅ 修复并发 IndexError |
+| 进程树杀修复（taskkill /F /T /PID） | ✅ `channel_manager.py`，Stop 后端口 8080 无残留 |
+| _monitor 误重启修复 | ✅ Windows `terminate()` 退出码 1 不再触发 `restart_on_crash` |
+
+### 接入后行为变更（已确认的差异）
+
+| 变更 | 说明 |
+|---|---|
+| 时间标注算法 | `.seconds` → `total_seconds()`（>1 天间隔正确显示，修正原 bug） |
+| 历史持久化 | 原 `create_task` 异步写 → `await` 串行写（保证顺序） |
+| 截断归属 | 原 QQ Bot 轮末触发 → hippocampus 后台自管 |
+| 数据集位置 | `qq_bot/MyDataset-*` → `ai_core/logs/datasets/MyDataset-*` |
+| `--reload` | 去掉（`nb run` 单进程，Stop 必干净） |
+
+### PBS（保留在 QQ Bot 侧，未迁）
+
+| 项 | 原因 |
+|---|---|
+| `message_buffer` / `group_locked` | 渠道编排，紧贴 QQ 事件循环 |
+| `processing_cache`（打断/abort） | 请求并发控制 |
+| `embedding_buffer` | 响应回填，下次请求带上 |
+| `build_status`（含游戏态） | 依赖未迁的游戏 DAO |
+| 导航 `steps` 状态机 | 待 Phase 3 |
+| 工具循环 `handle_llm_conversation` | 待 Phase 2 |
 
 ---
 
-## Phase 1：上下文管理模块提取
+## ✅ 额外完成：表情统一（character expressions）
 
-**目标**：将 QQ Bot 的 `qwenOpenapi.py`（Qwen 类）中的上下文管理逻辑提取为独立的公共模块，放在项目公共位置（如 `shared/` 或 `ai_core/context/`）。
+| 项 | 状态 |
+|---|---|
+| 表情映射收归 persona.extra（70 条 label→image+favor） | ✅ `persona.json` |
+| 表情图统一尺寸（480px 最长边） | ✅ `embedding/tendou_arisu/expression/image/` |
+| 表情图处理工具 | ✅ `ai_core/core/expression_image.py` |
+| 后端上传端点 + 供图端点 | ✅ `admin/routes.py` |
+| Chat 前端动态拉取 expressions + 兜底 | ✅ `ChatView.vue` |
+| QQ Bot 拉 persona expressions + 兜底 + favor 保留 | ✅ `emotion.py` |
 
-### 需要提取的功能（从 Qwen 类和 emaid.py）
+### PBS（表情相关）
 
-| 功能 | 当前位置 | 说明 |
-|------|---------|------|
-| **会话历史管理** | `Qwen.history` | per-session（当前是 per-group）历史列表 |
-| **历史持久化** | `chat_history.py` `save_chat_record()` / `load_recent_history()` | 读写 `t_chat_history` 表 |
-| **历史截断+摘要** | `Qwen.conclude_summary()` / `shorten_history()` | 超过 `max_history` 时压缩旧消息为摘要 |
-| **时间标注** | `Qwen.call()` 中的时间差计算 | 距上次消息 >10分钟插入"（X分钟过去了。）"，>12小时重置历史 |
-| **消息缓冲** | `emaid.py` `message_buffer[group_id]` | 快速连续消息合并为一次 LLM 调用 |
-| **分组锁** | `emaid.py` `group_locked[group_id]` | 防止同一会话并发 LLM 调用 |
-| **Embedding buffer** | `Qwen.embedding_buffer` | 追踪已引用的知识库条目索引 |
-| **数据集采集** | `dataset_collection.py` | 记录对话为训练数据 JSONL |
-| **状态注入** | `emaid.py` `build_status()` | 构建包含时间、日期、游戏状态的 status 字符串 |
-| **FTS5 全文搜索初始化** | `emaid.py` `init_fts()` | 创建 `t_chat_history_fts` 虚拟表 |
-
-### Session 设计
-
-- **Session ID**：自由定义，由渠道自行 format（如 `qq_group_12345`、`bilibili_live`、`chat_user_abc`）
-- **只要不重复就行**
-- **per-session 状态**：history、embedding_buffer、summary、last_reply_time、processing_lock
-
-### 公共模块接口设计（草案）
-
-```python
-class ContextManager:
-    def get_session(session_id: str) -> Session
-    def save_message(session_id, role, content, thought=None, action=None)
-    def load_history(session_id, max_messages=40) -> List[Message]
-    def truncate_history(session_id, max_history) -> str  # 返回摘要
-    def build_time_annotation(session_id) -> Optional[str]  # "（X分钟过去了。）"
-    def recall_memory(session_id, time_range, keywords, ...) -> List[Message]
-    def init_fts()  # FTS5 初始化
-```
+| 项 | 说明 |
+|---|---|
+| 表情上传前端 UI | 后端 endpoint 已有，CharactersView 缺上传编辑界面 |
+| 图片尺寸微调 | 当前统一最长边 480，未来可能需要正方形画布 |
 
 ---
 
@@ -71,7 +85,7 @@ class ContextManager:
 | 8 | `list_code_files` | extension (optional) | 文件系统 | 低 |
 | 9 | `read_code_file` | filename | 文件系统 | 低 |
 | 10 | `git_command` | git_command | Git CLI + /game_workspace | 低 |
-| 11 | `recall_memory` | time_range, keywords, limit, context_lines | SQLite FTS5 (t_chat_history_fts) | 中（需要 session_id） |
+| 11 | `recall_memory` | time_range, keywords, limit, context_lines | SQLite FTS5 (t_chat_history_fts) | 中（hippocampus 已有 recall） |
 | 12 | `set_reminder` | user_id, content, cron/remind_at | SQLite (t_reminder) + APScheduler | 高（需要渠道回调） |
 | 13 | `list_reminders` | user_id (optional) | SQLite | 低 |
 | 14 | `cancel_reminder` | reminder_id | SQLite + APScheduler | 低 |
@@ -97,7 +111,7 @@ else:                        -> 透传给渠道客户端（已有）
 |------|---------|---------|
 | **Chrome/Playwright** | QQ Bot 进程中启动 | 迁移到 AI Core 进程，或作为独立服务 |
 | **Docker** | QQ Bot 进程中调用 | 迁移到 AI Core 进程（需确认 AI Core 进程能访问 Docker） |
-| **SQLite FTS5** | QQ Bot 的 `init_fts()` | 迁移到 AI Core 启动时初始化 |
+| **SQLite FTS5** | QQ Bot 的 `init_fts()` — 已迁 ✅ | AI Core 启动时初始化 |
 | **APScheduler** | QQ Bot 进程中运行 | 迁移到 AI Core 进程（提醒触发需要回调渠道） |
 | **文件系统** | QQ Bot 的 /game_workspace | 迁移到共享路径或 AI Core 管理 |
 | **Git CLI** | QQ Bot 调用 subprocess | AI Core 进程同样可调用 |
@@ -222,10 +236,10 @@ QQ Bot（薄桥接层）
 - 消息分段发送（_send_response）
 
 **迁移到公共模块的功能**：
-- 对话历史管理（Qwen 类的大部分逻辑）
+- ~~对话历史管理（Qwen 类的大部分逻辑）~~ ✅ 已迁
 - 工具调用循环（emaid.py 的 handle_llm_conversation）
 - 状态注入（build_status）
-- 数据集采集
+- ~~数据集采集~~ ✅ 已迁
 - 提醒系统（reminder_scheduler.py）
 - 睡眠管理（sleep/wake）
 
@@ -255,42 +269,33 @@ QQ Bot（薄桥接层）
 
 ---
 
-## 文件结构规划（草案）
+## 文件结构（现状）
 
 ```
-项目根/
-├── shared/                          <- 新增：公共模块
-│   ├── context/
-│   │   ├── __init__.py
-│   │   ├── manager.py              <- ContextManager 类
-│   │   ├── session.py              <- Session 数据模型
-│   │   ├── history.py              <- 历史持久化（t_chat_history 读写）
-│   │   ├── summarizer.py           <- 历史摘要压缩
-│   │   └── fts.py                  <- FTS5 全文搜索
-│   ├── tools/
-│   │   ├── __init__.py
-│   │   ├── registry.py             <- ToolRegistry 工具注册表
-│   │   ├── executor.py             <- 统一执行循环
-│   │   ├── builtin/
-│   │   │   ├── search.py           <- search_on_internet, access_website
-│   │   │   ├── code.py             <- run_code_in_sandbox, interactive_code
-│   │   │   ├── files.py            <- write_file, list_code_files, read_code_file
-│   │   │   ├── git.py              <- git_command
-│   │   │   ├── memory.py           <- recall_memory
-│   │   │   ├── reminder.py         <- set/list/cancel_reminder
-│   │   │   ├── navigation.py       <- move, decide_area/school, take_railway
-│   │   │   ├── status.py           <- update_alias, go_to_sleep, set_daily_schedule
-│   │   │   └── combat.py           <- sword_of_light
-│   │   └── schemas.py              <- 所有工具的 JSON function schema 定义
-│   └── dao/                         <- 共享 DAO（从 QQ Bot 和 Bilibili 提取）
-│       ├── __init__.py
-│       ├── engine.py               <- 共享数据库引擎
-│       ├── map.py                  <- 地图（t_field/school/area/position）
-│       ├── status.py               <- 爱丽丝状态（t_status）
-│       ├── user.py                 <- 用户（t_user）
-│       ├── chat_history.py         <- 聊天历史（t_chat_history + FTS5）
-│       ├── reminder.py             <- 提醒（t_reminder）
-│       └── tomb.py                 <- 墓地（t_tomb）
+ai_core/
+├── hippocampus/                       ← 上下文模块（替代原计划 shared/）
+│   ├── db/engine.py                   ← 裸 sqlite3 引擎（WAL）
+│   ├── dao/chat_history.py            ← 独立 chat_history DAO + FTS5
+│   ├── context/session.py             ← Session 数据模型
+│   ├── context/manager.py             ← ContextManager
+│   ├── context/summarizer.py          ← 摘要（LLM 回调注入）
+│   ├── context/dataset.py             ← 数据集采集
+│   └── router.py                      ← /ctx HTTP 端点
+├── core/
+│   ├── expression_image.py            ← 表情图处理工具（缩放/路径/URL）
+│   └── channel_manager.py             ← 进程树杀修复
+├── embedding/tendou_arisu/
+│   ├── persona.json                   ← expressions 映射（70 条）+ image_size
+│   └── expression/image/              ← 15 张统一 480px 表情图
+└── web/src/views/ChatView.vue         ← 动态拉取 expressions + 兜底
+
+qq_bot/src/
+├── skills/hippocampus_client.py       ← aiohttp HTTP 客户端
+└── plugins/
+    ├── qwenOpenapi.py                 ← Qwen 完全委托 hippocampus
+    ├── emaid.py                       ← await add_user_message_to_history + 截断 no-op
+    ├── reminder_scheduler.py          ← hippo.list_sessions 选群
+    └── emotion.py                     ← 拉 persona expressions + 兜底 + favor 保留
 ```
 
 ---
@@ -298,35 +303,37 @@ QQ Bot（薄桥接层）
 ## 实施顺序
 
 ```
-Phase 1: 上下文管理模块
-  1.1 提取 DAO 层到 shared/dao/（从 QQ Bot 复制+清理）
-  1.2 实现 ContextManager（会话、历史、摘要、时间标注）
-  1.3 QQ Bot 改为调用 ContextManager（验证功能不变）
+✅ Phase 1: 上下文管理模块
+   ✅ 1.1 独立 chat_history DAO + 引擎
+   ✅ 1.2 ContextManager（会话、历史、摘要、时间标注）
+   ✅ 1.3 QQ Bot 完全委托 hippocampus（去掉开关，唯一路径）
+
+✅ 额外：表情统一
+   ✅ persona.extra expressions + 480px 表情图 + QQ/Chat 双端打通
 
 Phase 2: 通用工具迁移（低依赖的先做）
-  2.1 文件操作工具（write/list/read_file, git_command）
-  2.2 记忆召回（recall_memory）
-  2.3 代码沙箱（run_code_in_sandbox, interactive_code）
-  2.4 网页搜索（search_on_internet, access_website）
-  2.5 提醒系统（set/list/cancel_reminder + APScheduler 迁移）
+   2.1 文件操作工具（write/list/read_file, git_command）
+   2.2 记忆召回（recall_memory）— hippocampus 已有
+   2.3 代码沙箱（run_code_in_sandbox, interactive_code）
+   2.4 网页搜索（search_on_internet, access_website）
+   2.5 提醒系统（set/list/cancel_reminder + APScheduler 迁移）
 
 Phase 3: 游戏世界工具
-  3.1 DAO 层已在 Phase 1 提取
-  3.2 导航状态机迁移
-  3.3 move/decide_area/decide_school/take_railway
-  3.4 update_alias, go_to_sleep, set_daily_schedule
+   3.1 导航状态机迁移
+   3.2 move/decide_area/decide_school/take_railway
+   3.3 update_alias, go_to_sleep, set_daily_schedule
 
 Phase 4: 渠道回调 + QQ 专属
-  4.1 设计渠道回调接口
-  4.2 sword_of_light 迁移
-  4.3 提醒触发通知渠道
-  4.4 睡眠模式管理迁移
+   4.1 设计渠道回调接口
+   4.2 sword_of_light 迁移
+   4.3 提醒触发通知渠道
+   4.4 睡眠模式管理迁移
 
 Phase 5: QQ Bot 瘦身
-  5.1 移除已迁移的代码
-  5.2 简化 emaid.py
-  5.3 简化 qwenOpenapi.py
-  5.4 验证所有功能正常
+   5.1 移除已迁移的代码
+   5.2 简化 emaid.py
+   5.3 简化 qwenOpenapi.py
+   5.4 验证所有功能正常
 ```
 
 ---
@@ -334,6 +341,11 @@ Phase 5: QQ Bot 瘦身
 ## 其他待办
 
 - [ ] `chatglmOpenapi.py` 清理（已弃用，可删除或标记 deprecated）
+- [ ] `qwenOpenapi.py` 死代码清理（`_conclude_summary` 等不再被调用）
+- [ ] `emaid.py` `init_fts()` 移除（hippocampus 已自管）
+- [ ] 表情上传前端 UI（CharactersView 加 expression 编辑界面）
+- [ ] 摘要方式优化（保留更多信息）
+- [ ] 表情图尺寸微调（可能需要正方形画布而非最长边等比）
 - [ ] Unity 项目目录 `unity/settings.json`（旧副本）清理
 - [ ] 项目打包/发布方案（Unity 二进制通过 GitHub Releases）
 - [ ] QQ Bot `.env` 中 `IMGROOT` 死配置清理
@@ -341,6 +353,8 @@ Phase 5: QQ Bot 瘦身
 - [ ] Request Monitor 的 `SyntaxError: 2` 控制台噪音排查
 - [ ] Chat 页面 `max_tokens` 参数可能需要从 persona 的 `max_chat_len` 读取而非 inference config
 - [ ] 浏览器缓存问题：考虑给 index.html 加 `Cache-Control: no-cache` 响应头
+- [ ] hippocampus 端点鉴权（生产环境 `/ctx` 可能需要 Basic Auth 或 token）
+- [ ] QQ Bot `--reload` 已去掉，需确认 channels.json（运行时）同步（gitignored，已手动改）
 
 ---
 
@@ -348,5 +362,4 @@ Phase 5: QQ Bot 瘦身
 
 ```
 main:    80553f4  <- 最后推送的稳定版本
-develop: 1f813a7  <- 当前工作分支（已推送）
-```
+develop: f6796e1  <- 当前工作分支（Phase 1 完成 + 表情统一 + 修复）
