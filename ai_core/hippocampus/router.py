@@ -67,6 +67,7 @@ def build_router() -> APIRouter:
 
     @router.post("/{sid}/message")
     async def save_message(sid: str, body: SaveMessageBody):
+        print(f"[hippocampus] save_message sid={sid} role={body.role}")
         row_id = await cm.save_message(
             session_id=sid,
             role=body.role,
@@ -88,6 +89,7 @@ def build_router() -> APIRouter:
 
     @router.get("/{sid}/turn-context")
     async def turn_context(sid: str, limit: int = 40):
+        print(f"[hippocampus] turn_context sid={sid} limit={limit}")
         ctx = await cm.turn_context(sid, max_history=limit)
         return {
             "session_id": sid,
@@ -99,6 +101,7 @@ def build_router() -> APIRouter:
 
     @router.post("/{sid}/clear")
     async def clear_session(sid: str):
+        print(f"[hippocampus] clear sid={sid}")
         await cm.clear_session(sid)
         return {"ok": True}
 

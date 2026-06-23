@@ -59,6 +59,7 @@ async def _post(path: str, payload: Optional[Dict] = None) -> Dict:
 async def turn_context(sid: str, limit: int = 40) -> Dict:
     """Everything needed to build the next request: history (with datetimes),
     time annotation, and the current summary."""
+    print(f"[hippo-client] turn_context sid={sid}")
     data = await _get(f"/ctx/{sid}/turn-context?limit={limit}")
     history = [
         {
@@ -87,6 +88,7 @@ async def save_message(
     is_summary: int = 0,
     max_history: int = 40,
 ) -> int:
+    print(f"[hippo-client] save_message sid={sid} role={role} len={len(content)}")
     data = await _post(
         f"/ctx/{sid}/message",
         {
@@ -114,6 +116,7 @@ async def recall(
 
 
 async def clear(sid: str) -> None:
+    print(f"[hippo-client] clear sid={sid}")
     await _post(f"/ctx/{sid}/clear", {})
 
 
