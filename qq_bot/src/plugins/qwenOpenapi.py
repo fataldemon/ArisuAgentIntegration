@@ -129,7 +129,7 @@ class Qwen(LLM):
         self.last_reply = datetime.now()
         self.cut_point = min(20, int(self.max_history / 2))
         object.__setattr__(self, '_summarizing', False)
-        self.session_id = hippo.session_id_for(self.group_id) if hippo.USE_HIPPOCAMPUS else self.group_id
+        object.__setattr__(self, 'session_id', hippo.session_id_for(self.group_id) if hippo.USE_HIPPOCAMPUS else self.group_id)
 
         # 从数据库(hippo 关闭时) / hippocampus(hippo 开启时)恢复历史和摘要
         if self.group_id:
@@ -480,8 +480,8 @@ class Qwen(LLM):
         if hippo.USE_HIPPOCAMPUS:
             ctx = await hippo.turn_context(self.session_id, limit=self.cut_point)
             self.history = ctx["history"]
-            self._hippo_annotation = ctx["time_annotation"]
-            self._hippo_was_reset = ctx["was_reset"]
+            object.__setattr__(self, '_hippo_annotation', ctx["time_annotation"])
+            object.__setattr__(self, '_hippo_was_reset', ctx["was_reset"])
             self.summary = ctx["summary"]
             self.last_reply = datetime.now()
 
@@ -505,8 +505,8 @@ class Qwen(LLM):
         if hippo.USE_HIPPOCAMPUS:
             ctx = await hippo.turn_context(self.session_id, limit=self.cut_point)
             self.history = ctx["history"]
-            self._hippo_annotation = ctx["time_annotation"]
-            self._hippo_was_reset = ctx["was_reset"]
+            object.__setattr__(self, '_hippo_annotation', ctx["time_annotation"])
+            object.__setattr__(self, '_hippo_was_reset', ctx["was_reset"])
             self.summary = ctx["summary"]
             self.last_reply = datetime.now()
             await hippo.save_message(self.session_id, "function", feedback, request_id=current_request_id, max_history=self.max_history)
@@ -618,8 +618,8 @@ class Qwen(LLM):
         if hippo.USE_HIPPOCAMPUS:
             ctx = await hippo.turn_context(self.session_id, limit=self.cut_point)
             self.history = ctx["history"]
-            self._hippo_annotation = ctx["time_annotation"]
-            self._hippo_was_reset = ctx["was_reset"]
+            object.__setattr__(self, '_hippo_annotation', ctx["time_annotation"])
+            object.__setattr__(self, '_hippo_was_reset', ctx["was_reset"])
         messages = self.history + [build_message("user", prompt)]
         query = self._build_base_query(messages, tools=[], request_id="")
         query.pop("functions", None)
