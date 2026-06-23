@@ -11,6 +11,7 @@ from src.dao.chat_history import init_fts
 from src.plugins.chatglmOpenapi import ChatGLM
 from src.plugins.qwenOpenapi import Qwen, SLEEP_INFORMATION
 from src.plugins.emotion import remove_emotion, check_emotion, fetch_expressions
+from src.skills import hippocampus_client as hippo
 from src.plugins.voice import remove_action, get_translation, voice_generate
 from src.skills.image_process import recent_img_buffer
 from src.dao.tomb import clear_graveyard, check_death
@@ -82,7 +83,7 @@ async def enter_sleep_mode(phase: str = "睡觉中", game_name: str = "", durati
     enter_msg = _get_sleep_enter_history()
     if enter_msg:
         for llm in llm_list.values():
-            llm.add_user_message_to_history(enter_msg)
+            await llm.add_user_message_to_history(enter_msg)
 
     if duration > 0:
         await _schedule_wake(duration)
@@ -288,6 +289,8 @@ async def send_feedback(feedback: str, user_id: str, group_id: str, embedding, s
 
 
 async def summarize_history(group_id: str, user_id: str):
+    if hippo.USE_HIPPOCAMPUS:
+        return
     llm = getLLM(group_id)
     await llm.shorten_history(user_id)
 
@@ -756,7 +759,7 @@ async def chat(event: Event):
         tips = f"（提示：{LURKING_INSTRUCT})"
 
     llm = getLLM(group_id)
-    llm.add_user_message_to_history(pre_messages)
+    await llm.add_user_message_to_history(pre_messages)
     await handle_llm_conversation(
         group_chatter=group_chatter,
         group_id=group_id,
@@ -773,7 +776,7 @@ async def chat(event: Event):
         more = message_buffer[group_id][:]
         message_buffer[group_id] = []
         for msg in more:
-            llm.add_user_message_to_history(msg)
+            await llm.add_user_message_to_history(msg)
         more_combined = "\n".join(more)
         await handle_llm_conversation(
             group_chatter=group_chatter,
@@ -791,7 +794,8 @@ async def chat(event: Event):
         group_locked[group_id] = True
 
     # 后台运行摘要
-    asyncio.create_task(_summarize_in_background(group_id, user_id))
+    if not hippo.USE_HIPPOCAMPUS:
+        asyncio.create_task(_summarize_in_background(group_id, user_id))
 
 
 async def _summarize_in_background(group_id: str, user_id: str):
@@ -833,7 +837,7 @@ async def _drain_one_group(group_id: str):
 
         llm = getLLM(group_id)
         sender = _WakeSender(group_id)
-        llm.add_user_message_to_history(combined)
+        await llm.add_user_message_to_history(combined)
 
         await handle_llm_conversation(
             group_chatter=sender,
@@ -849,7 +853,7 @@ async def _drain_one_group(group_id: str):
             more = message_buffer[group_id][:]
             message_buffer[group_id] = []
             for msg in more:
-                llm.add_user_message_to_history(msg)
+                await llm.add_user_message_to_history(msg)
             await handle_llm_conversation(
                 group_chatter=sender,
                 group_id=group_id,
@@ -860,7 +864,8 @@ async def _drain_one_group(group_id: str):
                 _poke=False
             )
 
-        asyncio.create_task(_summarize_in_background(group_id, ""))
+        if not hippo.USE_HIPPOCAMPUS:
+            asyncio.create_task(_summarize_in_background(group_id, ""))
     finally:
         group_locked[group_id] = True
 
@@ -909,7 +914,7 @@ async def exit_sleep(event: MessageEvent):
     wake_msg = _get_sleep_wake_history()
     if wake_msg:
         for llm in llm_list.values():
-            llm.add_user_message_to_history(wake_msg)
+            await llm.add_user_message_to_history(wake_msg)
 
     await wake_cmd.send(wake_msg or "（爱丽丝醒来了，正在处理积压的消息...）")
     await _drain_all_buffered()
@@ -935,7 +940,7 @@ async def _do_wake():
     wake_msg = _get_sleep_wake_history()
     if wake_msg:
         for llm in llm_list.values():
-            llm.add_user_message_to_history(wake_msg)
+            await llm.add_user_message_to_history(wake_msg)
     await _drain_all_buffered()
 
     from src.plugins.reminder_scheduler import _restart_sleep_check_if_needed

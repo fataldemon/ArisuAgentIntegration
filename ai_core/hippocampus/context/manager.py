@@ -138,6 +138,47 @@ class ContextManager:
         )
 
     # ------------------------------------------------------------------
+    # Turn context (full delegation: one call gets everything a channel
+    # needs to build the next LLM request)
+    # ------------------------------------------------------------------
+    async def turn_context(self, session_id: str, max_history: int = 40) -> Dict:
+        """Return the current in-memory history + time annotation + summary.
+
+        The in-memory ``session.history`` is the source of truth here (kept up
+        to date by save_message / background truncation / >12h reset), so a
+        fully-delegated channel never needs to hold history itself.
+        """
+        sess = await self.get_session(session_id, max_history=max_history)
+        annotation, was_reset = await self.build_time_annotation(session_id)
+        return {
+            "history": list(sess.history),
+            "time_annotation": annotation,
+            "was_reset": was_reset,
+            "summary": sess.summary,
+        }
+
+    async def clear_session(self, session_id: str) -> None:
+        """Clear the in-memory session (history/summary/dataset). The DB rows
+        are NOT deleted -- mirrors the QQ bot's ``clear_memory`` (forget for
+        the current conversation; rows remain for recall + restart recovery).
+        """
+        sess = await self.get_session(session_id)
+        if sess.conversations:
+            convs = list(sess.conversations)
+            sess.conversations = []
+            await asyncio.to_thread(ds.record_dialog_in_file, convs, "")
+        sess.history = []
+        sess.summary = ""
+
+    def list_sessions(self) -> List[Dict]:
+        """Active in-memory sessions with their last_reply (for reminder
+        scheduling -- picking the most-recently-active group, etc.)."""
+        return [
+            {"session_id": s.session_id, "last_reply": s.last_reply.isoformat()}
+            for s in self._sessions.values()
+        ]
+
+    # ------------------------------------------------------------------
     # Dataset collection
     # ------------------------------------------------------------------
     async def record_dataset(

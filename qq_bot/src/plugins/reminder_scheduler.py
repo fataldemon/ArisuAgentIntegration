@@ -6,6 +6,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 
+from src.skills import hippocampus_client as hippo
+
 scheduler = AsyncIOScheduler()
 
 
@@ -105,7 +107,7 @@ async def _sleep_check():
         emaid._sync_sleep_to_db()
         enter_msg = f"（爱丽丝{old_phase}太久了，该睡觉了~）"
         for llm in emaid.llm_list.values():
-            llm.add_user_message_to_history(enter_msg)
+            await llm.add_user_message_to_history(enter_msg)
         return
 
     # 2. 已经在睡觉中 → 跳过
@@ -124,10 +126,21 @@ async def _sleep_check():
     # 4. 找最近 10 分钟内 bot 回复过的群
     best_group = None
     best_time = None
-    for gid, llm in emaid.llm_list.items():
-        if best_time is None or llm.last_reply > best_time:
-            best_time = llm.last_reply
-            best_group = gid
+    if hippo.USE_HIPPOCAMPUS:
+        sessions = await hippo.list_sessions()
+        best_time = None
+        best_group = None
+        for s in sessions:
+            sid = s["session_id"]
+            lr = s["last_reply"]
+            if best_time is None or lr > best_time:
+                best_time = lr
+                best_group = sid
+    else:
+        for gid, llm in emaid.llm_list.items():
+            if best_time is None or llm.last_reply > best_time:
+                best_time = llm.last_reply
+                best_group = gid
 
     if best_group and (now - best_time).total_seconds() < 600:
         emaid.message_buffer.setdefault(best_group, []).append(
@@ -183,7 +196,7 @@ async def _fire_reminder(reminder_id: int):
         wake_msg = emaid._get_sleep_wake_history()
         if wake_msg:
             for llm in emaid.llm_list.values():
-                llm.add_user_message_to_history(wake_msg)
+                await llm.add_user_message_to_history(wake_msg)
 
     llm = emaid.getLLM(str(reminder.group_id))
     username = emaid.get_talker_name(str(reminder.user_id))

@@ -17,6 +17,7 @@ from src.function.function_call import skill_call
 from src.plugins.dataset_collection import create_first_conversation, create_conversation, get_json
 from src.plugins.emotion import remove_emotion
 from src.dao.status import master_id
+from src.skills import hippocampus_client as hippo
 
 logging.basicConfig(level=logging.INFO)
 
@@ -128,10 +129,14 @@ class Qwen(LLM):
         self.last_reply = datetime.now()
         self.cut_point = min(20, int(self.max_history / 2))
         object.__setattr__(self, '_summarizing', False)
+        self.session_id = hippo.session_id_for(self.group_id) if hippo.USE_HIPPOCAMPUS else self.group_id
 
-        # 新增：从数据库恢复历史和摘要
+        # 从数据库(hippo 关闭时) / hippocampus(hippo 开启时)恢复历史和摘要
         if self.group_id:
-            self.history, self.summary, self.last_reply = load_recent_history(self.group_id, limit=self.cut_point)
+            if hippo.USE_HIPPOCAMPUS:
+                self.history, self.summary, self.last_reply = [], "", datetime.now()
+            else:
+                self.history, self.summary, self.last_reply = load_recent_history(self.group_id, limit=self.cut_point)
 
     @property
     def _llm_type(self) -> str:
@@ -154,9 +159,12 @@ class Qwen(LLM):
         self._enter_zone(self.document_zone, file_name, doc, self.max_document)
 
     # ---------- 历史记录管理 ----------
-    def add_user_message_to_history(self, msg: str):
+    async def add_user_message_to_history(self, msg: str):
         """由 chat() 统一调用，将用户消息写入历史"""
         self.history.append(build_message("user", msg, datetime.now()))
+        if hippo.USE_HIPPOCAMPUS:
+            sid = getattr(self, "session_id", self.group_id)
+            await hippo.save_message(sid, "user", msg, max_history=self.max_history)
 
     # ---------- 数据持久化 ----------
     def record_dialog_in_file(self, content: str):
@@ -168,6 +176,8 @@ class Qwen(LLM):
 
     # ---------- 历史摘要与截断 ----------
     async def shorten_history(self, user_id: str):
+        if hippo.USE_HIPPOCAMPUS:
+            return
         if len(self.history) <= self.max_history:
             print(f"历史长度：{len(self.history)}")
             return
@@ -284,25 +294,29 @@ class Qwen(LLM):
         request_id = kwargs.get("request_id", "")
         abort_id = kwargs.get("abort_id", None)
 
-        time_diff = (datetime.now() - self.last_reply).seconds
-        time_annotation = ""
-        history_was_reset = False
-        if self.history and time_diff > 10 * 60:
-            if time_diff < 3600:
-                minutes = time_diff // 60
-                time_annotation = f"（{minutes}分钟过去了。）\n"
-            elif time_diff < 3600 * 12:
-                hours = time_diff // 3600
-                time_annotation = f"（{hours}小时过去了。）\n"
-            else:
-                self.history, self.summary, self.last_reply = load_recent_history(self.group_id, limit=self.cut_point)
-                history_was_reset = True
-                if time_diff < 3600 * 24:
-                    time_annotation = "（半天之后。）\n"
+        if hippo.USE_HIPPOCAMPUS:
+            time_annotation = getattr(self, "_hippo_annotation", "")
+            history_was_reset = getattr(self, "_hippo_was_reset", False)
+        else:
+            time_diff = (datetime.now() - self.last_reply).seconds
+            time_annotation = ""
+            history_was_reset = False
+            if self.history and time_diff > 10 * 60:
+                if time_diff < 3600:
+                    minutes = time_diff // 60
+                    time_annotation = f"（{minutes}分钟过去了。）\n"
+                elif time_diff < 3600 * 12:
+                    hours = time_diff // 3600
+                    time_annotation = f"（{hours}小时过去了。）\n"
                 else:
-                    days = time_diff // (3600 * 24)
-                    time_annotation = f"（{days}天之后。）\n"
-                self.record_dialog_in_file(get_json(self.conversations, ""))
+                    self.history, self.summary, self.last_reply = load_recent_history(self.group_id, limit=self.cut_point)
+                    history_was_reset = True
+                    if time_diff < 3600 * 24:
+                        time_annotation = "（半天之后。）\n"
+                    else:
+                        days = time_diff // (3600 * 24)
+                        time_annotation = f"（{days}天之后。）\n"
+                    self.record_dialog_in_file(get_json(self.conversations, ""))
 
         # 查找最后一个"（提示："的位置
         tip_pos = prompt.rfind("（提示：")
@@ -320,13 +334,14 @@ class Qwen(LLM):
         else:
             self.conversations.append(create_conversation({"role": "user", "content": raw_prompt}))
 
-        asyncio.create_task(asyncio.to_thread(
-            save_chat_record,
-            group_id=self.group_id,
-            role="user",
-            content=raw_prompt,
-            request_id=request_id
-        ))
+        if not hippo.USE_HIPPOCAMPUS:
+            asyncio.create_task(asyncio.to_thread(
+                save_chat_record,
+                group_id=self.group_id,
+                role="user",
+                content=raw_prompt,
+                request_id=request_id
+            ))
 
         if self.processing_cache:
             self.processing_cache["prompt"] = ""
@@ -425,6 +440,31 @@ class Qwen(LLM):
             thought=thought
         ))
 
+    # ---------- hippo-mode save helpers ----------
+    async def _append_function_call_history_hippo(self, thought: str, answer: str, action_name: str, action_input: str):
+        tool_call_str = format_action_to_history(action_name, action_input)
+        if answer:
+            full_content = f"<think>\n{thought}\n</think>\n\n{answer}\n\n<tool_call>\n{tool_call_str}\n</tool_call>\n"
+        else:
+            full_content = f"<think>\n{thought}\n</think>\n\n<tool_call>\n{tool_call_str}\n</tool_call>\n"
+        self.history.append(build_message("assistant", full_content, datetime.now()))
+        await hippo.save_message(
+            self.session_id, "assistant", full_content,
+            thought=thought, action_name=action_name, action_input=action_input,
+            max_history=self.max_history,
+        )
+
+    async def _append_final_answer_history_hippo(self, thought: str, answer: str):
+        clean_answer = answer.replace("[SILENCE]", "").strip()
+        if not (clean_answer and remove_emotion(clean_answer)):
+            return
+        full_content = f"<think>\n{thought}\n</think>\n\n{clean_answer}"
+        self.history.append(build_message("assistant", full_content, datetime.now()))
+        await hippo.save_message(
+            self.session_id, "assistant", full_content,
+            thought=thought, max_history=self.max_history,
+        )
+
     # ---------- 主要调用接口 ----------
     async def call_with_function(self, prompt: str, user_id: str, tools: List, **kwargs) -> tuple:
         abort_id = None
@@ -436,6 +476,14 @@ class Qwen(LLM):
         timestamp = datetime.now()
         current_request_id = f"{timestamp.strftime('%Y%m%d%H%M%S')}{user_id}"
         self.processing_cache = {"prompt": prompt, "user_id": user_id, "timestamp": timestamp, "request_id": current_request_id}
+
+        if hippo.USE_HIPPOCAMPUS:
+            ctx = await hippo.turn_context(self.session_id, limit=self.cut_point)
+            self.history = ctx["history"]
+            self._hippo_annotation = ctx["time_annotation"]
+            self._hippo_was_reset = ctx["was_reset"]
+            self.summary = ctx["summary"]
+            self.last_reply = datetime.now()
 
         query = self._construct_query(prompt=prompt, tools=tools, request_id=current_request_id, abort_id=abort_id, **kwargs)
 
@@ -454,15 +502,24 @@ class Qwen(LLM):
         current_request_id = f"{timestamp.strftime('%Y%m%d%H%M%S')}{user_id}"
         self.processing_cache = {"prompt": feedback, "user_id": user_id, "timestamp": timestamp, "request_id": current_request_id}
 
-        # 新增：将 function 消息加入历史并记录数据库
-        self.history.append(build_message("function", feedback, datetime.now()))
-        asyncio.create_task(asyncio.to_thread(
-            save_chat_record,
-            group_id=self.group_id,
-            role="function",
-            content=feedback,
-            request_id=current_request_id
-        ))
+        if hippo.USE_HIPPOCAMPUS:
+            ctx = await hippo.turn_context(self.session_id, limit=self.cut_point)
+            self.history = ctx["history"]
+            self._hippo_annotation = ctx["time_annotation"]
+            self._hippo_was_reset = ctx["was_reset"]
+            self.summary = ctx["summary"]
+            self.last_reply = datetime.now()
+            await hippo.save_message(self.session_id, "function", feedback, request_id=current_request_id, max_history=self.max_history)
+            self.history.append(build_message("function", feedback, datetime.now()))
+        else:
+            self.history.append(build_message("function", feedback, datetime.now()))
+            asyncio.create_task(asyncio.to_thread(
+                save_chat_record,
+                group_id=self.group_id,
+                role="function",
+                content=feedback,
+                request_id=current_request_id
+            ))
 
         query = self._construct_observation(feedback=feedback, tools=tools, request_id=current_request_id, **kwargs)
 
@@ -514,14 +571,20 @@ class Qwen(LLM):
             except json.JSONDecodeError:
                 feedback = "（不合法的输入参数）"
 
-            self._append_function_call_history(thought, predictions, action_name, action_input)
+            if hippo.USE_HIPPOCAMPUS:
+                await self._append_function_call_history_hippo(thought, predictions, action_name, action_input)
+            else:
+                self._append_function_call_history(thought, predictions, action_name, action_input)
             clear_my_cache()
             print(f"历史长度：{len(self.history)}")
             return thought, predictions, feedback, finish_reason, action_name
         else:
             self.embedding_buffer = resp_json['choices'][0].get('embedding_list', [])
             print(f"查到的设定信息编号为：{self.embedding_buffer}")
-            self._append_final_answer_history(thought, predictions)
+            if hippo.USE_HIPPOCAMPUS:
+                await self._append_final_answer_history_hippo(thought, predictions)
+            else:
+                self._append_final_answer_history(thought, predictions)
             clear_my_cache()
             return thought, predictions, "", finish_reason, ""
 
@@ -552,6 +615,11 @@ class Qwen(LLM):
 
     async def call_for_reminder(self, prompt: str) -> str:
         """提醒专用：发 prompt + history 到主端点获取回复，只把回复写入 history"""
+        if hippo.USE_HIPPOCAMPUS:
+            ctx = await hippo.turn_context(self.session_id, limit=self.cut_point)
+            self.history = ctx["history"]
+            self._hippo_annotation = ctx["time_annotation"]
+            self._hippo_was_reset = ctx["was_reset"]
         messages = self.history + [build_message("user", prompt)]
         query = self._build_base_query(messages, tools=[], request_id="")
         query.pop("functions", None)
@@ -569,6 +637,8 @@ class Qwen(LLM):
                 logging.error(f"提醒消息生成后端异常 finish_reason={finish_reason}")
                 return None
             self.history.append(build_message("assistant", predictions, datetime.now()))
+            if hippo.USE_HIPPOCAMPUS:
+                await hippo.save_message(self.session_id, "assistant", predictions, max_history=self.max_history)
             return predictions
         except Exception as e:
             logging.error(f"提醒消息解析失败: {e}")
@@ -581,6 +651,8 @@ class Qwen(LLM):
         self.record_dialog_in_file(get_json(self.conversations, ""))
         self.history = []
         self.conversations = []
+        if hippo.USE_HIPPOCAMPUS:
+            asyncio.create_task(hippo.clear(self.session_id))
 
     @property
     def _identifying_params(self) -> Mapping[str, Any]:

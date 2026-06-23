@@ -61,6 +61,10 @@ def build_router() -> APIRouter:
     router = APIRouter(prefix="/ctx", tags=["hippocampus"])
     cm = get_context_manager()
 
+    @router.get("/sessions")
+    async def list_sessions():
+        return {"sessions": cm.list_sessions()}
+
     @router.post("/{sid}/message")
     async def save_message(sid: str, body: SaveMessageBody):
         row_id = await cm.save_message(
@@ -81,6 +85,22 @@ def build_router() -> APIRouter:
     async def get_history(sid: str, limit: int = 40):
         history = await cm.load_history(sid, limit=limit)
         return {"session_id": sid, "history": _serialize_history(history)}
+
+    @router.get("/{sid}/turn-context")
+    async def turn_context(sid: str, limit: int = 40):
+        ctx = await cm.turn_context(sid, max_history=limit)
+        return {
+            "session_id": sid,
+            "history": _serialize_history(ctx["history"]),
+            "time_annotation": ctx["time_annotation"],
+            "was_reset": ctx["was_reset"],
+            "summary": ctx["summary"],
+        }
+
+    @router.post("/{sid}/clear")
+    async def clear_session(sid: str):
+        await cm.clear_session(sid)
+        return {"ok": True}
 
     @router.get("/{sid}/time-annotation")
     async def time_annotation(sid: str):
