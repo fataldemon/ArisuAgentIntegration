@@ -7,8 +7,6 @@ from nonebot import on_message, on_notice, get_bot, get_driver
 from nonebot import on_command
 from nonebot.adapters.onebot.v11 import Message, MessageSegment, Event, MessageEvent, NotifyEvent, PokeNotifyEvent
 
-from src.dao.chat_history import init_fts
-from src.plugins.chatglmOpenapi import ChatGLM
 from src.plugins.qwenOpenapi import Qwen, SLEEP_INFORMATION
 from src.plugins.emotion import remove_emotion, check_emotion, fetch_expressions
 from src.plugins.voice import remove_action, get_translation, voice_generate
@@ -144,7 +142,6 @@ llm_list: dict = {}
 # 启动事件
 @get_driver().on_startup
 async def startup():
-    init_fts()
     fetch_expressions()
     from src.plugins.reminder_scheduler import start_scheduler
     start_scheduler()
@@ -153,7 +150,7 @@ async def startup():
     SLEEP_MODE, SLEEP_PHASE, SLEEP_GAME_NAME = load_sleep_state()
 
 
-def getLLM(group_id: str) -> ChatGLM:
+def getLLM(group_id: str) -> Qwen:
     """
     按照群号获取大语言模型（为了分别存储记忆）
     :return:
@@ -790,13 +787,6 @@ async def chat(event: Event):
         group_locked[group_id] = True
 
 
-async def _summarize_in_background(group_id: str, user_id: str):
-    try:
-        await summarize_history(group_id, user_id)
-    except Exception as e:
-        print(f"后台摘要任务失败 [group={group_id}]: {e}")
-
-
 class _WakeSender:
     """wakeup 时无 event，用 send_group_msg 代替 group_chatter.send()"""
     def __init__(self, group_id: str):
@@ -857,7 +847,6 @@ async def _drain_one_group(group_id: str):
             )
 
 
-        asyncio.create_task(_summarize_in_background(group_id, ""))
     finally:
         group_locked[group_id] = True
 

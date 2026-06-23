@@ -171,36 +171,6 @@ class Qwen(LLM):
     async def shorten_history(self, user_id: str):
         return
 
-    async def _conclude_summary(self, user_id: str, cut_point: int) -> str:
-        prev_summary = self.summary if self.summary else "无"
-        dialog_history = [msg["content"] for msg in self.history[:-cut_point] if "content" in msg]
-        summary_prompt = (
-            f"前情提要：{prev_summary}\n\n对话历史：{dialog_history}\n\n"
-            "综合上面的前情提要和对话历史中的剧情，为爱丽丝汇总成400字以内的记忆摘要，"
-            "记忆摘要要求用讲述故事的语气，长度适中，"
-            "需要忠实地反映出最近的对话内容，思考过程尽量简略。另外，需要用markdown的格式记录下对话历史中需要长期记忆的人物和关键细节信息。"
-            "下面是记忆摘要："
-        )
-        try:
-            raw_summary = await self.call_assistant(summary_prompt)
-        except Exception as e:
-            logging.error(f"摘要生成网络请求失败: {e}")
-            self.summary = None
-            return
-        if raw_summary is None or raw_summary == SLEEP_INFORMATION:
-            logging.error("摘要生成失败，后端返回异常")
-            self.summary = None
-            return
-        self.summary = f"**历史摘要**\n{raw_summary}\n提示：你可以通过**recall_memory**函数回忆之前的具体对话信息。"
-        asyncio.create_task(asyncio.to_thread(
-            save_chat_record,
-            group_id=self.group_id,
-            role="system",
-            content=self.summary,
-            is_summary=1
-        ))
-        return self.summary
-
     # ---------- 打断与并发控制 ----------
     def check_interruption(self, user_id: str) -> bool:
         if user_id == master_id:
