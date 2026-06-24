@@ -351,7 +351,7 @@ class Qwen(LLM):
         try:
             resp_json = await self._post(self.url, query)
         except Exception as e:
-            print(f"Request failed: {e}")
+            print(f"Request failed: {type(e).__name__}: {e}")
             if self.processing_cache and self.processing_cache.get("request_id") == current_request_id:
                 self.processing_cache = None
             return "", SLEEP_INFORMATION, "", "", ""
@@ -377,7 +377,7 @@ class Qwen(LLM):
         try:
             resp_json = await self._post(self.url, query)
         except Exception as e:
-            print(f"Feedback request failed: {e}")
+            print(f"Feedback request failed: {type(e).__name__}: {e}")
             if self.processing_cache and self.processing_cache.get("request_id") == current_request_id:
                 self.processing_cache = None
             return "", SLEEP_INFORMATION, "", "", ""
