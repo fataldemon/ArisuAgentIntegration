@@ -163,7 +163,7 @@ async def _morning_wake():
     wake_msg = emaid._get_sleep_wake_history()
     if wake_msg:
         for llm in emaid.llm_list.values():
-            llm.add_user_message_to_history(wake_msg)
+            await llm.add_user_message_to_history(wake_msg)
     await emaid._drain_all_buffered()
 
 
