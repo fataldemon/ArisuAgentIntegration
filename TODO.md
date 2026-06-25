@@ -362,4 +362,69 @@ Phase 5: QQ Bot 瘦身
 
 ```
 main:    80553f4  <- 最后推送的稳定版本
-develop: f6796e1  <- 当前工作分支（Phase 1 完成 + 表情统一 + 修复）
+develop: 4e13429  <- 当前工作分支（Phase 1 完成 + 表情统一 + Chat 会话持久化 + 修复）
+
+---
+
+## Phase 2：Agent 工具框架（设计已完成，待实施）
+
+### 目标
+把 AI Core 做成一个 Agent，拥有统一的工具注册表 + 权限模型 + 完整执行循环。
+工具从 Chat 页面发起，QQ 等渠道不可用。
+
+### 工具注册表（`ai_core/tools/`）
+
+```
+ai_core/tools/
+├── __init__.py
+├── schema.py            ToolDef / ToolResult / ToolPermission / ToolContext
+├── registry.py          ToolRegistry 单例 (register / list / call)
+├── permissions.py       权限检查 + PendingManager 确认队列
+└── builtin/
+    ├── filesystem.py     文件操作 (read/write/edit/list/search/delete)
+    ├── terminal.py       终端命令 (白名单/黑名单)
+    ├── desktop.py        桌面截屏/点击/滚轮/键盘 (pyautogui+pywin32)
+    └── process.py        进程管理 (list/get/kill)
+```
+
+### 工具清单
+
+| 类别 | 工具 | 权限 | 依赖 |
+|---|---|---|---|
+| 文件读 | read_file, list_directory, search_files, search_content | filesystem:read | os |
+| 文件写 | write_file, edit_file, delete_file | filesystem:write（需确认） | os |
+| 终端 | terminal_command | terminal:exec（需确认） | subprocess |
+| 桌面读 | screenshot, list_windows, get_active_window | desktop:read | pyautogui |
+| 桌面控制 | click, type_text, scroll, press_keys, drag | desktop:control（需确认） | pyautogui/pywin32 |
+| 进程读 | list_processes, get_process_info | process:read | os |
+| 进程控制 | kill_process | process:write（需确认） | os |
+
+### 权限模型
+- 读操作 → 自动通过
+- 写/控制/终端操作 → 人工确认（Chat 页面弹窗 / 桌面托盘系统弹窗）
+- WebUI 权限管理页：设置工具免审核白名单（离线时生效）
+
+### 执行流程
+
+```
+用户发消息 → POST /v1/chat/completions (非流式, tools 注入)
+  → LLM 返回 function_call
+  → 读类工具 → 直接 POST /v1/tools/execute → 追加结果 → 继续
+  → 写/控制类 → 前端弹确认窗 → 用户允许/拒绝 → 执行/跳过 → 继续
+```
+
+### 分阶段
+
+| 阶段 | 内容 |
+|---|---|
+| 2.0 | ToolRegistry 骨架 + echo 测试工具 + Agent Loop 集成 + POST /v1/tools/execute |
+| 2.1 | 文件工具 (filesystem.py: 7个) + 终端命令 (terminal.py) + 工作区隔离 |
+| 2.2 | Chat 前端 inline 确认弹窗 |
+| 2.3 | 桌面截屏 + 进程管理 + 桌面托盘程序 |
+| 2.4 | WebUI 权限管理页（免审核白名单） |
+| Phase 4 | QQ 渠道回调入口 + hybrid 工具 (sword_of_light 等) |
+
+### 渠道回调框架（预留）
+- 渠道启动时向 AI Core 注册 callback_url + capabilities
+- 混合工具（hybrid）：AI Core 执行 DB 部分, 回调渠道执行 QQ API 部分
+- 桌面托盘确认程序也走回调框架
