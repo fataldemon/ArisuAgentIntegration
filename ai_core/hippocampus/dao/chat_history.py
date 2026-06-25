@@ -224,6 +224,22 @@ def load_recent_history(
         conn.close()
 
 
+def delete_session(session_id: str) -> None:
+    """Permanently delete all rows and FTS entries for a session."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "DELETE FROM t_chat_history_fts WHERE rowid IN "
+            "(SELECT id FROM t_chat_history WHERE group_id = ?)",
+            (session_id,),
+        )
+        cur.execute("DELETE FROM t_chat_history WHERE group_id = ?", (session_id,))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def list_sessions_by_prefix(prefix: str) -> list[dict]:
     """Return all distinct session_ids starting with ``prefix``, with
     metadata for a session list sidebar (first-message preview, timestamp)."""

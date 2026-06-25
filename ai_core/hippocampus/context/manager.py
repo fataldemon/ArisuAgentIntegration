@@ -177,6 +177,12 @@ class ContextManager:
         sess.history = []
         sess.summary = ""
 
+    async def delete_session(self, session_id: str) -> None:
+        """Permanently delete the session from memory and DB."""
+        await self.clear_session(session_id)
+        await asyncio.to_thread(dao.delete_session, session_id)
+        self._sessions.pop(session_id, None)
+
     def list_sessions(self) -> List[Dict]:
         """Active in-memory sessions with their last_reply (for reminder
         scheduling -- picking the most-recently-active group, etc.)."""

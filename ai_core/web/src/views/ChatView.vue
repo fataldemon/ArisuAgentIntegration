@@ -514,7 +514,7 @@ async function switchSession(id: string) {
 
 async function deleteSession(id: string) {
   const fullId = `chat:${identity.value || 'default'}:${id}`
-  try { await fetch(`/ctx/${encodeURIComponent(fullId)}/clear`, { method: 'POST' }) } catch {}
+  try { await fetch(`/ctx/${encodeURIComponent(fullId)}/delete`, { method: 'POST' }) } catch {}
   delete sessionCache[id]
   sessions.value = sessions.value.filter(s => s.session_id !== id)
   if (id === sessionId.value) {

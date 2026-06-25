@@ -111,6 +111,12 @@ def build_router() -> APIRouter:
         await cm.clear_session(sid)
         return {"ok": True}
 
+    @router.post("/{sid}/delete")
+    async def delete_session(sid: str):
+        print(f"[hippocampus] delete sid={sid}")
+        await cm.delete_session(sid)
+        return {"ok": True}
+
     @router.get("/{sid}/time-annotation")
     async def time_annotation(sid: str):
         annotation, was_reset = await cm.build_time_annotation(sid)
