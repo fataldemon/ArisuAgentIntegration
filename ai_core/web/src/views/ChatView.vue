@@ -64,7 +64,7 @@
           <img v-if="msg.role === 'user'" :src="userAvatar" class="avatar" />
         </div>
 
-        <div v-if="isStreaming" class="message-row assistant">
+        <div v-if="isStreaming && streamingSessionId === sessionId" class="message-row assistant">
           <img :src="getEmotionAvatar(parseEmotions(streamingContent))" class="avatar" />
           <div class="message-bubble-wrap">
             <div class="message-bubble assistant">
@@ -117,7 +117,7 @@
           {{ $t('chat.send') }}
         </n-button>
         <n-button
-          v-if="isStreaming"
+          v-if="isStreaming && streamingSessionId === sessionId"
           type="error"
           @click="abortStream"
           class="stop-btn"
@@ -238,6 +238,7 @@ const messagesRef = ref<HTMLElement | null>(null)
 const messages = ref<ChatMessage[]>([])
 const inputText = ref('')
 const isStreaming = ref(false)
+const streamingSessionId = ref('')
 
 // session management
 const sessionId = ref('')
@@ -653,6 +654,7 @@ async function sendMessage() {
   const sid = sessionId.value
   const targetMsgs = sessionCache[sid]
   if (!targetMsgs) return
+  streamingSessionId.value = sid
 
   const userMsg: ChatMessage = {
     role: 'user',
@@ -771,6 +773,7 @@ async function sendMessage() {
     }
   } finally {
     isStreaming.value = false
+    streamingSessionId.value = ''
     rawStreamText.value = ''
     abortController.value = null
     currentAbortId.value = ''
