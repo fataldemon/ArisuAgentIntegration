@@ -3,11 +3,11 @@
     <NCard :title="$t('characters.expressionFormat')" class="section-card">
       <NSpace vertical :size="16">
         <NFormItem>
-          <template #label>{{ $t('characters.formatTemplate') }} <HelpTip>{{ $t('tips.formatTemplate') }}</HelpTip></template>
+              <template #label>{{ $t('characters.formatTemplate') }} <HelpTip>{{ $t('tips.expressionFormat') }}</HelpTip></template>
           <NInput v-model:value="expression.format" placeholder="e.g. 【{'expression': '{expression}'}】" />
         </NFormItem>
         <NFormItem>
-          <template #label>{{ $t('characters.instruction') }} <HelpTip>{{ $t('tips.instruction') }}</HelpTip></template>
+              <template #label>{{ $t('characters.instruction') }} <HelpTip>{{ $t('tips.expressionInstruction') }}</HelpTip></template>
           <NInput
             v-model:value="expression.instruction"
             type="textarea"
@@ -62,7 +62,7 @@
           </NGi>
           <NGi :span="2">
             <NFormItem>
-              <template #label>{{ $t('characters.settingLabel') }} <HelpTip>{{ $t('tips.settingLabel') }}</HelpTip></template>
+              <template #label>{{ $t('characters.settingLabel') }} <HelpTip>{{ $t('tips.setting') }}</HelpTip></template>
               <NInput
                 v-model:value="editForm.setting"
                 type="textarea"
@@ -96,14 +96,14 @@
                     @change="onImageFileSelected"
                   />
                   <n-button size="small" @click="($refs.imageFileInput as HTMLInputElement).click()">
-                    📎 上传图片
+                    {{ $t('characters.uploadImage') }}
                   </n-button>
                 </div>
                 <NInput
                   v-model:value="editForm.image_setting"
                   type="textarea"
                   :rows="4"
-                  placeholder="Image setting..."
+                  :placeholder="$t('characters.imageSettingPlaceholder')"
                   ref="imageSettingTextarea"
                 />
                 <div v-if="imageSettingPreviews.length" class="image-setting-previews">
@@ -151,7 +151,7 @@
           <NCollapseItem :title="$t('characters.previewPrompt')" name="preview">
             <NSpace vertical :size="12">
               <NFormItem>
-                <template #label>{{ $t('characters.userText') }} <HelpTip>{{ $t('tips.userText') }}</HelpTip></template>
+                <template #label>{{ $t('characters.userText') }} <HelpTip>{{ $t('tips.previewUserText') }}</HelpTip></template>
                 <NInput v-model:value="previewText" :placeholder="$t('characters.userTextPlaceholder')" />
               </NFormItem>
               <NButton type="info" @click="doPreview" :disabled="!editForm.character">{{ $t('characters.renderPreview') }}</NButton>
@@ -167,7 +167,7 @@
         <NGrid :cols="3" :x-gap="12">
           <NGi>
             <NFormItem>
-              <template #label>{{ $t('characters.selectCharacter') }} <HelpTip>{{ $t('tips.selectCharacter') }}</HelpTip></template>
+              <template #label>{{ $t('characters.selectCharacter') }} <HelpTip>{{ $t('tips.kbCharacter') }}</HelpTip></template>
               <NSelect
                 v-model:value="kb.character"
                 :options="kbCharacterOptions"
@@ -178,7 +178,7 @@
           </NGi>
           <NGi>
             <NFormItem>
-              <template #label>{{ $t('characters.subject') }} <HelpTip>{{ $t('tips.subject') }}</HelpTip></template>
+              <template #label>{{ $t('characters.subject') }} <HelpTip>{{ $t('tips.kbSubject') }}</HelpTip></template>
               <NSelect
                 v-model:value="kb.subject"
                 :options="kbSubjectOptions"
@@ -189,7 +189,7 @@
           </NGi>
           <NGi>
             <NFormItem>
-              <template #label>{{ $t('characters.selectFile') }} <HelpTip>{{ $t('tips.selectFile') }}</HelpTip></template>
+              <template #label>{{ $t('characters.selectFile') }} <HelpTip>{{ $t('tips.kbFile') }}</HelpTip></template>
               <NSelect
                 v-model:value="kb.selectedFile"
                 :options="kbFileOptions"
@@ -201,7 +201,7 @@
         </NGrid>
 
         <NFormItem>
-          <template #label>{{ $t('characters.fileContent') }} <HelpTip>{{ $t('tips.fileContent') }}</HelpTip></template>
+          <template #label>{{ $t('characters.fileContent') }} <HelpTip>{{ $t('tips.kbContent') }}</HelpTip></template>
           <NInput
             v-model:value="kb.content"
             type="textarea"
@@ -213,7 +213,7 @@
 
         <NSpace align="center">
           <NFormItem>
-            <template #label>{{ $t('characters.newFileName') }} <HelpTip>{{ $t('tips.newFileName') }}</HelpTip></template>
+            <template #label>{{ $t('characters.newFileName') }} <HelpTip>{{ $t('tips.kbNewFile') }}</HelpTip></template>
             <NInput v-model:value="kb.newFilename" :placeholder="$t('characters.newFileNamePlaceholder')" style="width: 200px" />
           </NFormItem>
           <NButton @click="kbCreateFile">{{ $t('characters.createFile') }}</NButton>

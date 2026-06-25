@@ -97,7 +97,7 @@ def _get_model():
     args = _get_args()
     model_path = args.embedding_path
     LOG.info("Loading SentenceTransformer %s on device=%s", model_path, device)
-    _model = SentenceTransformer(model_path, device=device)
+    _model = SentenceTransformer(model_path, device=device, local_files_only=True)
     return _model
 
 

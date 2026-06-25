@@ -57,6 +57,7 @@ const totalPages = ref(0)
 const pageSize = ref(20)
 const totalEntries = ref(0)
 const trackLatest = ref(true)
+const wasScrolledUp = ref(false)
 
 const pageSizeOptions = [
   { label: '10', value: 10 },
@@ -308,9 +309,10 @@ const renderedHtml = computed(() => {
 
 function scrollToBottom() {
   nextTick(() => {
-    if (terminalRef.value) {
-      terminalRef.value.scrollTop = terminalRef.value.scrollHeight
-    }
+    const el = terminalRef.value
+    if (!el) return
+    el.scrollTop = el.scrollHeight
+    wasScrolledUp.value = false
   })
 }
 
@@ -323,7 +325,7 @@ async function fetchLog() {
     currentPage.value = res.page
     totalPages.value = res.total_pages
     totalEntries.value = res.total
-    if (trackLatest.value) {
+    if (trackLatest.value && !wasScrolledUp.value) {
       scrollToBottom()
     }
   } catch (e: any) {
@@ -361,13 +363,26 @@ watch(intervalValue, () => {
   startPolling()
 })
 
+function onScroll() {
+  const el = terminalRef.value
+  if (!el) return
+  const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30
+  wasScrolledUp.value = !atBottom
+}
+
 onMounted(() => {
   fetchLog()
   startPolling()
+  if (terminalRef.value) {
+    terminalRef.value.addEventListener('scroll', onScroll)
+  }
 })
 
 onUnmounted(() => {
   stopPolling()
+  if (terminalRef.value) {
+    terminalRef.value.removeEventListener('scroll', onScroll)
+  }
 })
 </script>
 

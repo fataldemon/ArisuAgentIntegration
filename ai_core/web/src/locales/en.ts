@@ -176,6 +176,8 @@ export default {
     saved: 'Saved',
     deleted: 'Deleted',
     activated: 'Activated',
+    uploadImage: 'Upload Image',
+    imageSettingPlaceholder: 'Image setting...',
   },
   sharedKb: {
     title: 'Shared Knowledge Base',
@@ -215,6 +217,7 @@ export default {
     valuePlaceholder: 'Value',
     descPlaceholder: 'Description (optional)',
     hint: 'Type ${VAR_NAME} in channel configs to reference global variables',
+    confirmDeleteVar: 'Delete this variable?',
   },
   inference: {
     title: 'Inference Parameters',

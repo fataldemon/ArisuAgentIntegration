@@ -84,8 +84,9 @@
           />
           <n-input
             v-model:value="v.value"
-            :type="v.sensitive ? 'password' : 'text'"
+            :type="v.sensitive ? 'password' : (v.value && v.value.length > 40 ? 'textarea' : 'text')"
             :show-password-on="v.sensitive ? 'click' : undefined"
+            :autosize="(v.value && v.value.length > 40) ? { minRows: 2, maxRows: 6 } : undefined"
             placeholder="Value"
             style="width: 240px"
           />

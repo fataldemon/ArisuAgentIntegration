@@ -272,14 +272,21 @@ def _prepare_messages(
 # ---------------------------------------------------------------------------
 
 
+_STATUS_TEMPLATE = (
+    "## 当前时间\n"
+    "今天是{date}，星期{weekday}，{time_period}{time}。"
+)
+
+_DEFAULT_SLEEP_SCHEDULE = "23:00,09:00"
+
+
 def _build_status_from_globals() -> str:
-    """Fill the STATUS_TEMPLATE global with current time / sleep schedule."""
-    flat = get_config_manager().get_globals_flat()
-    template = flat.get("STATUS_TEMPLATE", "").strip()
-    if not template:
-        return ""
+    """Fill status template with current time. Template and schedule are
+    constants for now; sleep schedule will be managed by the set_daily_schedule
+    tool in a future phase."""
+    template = _STATUS_TEMPLATE
     now = datetime.now()
-    schedule = flat.get("SLEEP_SCHEDULE", "23:00,09:00").strip()
+    schedule = _DEFAULT_SLEEP_SCHEDULE
     try:
         parts = schedule.split(",")
         sleep_h, sleep_m = parts[0].strip().split(":")
@@ -344,6 +351,9 @@ def _build_persona_system_prefix(character: str, embeddings_text: str) -> Tuple[
     status_text = _build_status_from_globals()
     if status_text:
         system_prefix = system_prefix + "\n" + status_text
+    user_desc = get_config_manager().get_globals_flat().get("USER_DESCRIPTION", "").strip()
+    if user_desc:
+        system_prefix = system_prefix + "\n" + user_desc
     image_setting = persona.image_setting or None
     return system_prefix, image_setting
 

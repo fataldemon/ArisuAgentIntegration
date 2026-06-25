@@ -1,6 +1,6 @@
 <template>
   <div class="chat-view">
-    <div class="session-sidebar">
+    <div class="session-sidebar" :class="{ disabled: isStreaming }">
       <div class="sidebar-header">
         <n-button type="primary" size="small" block @click="createSession">{{ $t('chat.newSession') }}</n-button>
       </div>
@@ -464,8 +464,8 @@ function formatSessionTime(ts: string): string {
   return isToday ? `${h}:${m}` : `${(d.getMonth()+1)}/${d.getDate()}`
 }
 
-function hippoSid(): string {
-  return `chat:${identity.value || 'default'}:${sessionId.value}`
+function hippoSid(id?: string): string {
+  return `chat:${identity.value || 'default'}:${id || sessionId.value}`
 }
 
 function fmtTs(ts: number): string {
@@ -482,7 +482,10 @@ async function fetchSessions() {
     const prefix = `chat:${identity.value || 'default'}:`
     const res = await fetch(`/ctx/sessions/list?prefix=${encodeURIComponent(prefix)}`)
     const data = await res.json()
-    sessions.value = data.sessions || []
+    sessions.value = (data.sessions || []).map((s: any) => ({
+      ...s,
+      session_id: s.session_id.replace(prefix, ''),
+    }))
   } catch { sessions.value = [] }
 }
 
@@ -496,6 +499,7 @@ function createSession() {
 }
 
 async function switchSession(id: string) {
+  if (isStreaming.value) return
   sessionId.value = id
   localStorage.setItem('arisu-chat-session', id)
   await loadSessionHistory()
@@ -503,18 +507,20 @@ async function switchSession(id: string) {
 }
 
 async function deleteSession(id: string) {
-  try { await fetch(`/ctx/${encodeURIComponent(id)}/clear`, { method: 'POST' }) } catch {}
-  if (id === sessionId.value) {
-    createSession()
-    return
-  }
+  const fullId = `chat:${identity.value || 'default'}:${id}`
+  try { await fetch(`/ctx/${encodeURIComponent(fullId)}/clear`, { method: 'POST' }) } catch {}
   sessions.value = sessions.value.filter(s => s.session_id !== id)
+  if (id === sessionId.value) {
+    const next = sessions.value[0]
+    if (next) { await switchSession(next.session_id) }
+    else { createSession() }
+  }
 }
 
 async function loadSessionHistory() {
   if (!sessionId.value) { messages.value = []; return }
   try {
-    const res = await fetch(`/ctx/${encodeURIComponent(sessionId.value)}/turn-context?limit=100`)
+    const res = await fetch(`/ctx/${encodeURIComponent(hippoSid())}/turn-context?limit=100`)
     const data = await res.json()
     messages.value = (data.history || []).map((h: any) => ({
       role: h.role,
@@ -525,10 +531,11 @@ async function loadSessionHistory() {
   } catch { messages.value = [] }
 }
 
-async function hippoSave(role: string, content: string) {
-  if (!sessionId.value) return
+async function hippoSave(role: string, content: string, sid?: string) {
+  const id = sid || sessionId.value
+  if (!id) return
   try {
-    await fetch(`/ctx/${encodeURIComponent(sessionId.value)}/message`, {
+    await fetch(`/ctx/${encodeURIComponent(hippoSid())}/message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role, content, max_history: 40, timestamp: new Date().toISOString() }),
@@ -536,8 +543,8 @@ async function hippoSave(role: string, content: string) {
   } catch {}
 }
 
-async function hippoClear() {
-  try { await fetch(`/ctx/${encodeURIComponent(sessionId.value)}/clear`, { method: 'POST' }) } catch {}
+async function hippoClear(sid?: string) {
+  try { await fetch(`/ctx/${encodeURIComponent(hippoSid(sid))}/clear`, { method: 'POST' }) } catch {}
 }
 
 function storageKey(): string {
@@ -554,8 +561,11 @@ function loadMessages() {
 
 function scrollToBottom() {
   nextTick(() => {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+    const el = messagesRef.value
+    if (!el) return
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 50
+    if (nearBottom) {
+      el.scrollTop = el.scrollHeight
     }
   })
 }
@@ -571,9 +581,11 @@ async function fetchCharacters() {
     if (characterOptions.value.length > 0 && !character.value) {
       character.value = characterOptions.value[0].value
       fetchExpressions(character.value)
-      // restore last session or create new one
-      const saved = localStorage.getItem('arisu-chat-session')
+    }
+    // restore session on every mount
+    if (character.value && !sessionId.value) {
       await fetchSessions()
+      const saved = localStorage.getItem('arisu-chat-session')
       if (saved && sessions.value.some(s => s.session_id === saved)) {
         sessionId.value = saved
         await loadSessionHistory()
@@ -628,15 +640,17 @@ function handleKeydown(e: KeyboardEvent) {
 async function sendMessage() {
   const text = inputText.value.trim()
   if (!text || isStreaming.value) return
+  const sid = sessionId.value
+  const targetMsgs = messages.value
 
   const userMsg: ChatMessage = {
     role: 'user',
     content: text,
     timestamp: Date.now(),
   }
-  messages.value.push(userMsg)
+  targetMsgs.push(userMsg)
   saveMessages()
-  hippoSave('user', text)
+  hippoSave('user', text, sid)
   inputText.value = ''
   scrollToBottom()
 
@@ -719,9 +733,9 @@ async function sendMessage() {
       thought: thought || undefined,
       timestamp: Date.now(),
     }
-    messages.value.push(assistantMsg)
+    targetMsgs.push(assistantMsg)
     saveMessages()
-    hippoSave('assistant', content)
+    hippoSave('assistant', content, sid)
   } catch (e: any) {
     if (e.name !== 'AbortError') {
       const errorMsg: ChatMessage = {
@@ -729,9 +743,9 @@ async function sendMessage() {
         content: `[Error: ${e.message || 'Request failed'}]`,
         timestamp: Date.now(),
       }
-      messages.value.push(errorMsg)
+      targetMsgs.push(errorMsg)
       saveMessages()
-      hippoSave('assistant', errorMsg.content)
+      hippoSave('assistant', errorMsg.content, sid)
     } else if (rawStreamText.value) {
       const { thought, content } = parseThinkBlock(rawStreamText.value, enableThinking.value)
       const partialMsg: ChatMessage = {
@@ -740,9 +754,9 @@ async function sendMessage() {
         thought: thought || undefined,
         timestamp: Date.now(),
       }
-      messages.value.push(partialMsg)
+      targetMsgs.push(partialMsg)
       saveMessages()
-      hippoSave('assistant', content || '[Aborted]')
+      hippoSave('assistant', content || '[Aborted]', sid)
     }
   } finally {
     isStreaming.value = false
@@ -985,6 +999,11 @@ onMounted(() => {
   background: var(--n-color-embedded);
 }
 
+.session-sidebar.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
 .sidebar-header {
   padding: 8px;
   border-bottom: 1px solid var(--n-border-color);
@@ -1002,7 +1021,7 @@ onMounted(() => {
   transition: background 0.15s;
 }
 .session-item:hover { background: var(--n-color-hover); }
-.session-item.active { background: var(--n-color-pressed); }
+.session-item.active { background: color-mix(in srgb, var(--n-color-target) 15%, transparent); border-left: 3px solid var(--n-color-target); }
 
 .session-preview {
   font-size: 13px;

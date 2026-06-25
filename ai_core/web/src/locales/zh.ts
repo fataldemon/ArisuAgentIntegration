@@ -176,6 +176,8 @@ export default {
     saved: '已保存',
     deleted: '已删除',
     activated: '已激活',
+    uploadImage: '上传图片',
+    imageSettingPlaceholder: '形象设定...',
   },
   sharedKb: {
     title: '共享知识库',
@@ -215,6 +217,7 @@ export default {
     valuePlaceholder: '值',
     descPlaceholder: '描述（可选）',
     hint: '在通道配置中输入 ${变量名} 即可引用全局变量',
+    confirmDeleteVar: '确定删除此变量？',
   },
   inference: {
     title: '推理参数',
