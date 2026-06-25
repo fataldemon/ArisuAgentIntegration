@@ -272,6 +272,41 @@ def _prepare_messages(
 # ---------------------------------------------------------------------------
 
 
+def _build_status_from_globals() -> str:
+    """Fill the STATUS_TEMPLATE global with current time / sleep schedule."""
+    flat = get_config_manager().get_globals_flat()
+    template = flat.get("STATUS_TEMPLATE", "").strip()
+    if not template:
+        return ""
+    now = datetime.now()
+    schedule = flat.get("SLEEP_SCHEDULE", "23:00,09:00").strip()
+    try:
+        parts = schedule.split(",")
+        sleep_h, sleep_m = parts[0].strip().split(":")
+        wake_h, wake_m = parts[1].strip().split(":")
+    except (ValueError, IndexError):
+        sleep_h, sleep_m, wake_h, wake_m = "23", "00", "09", "00"
+    hour = now.hour
+    if 0 <= hour < 5:    period = "凌晨"
+    elif 5 <= hour < 9:  period = "早上"
+    elif 9 <= hour < 12: period = "上午"
+    elif 12 <= hour < 14: period = "中午"; hour -= 12
+    elif 14 <= hour < 17: period = "下午"; hour -= 12
+    elif 17 <= hour < 19: period = "傍晚"; hour -= 12
+    else:                period = "晚上"; hour -= 12
+    weekday_map = ["一", "二", "三", "四", "五", "六", "日"]
+    return template.format(
+        date=now.strftime("%Y年%m月%d日"),
+        weekday=weekday_map[now.weekday()],
+        time_period=period,
+        time=now.strftime(f"%H点%M分%S秒"),
+        sleep_h=sleep_h.zfill(2),
+        sleep_m=sleep_m.zfill(2),
+        wake_h=wake_h.zfill(2),
+        wake_m=wake_m.zfill(2),
+    )
+
+
 def _build_persona_system_prefix(character: str, embeddings_text: str) -> Tuple[str, Optional[str]]:
     """Build the system prompt prefix from the character's ``persona.json``.
 
@@ -306,6 +341,9 @@ def _build_persona_system_prefix(character: str, embeddings_text: str) -> Tuple[
     elif embeddings_text:
         setting = embeddings_text
     system_prefix = setting + "\n" + get_config_manager().get_expression_config().instruction + "\n" + (persona.reply_instruction or "")
+    status_text = _build_status_from_globals()
+    if status_text:
+        system_prefix = system_prefix + "\n" + status_text
     image_setting = persona.image_setting or None
     return system_prefix, image_setting
 

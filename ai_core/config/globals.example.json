@@ -4,6 +4,8 @@
     "BAIDU_TRANS_APPID": { "value": "", "sensitive": true, "description": "百度翻译 App ID" },
     "BAIDU_TRANS_APIKEY": { "value": "", "sensitive": true, "description": "百度翻译 API Key" },
     "GPT_SOVITS_URL": { "value": "http://127.0.0.1:9880", "sensitive": false, "description": "GPT-SoVITS 地址" },
-    "QWEATHER_APIKEY": { "value": "", "sensitive": true, "description": "和风天气 API Key" }
+    "QWEATHER_APIKEY": { "value": "", "sensitive": true, "description": "和风天气 API Key" },
+    "STATUS_TEMPLATE": { "value": "## 当前时间\n今天是{date}，星期{weekday}，{time_period}{time}。\n爱丽丝的作息：晚上{sleep_h}:{sleep_m}睡觉，早上{wake_h}:{wake_m}起床。", "sensitive": false, "description": "状态栏模板（可用于角色对话的 context）。占位符：{date}/{weekday}/{time_period}/{time}/{sleep_h}/{sleep_m}/{wake_h}/{wake_m}" },
+    "SLEEP_SCHEDULE": { "value": "23:00,09:00", "sensitive": false, "description": "作息时段（格式 sleep_hh:mm,wake_hh:mm）" }
   }
 }

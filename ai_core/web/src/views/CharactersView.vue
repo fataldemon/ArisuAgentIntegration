@@ -86,12 +86,33 @@
           <NGi :span="2">
             <NFormItem>
               <template #label>{{ $t('characters.imageSetting') }} <HelpTip>{{ $t('tips.imageSetting') }}</HelpTip></template>
-              <NInput
-                v-model:value="editForm.image_setting"
-                type="textarea"
-                :rows="4"
-                placeholder="Image setting..."
-              />
+              <div class="image-setting-editor">
+                <div class="image-setting-toolbar">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    style="display:none"
+                    ref="imageFileInput"
+                    @change="onImageFileSelected"
+                  />
+                  <n-button size="small" @click="($refs.imageFileInput as HTMLInputElement).click()">
+                    📎 上传图片
+                  </n-button>
+                </div>
+                <NInput
+                  v-model:value="editForm.image_setting"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="Image setting..."
+                  ref="imageSettingTextarea"
+                />
+                <div v-if="imageSettingPreviews.length" class="image-setting-previews">
+                  <div v-for="(img, idx) in imageSettingPreviews" :key="idx" class="preview-item">
+                    <img :src="img.url" class="preview-thumb" />
+                    <span class="preview-name">{{ img.file }}</span>
+                  </div>
+                </div>
+              </div>
             </NFormItem>
           </NGi>
           <NGi>
@@ -241,6 +262,45 @@ const editForm = reactive<Persona>({
   max_quick_reply: undefined,
   default_temperature: undefined,
 })
+const imageFileInput = ref<HTMLInputElement | null>(null)
+const imageSettingTextarea = ref<InstanceType<typeof NInput> | null>(null)
+
+const imageSettingPreviews = computed(() => {
+  const text = editForm.image_setting || ''
+  const re = /\[image,file=([^\]]+)\]/g
+  const result: Array<{ file: string; url: string }> = []
+  let m
+  while ((m = re.exec(text)) !== null) {
+    result.push({
+      file: m[1],
+      url: `/admin/characters/${editForm.character}/image/${m[1]}`,
+    })
+  }
+  return result
+})
+
+async function onImageFileSelected(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file || !editForm.character) return
+  const formData = new FormData()
+  formData.append('file', file)
+  try {
+    const res = await fetch(`/admin/api/personas/${editForm.character}/image`, {
+      method: 'POST',
+      body: formData,
+    })
+    const data = await res.json()
+    if (data.ok) {
+      const placeholder = `[image,file=${data.filename}]`
+      const current = editForm.image_setting || ''
+      editForm.image_setting = current ? current + '\n' + placeholder : placeholder
+    } else {
+      message.error('上传失败')
+    }
+  } catch { message.error('上传失败') }
+  input.value = ''
+}
 const previewText = ref('')
 const previewResult = ref('')
 
@@ -536,5 +596,46 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1.5;
   white-space: pre-wrap;
+}
+
+.image-setting-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.image-setting-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.image-setting-previews {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.preview-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.preview-thumb {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  border: 1px solid var(--n-border-color);
+}
+
+.preview-name {
+  font-size: 11px;
+  color: var(--n-text-color-3);
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

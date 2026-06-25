@@ -269,6 +269,49 @@ def register_admin_routes(app: FastAPI) -> None:
             raise HTTPException(404, "not found")
         return FileResponse(path)
 
+    # ---- persona character images (no resizing; for image_setting) ----
+
+    _PERSONA_IMAGE_DIR = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        "embedding",
+    )
+
+    @app.post("/admin/api/personas/{character}/image")
+    async def upload_persona_image(character: str, file: UploadFile = File(...)):
+        """Upload a character image (portrait, illustration, etc.).
+        Saved as-is (no resizing) under ``embedding/<character>/image/``."""
+        if not character or "/" in character or "\\" in character:
+            raise HTTPException(400, "invalid character name")
+        data = await file.read()
+        if not data:
+            raise HTTPException(400, "empty file")
+        stem = os.path.splitext(os.path.basename(file.filename or "img.png"))[0]
+        safe_name = stem + ".png"
+        dest_dir = os.path.join(_PERSONA_IMAGE_DIR, character, "image")
+        os.makedirs(dest_dir, exist_ok=True)
+        try:
+            with open(os.path.join(dest_dir, safe_name), "wb") as f:
+                f.write(data)
+        except Exception as e:
+            raise HTTPException(400, f"image save failed: {e}")
+        return {
+            "ok": True,
+            "filename": safe_name,
+            "url": f"/admin/characters/{character}/image/{safe_name}",
+        }
+
+    @app.get("/admin/characters/{character}/image/{filename}")
+    async def get_persona_image(character: str, filename: str):
+        """Serve a character's persona image (portrait etc.)."""
+        if "/" in character or "\\" in character or ".." in character:
+            raise HTTPException(404, "not found")
+        path = os.path.join(
+            _PERSONA_IMAGE_DIR, character, "image", os.path.basename(filename)
+        )
+        if not os.path.isfile(path):
+            raise HTTPException(404, "not found")
+        return FileResponse(path)
+
     @app.post("/admin/api/personas/{character}/preview")
     async def preview_persona(character: str, body: Dict[str, Any]):
         """Render the full system prompt that would be injected.
