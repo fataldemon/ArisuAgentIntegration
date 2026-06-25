@@ -25,6 +25,7 @@ class SaveMessageBody(BaseModel):
     is_summary: int = 0
     append_to_history: bool = True
     max_history: int = 40
+    timestamp: Optional[str] = None
 
 
 class RecallBody(BaseModel):
@@ -83,6 +84,7 @@ def build_router() -> APIRouter:
             is_summary=body.is_summary,
             append_to_history=body.append_to_history,
             max_history=body.max_history,
+            timestamp=body.timestamp,
         )
         return {"id": row_id}
 

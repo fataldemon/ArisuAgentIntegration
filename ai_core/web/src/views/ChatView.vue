@@ -468,6 +468,15 @@ function hippoSid(): string {
   return `chat:${identity.value || 'default'}:${sessionId.value}`
 }
 
+function fmtTs(ts: number): string {
+  const d = new Date(ts)
+  const M = (d.getMonth() + 1).toString().padStart(2, '0')
+  const D = d.getDate().toString().padStart(2, '0')
+  const h = d.getHours().toString().padStart(2, '0')
+  const m = d.getMinutes().toString().padStart(2, '0')
+  return `[${M}-${D} ${h}:${m}]`
+}
+
 async function fetchSessions() {
   try {
     const prefix = `chat:${identity.value || 'default'}:`
@@ -522,7 +531,7 @@ async function hippoSave(role: string, content: string) {
     await fetch(`/ctx/${encodeURIComponent(sessionId.value)}/message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role, content, max_history: 40 }),
+      body: JSON.stringify({ role, content, max_history: 40, timestamp: new Date().toISOString() }),
     })
   } catch {}
 }
@@ -638,10 +647,11 @@ async function sendMessage() {
 
   try {
     const apiMessages = messages.value.map((m) => {
+      const ts = fmtTs(m.timestamp)
       if (m.role === 'user' && identity.value.trim()) {
-        return { role: m.role, content: `（名叫"${identity.value.trim()}"的人说）${m.content}` }
+        return { role: m.role, content: `${ts} （${identity.value.trim()}说）${m.content}` }
       }
-      return { role: m.role, content: m.content }
+      return { role: m.role, content: `${ts} ${m.content}` }
     })
 
     const res = await fetch('/v1/chat/completions', {

@@ -70,9 +70,16 @@ class ContextManager:
         is_summary: int = 0,
         append_to_history: bool = True,
         max_history: int = 40,
+        timestamp: Optional[str] = None,
     ) -> int:
         sess = await self.get_session(session_id, max_history=max_history)
-        ts = datetime.now()
+        if timestamp:
+            try:
+                ts = datetime.fromisoformat(timestamp)
+            except (ValueError, TypeError):
+                ts = datetime.now()
+        else:
+            ts = datetime.now()
         row_id = await asyncio.to_thread(
             dao.save_chat_record,
             session_id, role, content, thought, action_name, action_input,
