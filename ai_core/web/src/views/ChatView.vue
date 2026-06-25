@@ -242,6 +242,7 @@ const isStreaming = ref(false)
 // session management
 const sessionId = ref('')
 const sessions = ref<Array<{session_id: string; created: string; updated: string; preview: string}>>([])
+const sessionCache = reactive<Record<string, ChatMessage[]>>({})
 const identity = ref('老师')
 const characterOptions = ref<Array<{ label: string; value: string }>>([])
 const character = ref('')
@@ -494,21 +495,26 @@ function createSession() {
   sessionId.value = id
   localStorage.setItem('arisu-chat-session', id)
   sessions.value.unshift({ session_id: id, created: new Date().toISOString(), updated: new Date().toISOString(), preview: '' })
-  messages.value = []
+  sessionCache[id] = []
+  messages.value = sessionCache[id]
   scrollToBottom()
 }
 
 async function switchSession(id: string) {
-  if (isStreaming.value) return
   sessionId.value = id
   localStorage.setItem('arisu-chat-session', id)
-  await loadSessionHistory()
+  if (!sessionCache[id]) {
+    const msgs = await loadSessionHistoryFor(id)
+    sessionCache[id] = msgs
+  }
+  messages.value = sessionCache[id]
   scrollToBottom()
 }
 
 async function deleteSession(id: string) {
   const fullId = `chat:${identity.value || 'default'}:${id}`
   try { await fetch(`/ctx/${encodeURIComponent(fullId)}/clear`, { method: 'POST' }) } catch {}
+  delete sessionCache[id]
   sessions.value = sessions.value.filter(s => s.session_id !== id)
   if (id === sessionId.value) {
     const next = sessions.value[0]
@@ -517,25 +523,25 @@ async function deleteSession(id: string) {
   }
 }
 
-async function loadSessionHistory() {
-  if (!sessionId.value) { messages.value = []; return }
+async function loadSessionHistoryFor(id: string): Promise<ChatMessage[]> {
   try {
-    const res = await fetch(`/ctx/${encodeURIComponent(hippoSid())}/turn-context?limit=100`)
+    const fullId = `chat:${identity.value || 'default'}:${id}`
+    const res = await fetch(`/ctx/${encodeURIComponent(fullId)}/turn-context?limit=100`)
     const data = await res.json()
-    messages.value = (data.history || []).map((h: any) => ({
+    return (data.history || []).map((h: any) => ({
       role: h.role,
       content: h.content || '',
       thought: undefined,
       timestamp: h.timestamp ? new Date(h.timestamp).getTime() : Date.now(),
     }))
-  } catch { messages.value = [] }
+  } catch { return [] }
 }
 
 async function hippoSave(role: string, content: string, sid?: string) {
   const id = sid || sessionId.value
   if (!id) return
   try {
-    await fetch(`/ctx/${encodeURIComponent(hippoSid())}/message`, {
+    await fetch(`/ctx/${encodeURIComponent(hippoSid(id))}/message`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ role, content, max_history: 40, timestamp: new Date().toISOString() }),
@@ -556,7 +562,7 @@ function saveMessages() {
 }
 
 function loadMessages() {
-  // replaced by loadSessionHistory(); kept for compat
+  // kept for compat – no-op with sessionCache
 }
 
 function scrollToBottom() {
@@ -588,7 +594,10 @@ async function fetchCharacters() {
       const saved = localStorage.getItem('arisu-chat-session')
       if (saved && sessions.value.some(s => s.session_id === saved)) {
         sessionId.value = saved
-        await loadSessionHistory()
+        if (!sessionCache[saved]) {
+          sessionCache[saved] = await loadSessionHistoryFor(saved)
+        }
+        messages.value = sessionCache[saved]
       } else {
         createSession()
       }
@@ -621,6 +630,7 @@ async function fetchExpressions(char: string) {
 
 function onCharacterChange() {
   fetchExpressions(character.value)
+  if (isStreaming.value) return
   loadMessages()
   scrollToBottom()
 }
@@ -641,7 +651,8 @@ async function sendMessage() {
   const text = inputText.value.trim()
   if (!text || isStreaming.value) return
   const sid = sessionId.value
-  const targetMsgs = messages.value
+  const targetMsgs = sessionCache[sid]
+  if (!targetMsgs) return
 
   const userMsg: ChatMessage = {
     role: 'user',
