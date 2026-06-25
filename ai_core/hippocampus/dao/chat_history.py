@@ -224,6 +224,42 @@ def load_recent_history(
         conn.close()
 
 
+def list_sessions_by_prefix(prefix: str) -> list[dict]:
+    """Return all distinct session_ids starting with ``prefix``, with
+    metadata for a session list sidebar (first-message preview, timestamp)."""
+    conn = get_connection()
+    try:
+        cur = conn.cursor()
+        rows = cur.execute(
+            """
+            SELECT group_id, MIN(timestamp) as created, MAX(timestamp) as updated
+            FROM t_chat_history
+            WHERE group_id LIKE ?
+            GROUP BY group_id
+            ORDER BY updated DESC
+            """,
+            (prefix + "%",),
+        ).fetchall()
+        result = []
+        for r in rows:
+            sid = r["group_id"]
+            first = cur.execute(
+                "SELECT content FROM t_chat_history WHERE group_id=? "
+                "ORDER BY timestamp ASC LIMIT 1",
+                (sid,),
+            ).fetchone()
+            preview = (first["content"] or "")[:60] if first else ""
+            result.append({
+                "session_id": sid,
+                "created": r["created"] or "",
+                "updated": r["updated"] or "",
+                "preview": preview,
+            })
+        return result
+    finally:
+        conn.close()
+
+
 # ---------------------------------------------------------------------------
 # recall_memory (explicit session_id; ported from the QQ bot, raw SQL)
 # ---------------------------------------------------------------------------

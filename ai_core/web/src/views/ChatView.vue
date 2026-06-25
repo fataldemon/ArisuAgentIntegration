@@ -1,5 +1,26 @@
 <template>
   <div class="chat-view">
+    <div class="session-sidebar">
+      <div class="sidebar-header">
+        <n-button type="primary" size="small" block @click="createSession">{{ $t('chat.newSession') }}</n-button>
+      </div>
+      <div class="session-list">
+        <div
+          v-for="s in sessions"
+          :key="s.session_id"
+          :class="['session-item', { active: s.session_id === sessionId }]"
+          @click="switchSession(s.session_id)"
+        >
+          <div class="session-preview">{{ s.preview || $t('chat.emptySession') }}</div>
+          <div class="session-meta">
+            <span class="session-time">{{ formatSessionTime(s.updated) }}</span>
+            <n-button text size="tiny" type="error" @click.stop="deleteSession(s.session_id)">✕</n-button>
+          </div>
+        </div>
+        <div v-if="!sessions.length" class="session-empty">{{ $t('chat.noSessions') }}</div>
+      </div>
+    </div>
+
     <div class="chat-area">
       <div class="messages-container" ref="messagesRef">
         <div
@@ -217,7 +238,11 @@ const messagesRef = ref<HTMLElement | null>(null)
 const messages = ref<ChatMessage[]>([])
 const inputText = ref('')
 const isStreaming = ref(false)
-const rawStreamText = ref('')
+
+// session management
+const sessionId = ref('')
+const sessions = ref<Array<{session_id: string; created: string; updated: string; preview: string}>>([])
+const identity = ref('老师')
 const characterOptions = ref<Array<{ label: string; value: string }>>([])
 const character = ref('')
 // label -> image filename, fetched from the active character's persona.expressions
@@ -230,7 +255,7 @@ const presencePenalty = ref(1.1)
 const maxTokensStr = ref('15000')
 const enableThinking = ref(true)
 const onEmbedding = ref(true)
-const identity = ref('老师')
+const rawStreamText = ref('')
 
 const topKStr = computed({
   get: () => String(topK.value),
@@ -428,40 +453,94 @@ function formatTime(ts: number): string {
   return `${h}:${m}`
 }
 
+function formatSessionTime(ts: string): string {
+  if (!ts) return ''
+  const d = new Date(ts)
+  if (isNaN(d.getTime())) return ts.slice(0, 10)
+  const now = new Date()
+  const isToday = d.toDateString() === now.toDateString()
+  const h = d.getHours().toString().padStart(2, '0')
+  const m = d.getMinutes().toString().padStart(2, '0')
+  return isToday ? `${h}:${m}` : `${(d.getMonth()+1)}/${d.getDate()}`
+}
+
+function hippoSid(): string {
+  return `chat:${identity.value || 'default'}:${sessionId.value}`
+}
+
+async function fetchSessions() {
+  try {
+    const prefix = `chat:${identity.value || 'default'}:`
+    const res = await fetch(`/ctx/sessions/list?prefix=${encodeURIComponent(prefix)}`)
+    const data = await res.json()
+    sessions.value = data.sessions || []
+  } catch { sessions.value = [] }
+}
+
+function createSession() {
+  const id = crypto.randomUUID()
+  sessionId.value = id
+  localStorage.setItem('arisu-chat-session', id)
+  sessions.value.unshift({ session_id: id, created: new Date().toISOString(), updated: new Date().toISOString(), preview: '' })
+  messages.value = []
+  scrollToBottom()
+}
+
+async function switchSession(id: string) {
+  sessionId.value = id
+  localStorage.setItem('arisu-chat-session', id)
+  await loadSessionHistory()
+  scrollToBottom()
+}
+
+async function deleteSession(id: string) {
+  try { await fetch(`/ctx/${encodeURIComponent(id)}/clear`, { method: 'POST' }) } catch {}
+  if (id === sessionId.value) {
+    createSession()
+    return
+  }
+  sessions.value = sessions.value.filter(s => s.session_id !== id)
+}
+
+async function loadSessionHistory() {
+  if (!sessionId.value) { messages.value = []; return }
+  try {
+    const res = await fetch(`/ctx/${encodeURIComponent(sessionId.value)}/turn-context?limit=100`)
+    const data = await res.json()
+    messages.value = (data.history || []).map((h: any) => ({
+      role: h.role,
+      content: h.content || '',
+      thought: undefined,
+      timestamp: h.timestamp ? new Date(h.timestamp).getTime() : Date.now(),
+    }))
+  } catch { messages.value = [] }
+}
+
+async function hippoSave(role: string, content: string) {
+  if (!sessionId.value) return
+  try {
+    await fetch(`/ctx/${encodeURIComponent(sessionId.value)}/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role, content, max_history: 40 }),
+    })
+  } catch {}
+}
+
+async function hippoClear() {
+  try { await fetch(`/ctx/${encodeURIComponent(sessionId.value)}/clear`, { method: 'POST' }) } catch {}
+}
+
 function storageKey(): string {
   return `arisu-chat-${character.value}`
 }
 
 function saveMessages() {
-  if (!character.value) return
-  localStorage.setItem(
-    storageKey(),
-    JSON.stringify(
-      messages.value.map((m) => ({
-        role: m.role,
-        content: m.content,
-        thought: m.thought,
-        timestamp: m.timestamp,
-      }))
-    )
-  )
+  // persistence is handled by hippoSave() in sendMessage; kept for compat
 }
 
 function loadMessages() {
-  if (!character.value) {
-    messages.value = []
-    return
-  }
-  try {
-    const raw = localStorage.getItem(storageKey())
-    if (raw) {
-      messages.value = JSON.parse(raw)
-    } else {
-      messages.value = []
-    }
-  } catch {
-    messages.value = []
-  }
+  // replaced by loadSessionHistory(); kept for compat
 }
 
 function scrollToBottom() {
@@ -483,7 +562,15 @@ async function fetchCharacters() {
     if (characterOptions.value.length > 0 && !character.value) {
       character.value = characterOptions.value[0].value
       fetchExpressions(character.value)
-      loadMessages()
+      // restore last session or create new one
+      const saved = localStorage.getItem('arisu-chat-session')
+      await fetchSessions()
+      if (saved && sessions.value.some(s => s.session_id === saved)) {
+        sessionId.value = saved
+        await loadSessionHistory()
+      } else {
+        createSession()
+      }
       scrollToBottom()
     }
   } catch {
@@ -518,10 +605,8 @@ function onCharacterChange() {
 }
 
 function clearHistory() {
-  if (character.value) {
-    localStorage.removeItem(storageKey())
-  }
   messages.value = []
+  hippoClear()
 }
 
 function handleKeydown(e: KeyboardEvent) {
@@ -542,6 +627,7 @@ async function sendMessage() {
   }
   messages.value.push(userMsg)
   saveMessages()
+  hippoSave('user', text)
   inputText.value = ''
   scrollToBottom()
 
@@ -625,6 +711,7 @@ async function sendMessage() {
     }
     messages.value.push(assistantMsg)
     saveMessages()
+    hippoSave('assistant', content)
   } catch (e: any) {
     if (e.name !== 'AbortError') {
       const errorMsg: ChatMessage = {
@@ -634,6 +721,7 @@ async function sendMessage() {
       }
       messages.value.push(errorMsg)
       saveMessages()
+      hippoSave('assistant', errorMsg.content)
     } else if (rawStreamText.value) {
       const { thought, content } = parseThinkBlock(rawStreamText.value, enableThinking.value)
       const partialMsg: ChatMessage = {
@@ -644,6 +732,7 @@ async function sendMessage() {
       }
       messages.value.push(partialMsg)
       saveMessages()
+      hippoSave('assistant', content || '[Aborted]')
     }
   } finally {
     isStreaming.value = false
@@ -870,5 +959,72 @@ onMounted(() => {
 
 .switch-row .param-label {
   margin-bottom: 0;
+}
+
+.chat-view {
+  display: flex;
+  height: calc(100vh - 60px);
+}
+
+.session-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--n-border-color);
+  display: flex;
+  flex-direction: column;
+  background: var(--n-color-embedded);
+}
+
+.sidebar-header {
+  padding: 8px;
+  border-bottom: 1px solid var(--n-border-color);
+}
+
+.session-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.session-item {
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.session-item:hover { background: var(--n-color-hover); }
+.session-item.active { background: var(--n-color-pressed); }
+
+.session-preview {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--n-text-color);
+}
+
+.session-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 4px;
+}
+
+.session-time {
+  font-size: 11px;
+  color: var(--n-text-color-3);
+}
+
+.session-empty {
+  padding: 20px 12px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--n-text-color-3);
+}
+
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 </style>

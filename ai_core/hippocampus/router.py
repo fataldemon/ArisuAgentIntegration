@@ -65,6 +65,10 @@ def build_router() -> APIRouter:
     async def list_sessions():
         return {"sessions": cm.list_sessions()}
 
+    @router.get("/sessions/list")
+    async def list_user_sessions(prefix: str = "chat:"):
+        return {"sessions": cm.list_user_sessions(prefix)}
+
     @router.post("/{sid}/message")
     async def save_message(sid: str, body: SaveMessageBody):
         print(f"[hippocampus] save_message sid={sid} role={body.role}")

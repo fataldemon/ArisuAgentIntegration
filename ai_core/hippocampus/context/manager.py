@@ -178,6 +178,12 @@ class ContextManager:
             for s in self._sessions.values()
         ]
 
+    def list_user_sessions(self, prefix: str) -> List[Dict]:
+        """All sessions matching a prefix (e.g. ``chat:老师:``), queried from
+        the DB so they survive AI Core restarts. Used for the Chat page's
+        session sidebar."""
+        return dao.list_sessions_by_prefix(prefix)
+
     # ------------------------------------------------------------------
     # Dataset collection
     # ------------------------------------------------------------------
