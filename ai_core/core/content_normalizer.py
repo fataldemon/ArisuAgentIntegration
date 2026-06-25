@@ -63,6 +63,10 @@ _PLACEHOLDER_RE = re.compile(
 # the prompt; this is the same kind of cap vLLM applies for videos.
 DEFAULT_GIF_MAX_FRAMES = 16
 
+# Guard against large videos crashing upstream LLMs (OOM / decode timeout).
+# Videos exceeding this byte count are replaced by placeholder text.
+DEFAULT_MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50 MB
+
 # Media cache directory (URL downloads, GIF→MP4 conversions).
 _MEDIA_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "media_cache")
@@ -802,6 +806,33 @@ def _looks_like_gif(part: ContentPart) -> bool:
     return False
 
 
+def _url_exceeds_limit(url: str, max_bytes: int) -> bool:
+    """Check whether a resolved media URL exceeds *max_bytes*, without
+    always fully loading it (so we don't accidentally download a giant
+    file just to say it is giant).
+
+    * ``file://`` paths use ``os.path.getsize`` directly.
+    * ``data:`` URLs use the base64 payload length (with a 0.75 multiplier
+      to approximate decoded bytes).
+    * Remote ``http(s)`` URLs cannot be checked without a HEAD request;
+      we return ``False`` (pass through) — the per-request download guard
+      in :func:`_prefetch_url` already has a 15 s timeout.
+    """
+    if not max_bytes or max_bytes <= 0:
+        return False
+    if url.startswith("file://"):
+        try:
+            return os.path.getsize(url[7:]) > max_bytes
+        except OSError:
+            return False
+    if url.startswith("data:video/"):
+        header_end = url.find(",")
+        if header_end > 0:
+            payload_len = len(url) - header_end - 1
+            return payload_len * 0.75 > max_bytes
+    return False
+
+
 def to_openai_content(
     parts: Iterable[ContentPart],
     *,
@@ -894,6 +925,10 @@ def to_openai_content(
             if url is None:
                 if fallback_text:
                     out.append({"type": "text", "text": fallback_text})
+                continue
+            max_bytes = p.options.get("max_video_bytes") or DEFAULT_MAX_VIDEO_BYTES
+            if _url_exceeds_limit(url, max_bytes):
+                out.append({"type": "text", "text": "[视频过大已省略]"})
                 continue
             video_part = {"type": "video_url", "video_url": {"url": url}}
             for k in ("fps", "max_frames"):
