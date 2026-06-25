@@ -1,6 +1,6 @@
 <template>
   <div class="chat-view">
-    <div class="session-sidebar" :class="{ disabled: isStreaming }">
+    <div class="session-sidebar">
       <div class="sidebar-header">
         <n-button type="primary" size="small" block @click="createSession">{{ $t('chat.newSession') }}</n-button>
       </div>
@@ -999,11 +999,6 @@ onMounted(() => {
   background: var(--n-color-embedded);
 }
 
-.session-sidebar.disabled {
-  pointer-events: none;
-  opacity: 0.4;
-}
-
 .sidebar-header {
   padding: 8px;
   border-bottom: 1px solid var(--n-border-color);
@@ -1021,7 +1016,7 @@ onMounted(() => {
   transition: background 0.15s;
 }
 .session-item:hover { background: var(--n-color-hover); }
-.session-item.active { background: color-mix(in srgb, var(--n-color-target) 15%, transparent); border-left: 3px solid var(--n-color-target); }
+.session-item.active { background: rgba(32, 128, 240, 0.12); border-left: 3px solid #2080f0; }
 
 .session-preview {
   font-size: 13px;
