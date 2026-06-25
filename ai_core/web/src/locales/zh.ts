@@ -64,6 +64,9 @@ export default {
     maxTokens: '最大 Token 数',
     enableThinking: '启用思考',
     onEmbedding: '知识库检索',
+    newSession: '新会话',
+    emptySession: '空会话',
+    noSessions: '暂无会话',
   },
   providers: {
     title: 'LLM 提供者',

@@ -64,6 +64,9 @@ export default {
     maxTokens: 'Max Tokens',
     enableThinking: 'Enable Thinking',
     onEmbedding: 'On Embedding',
+    newSession: 'New Session',
+    emptySession: 'Empty',
+    noSessions: 'No Sessions',
   },
   providers: {
     title: 'LLM Providers',
