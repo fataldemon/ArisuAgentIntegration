@@ -14,22 +14,47 @@ from src.skills.game_development import read_code_file, write_file, list_code_fi
 from src.skills.interactive_sandbox import InteractiveCodeSandbox, _sessions
 from src.skills.online_search import online_search_func, access_page_func
 from src.skills.git_service import git_command_service
-from src.dao.chat_history import recall_memory
+from src.skills import hippocampus_client as hippo
 from src.dao.user import update_user_alias
+
+
+async def recall_memory(time_range: str = "", keywords: str = "",
+                        limit: int = 5, context_lines: int = 1) -> str:
+    """根据时间和关键词召回历史对话。
+
+    历史记录统一由 hippocampus 管理，此处委托 AI Core 的 /ctx/{sid}/recall
+    端点完成召回（服务端复用与本地一致的 parse_natural_time / parse_explicit_time）。
+    """
+    group_id = current_group_id.get()
+    if not group_id:
+        return "无法获取当前群组ID，请稍后再试。"
+    sid = hippo.session_id_for(group_id)
+    try:
+        limit = int(limit) if limit is not None else 5
+    except (ValueError, TypeError):
+        limit = 5
+    try:
+        context_lines = int(context_lines) if context_lines is not None else 1
+    except (ValueError, TypeError):
+        context_lines = 1
+    return await hippo.recall(
+        sid, time_range=time_range, keywords=keywords,
+        limit=min(limit, 10), context_lines=min(context_lines, 5),
+    )
 
 
 async def hikari_yo(target_id: str = "", target_name: str = "") -> str:
     add_tomb(user_id=target_id, user_name=target_name)
-    # try:
-    group_id = current_group_id.get()
-    bot = get_bot(bot_id)
-    group_member_info = await bot.get_group_member_info(group_id=group_id, user_id=bot_id)
-    role = group_member_info.get("role")
-    print(f">>>>你在该群的身份是{role}")
-    if role == "admin" or role == "owner":
-        await bot.set_group_ban(group_id=group_id, user_id=target_id, duration=10*60)
-    # except Exception:
-    #     print("无法将其封禁，条件不满足。")
+    try:
+        group_id = current_group_id.get()
+        bot = get_bot(bot_id)
+        group_member_info = await bot.get_group_member_info(group_id=group_id, user_id=bot_id)
+        role = group_member_info.get("role")
+        print(f">>>>你在该群的身份是{role}")
+        if role == "admin" or role == "owner":
+            await bot.set_group_ban(group_id=group_id, user_id=target_id, duration=10*60)
+    except Exception:
+        print("无法将其封禁，条件不满足。")
     if target_name:
         return f"（“光之剑”发射出耀眼的光芒，{target_name}受到了100点伤害，{target_name}被打倒了。）"
     else:

@@ -154,7 +154,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, onActivated, onDeactivated } from 'vue'
 import {
   NSpace,
   NCard,
@@ -363,7 +363,8 @@ async function saveAndRestartChannel(name: string) {
   }
 }
 
-onMounted(() => {
+onActivated(() => {
+  if (refreshTimer) clearInterval(refreshTimer)
   fetchChannels()
   refreshTimer = setInterval(fetchChannels, 3000)
   globalsApi.getFlat().then(data => {
@@ -371,7 +372,7 @@ onMounted(() => {
   }).catch(() => {})
 })
 
-onBeforeUnmount(() => {
+onDeactivated(() => {
   if (refreshTimer) clearInterval(refreshTimer)
 })
 </script>

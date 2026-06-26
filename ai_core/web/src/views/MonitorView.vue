@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, watch, onActivated, onDeactivated, nextTick } from 'vue'
 import { NSpace, NCard, NButton, NSlider, NSelect, useMessage } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { monitorApi } from '../api/monitor'
@@ -382,7 +382,7 @@ function onScroll() {
   wasScrolledUp.value = !atBottom
 }
 
-onMounted(() => {
+onActivated(() => {
   fetchLog()
   startPolling()
   if (terminalRef.value) {
@@ -390,7 +390,7 @@ onMounted(() => {
   }
 })
 
-onUnmounted(() => {
+onDeactivated(() => {
   stopPolling()
   if (terminalRef.value) {
     terminalRef.value.removeEventListener('scroll', onScroll)

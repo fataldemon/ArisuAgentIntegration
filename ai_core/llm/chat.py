@@ -621,7 +621,10 @@ async def _gather_tools(req: ChatCompletionRequest) -> Tuple[Optional[List[Dict[
         LOG.warning("Failed to gather builtin tools: %r", e)
     try:
         from core.skill_manager import get_skill_manager
-        tools.extend(get_skill_manager().virtual_tools())
+        existing = {(t.get("function") or {}).get("name", "") for t in tools}
+        for vt in get_skill_manager().virtual_tools():
+            if (vt.get("function") or {}).get("name", "") not in existing:
+                tools.append(vt)
     except Exception as e:
         LOG.warning("Failed to gather skill tools: %r", e)
     return tools or None, mcp_names, builtin_names

@@ -292,7 +292,7 @@ async def show_position_map(event: MessageEvent):
 async def show_area_map(event: MessageEvent):
     school_id = event.get_plaintext().replace("/区域地图", "").strip()
     if school_id.isdigit() and school_id != "":
-        await position_map.send(get_all_area_by_school(school_id))
+        await area_map.send(get_all_area_by_school(school_id))
     else:
         status = query_status()
         temp, desc = get_available_area(status.position)

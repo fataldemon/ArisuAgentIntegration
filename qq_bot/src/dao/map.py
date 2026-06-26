@@ -88,20 +88,27 @@ def get_position(position_id) -> Position:
 
 def get_position_description(position_id: int, spot: int) -> str:
     session = Session()
-    position = session.query(Position).filter_by(position_id=position_id).first()
-    field = session.query(Field).filter_by(field_id=position.field).first()
-    school = session.query(School).filter_by(school_id=position.school).first()
-    area = session.query(Area).filter_by(area_id=position.area).first()
-    return f"你当前所在的位置：{field.field_name}-{school.school_name}-{area.area_name}-{position.position_name} 的位置{spot}\n" \
-           f"场景信息：\n" \
-           f"   〖{field.field_name}〗：\n" \
-           f"       {field.description}\n" \
-           f"   〖{school.school_name}〗：\n" \
-           f"       {school.description}\n" \
-           f"   〖{area.area_name}〗：\n" \
-           f"       {area.description}\n" \
-           f"   〖{position.position_name}〗：\n" \
-           f"       {position.description}"
+    try:
+        position = session.query(Position).filter_by(position_id=position_id).first()
+        if position is None:
+            return "当前位置信息缺失。"
+        field = session.query(Field).filter_by(field_id=position.field).first()
+        school = session.query(School).filter_by(school_id=position.school).first()
+        area = session.query(Area).filter_by(area_id=position.area).first()
+        if field is None or school is None or area is None:
+            return f"当前位置信息不完整（位置{position.position_name} 的区域/校区/场景数据缺失）。"
+        return f"你当前所在的位置：{field.field_name}-{school.school_name}-{area.area_name}-{position.position_name} 的位置{spot}\n" \
+               f"场景信息：\n" \
+               f"   〖{field.field_name}〗：\n" \
+               f"       {field.description}\n" \
+               f"   〖{school.school_name}〗：\n" \
+               f"       {school.description}\n" \
+               f"   〖{area.area_name}〗：\n" \
+               f"       {area.description}\n" \
+               f"   〖{position.position_name}〗：\n" \
+               f"       {position.description}"
+    finally:
+        session.close()
 
 
 def get_size(position_id) -> int:

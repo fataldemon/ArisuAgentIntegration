@@ -448,7 +448,7 @@ class Qwen(LLM):
             if "<think>" in predictions and "</think>" in predictions:
                 think_end = predictions.find("</think>")
                 if think_end != -1:
-                    thought = predictions[6:think_end].strip()
+                    thought = predictions[7:think_end].strip()
                     reply = predictions[think_end + 8:].strip()
                     if get_think:
                         predictions = f"【思路】\n{thought}\n\n【回答】\n{reply}"

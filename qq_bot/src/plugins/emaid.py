@@ -336,7 +336,7 @@ def set_talker_name(user_id: str, username: str):
     if user is None:
         add_user(user_id, username)
     else:
-        if user_id in anonymous_name_list:
+        if user_id in anonymous_list:
             temp_name = user.user_name
             anonymous_name_list.append(temp_name)
             anonymous_list.remove(user_id)

@@ -308,16 +308,22 @@ class ChannelSupervisor:
             t_out.cancel()
             t_err.cancel()
 
+            should_restart = False
             async with self._lock:
                 if name in self._processes and self._processes[name] is proc:
+                    # Still registered as THIS proc => crashed on its own (an
+                    # explicit stop would have popped it first). Auto-restart
+                    # decision must be captured before we delete the entry.
                     del self._processes[name]
                     status = self._status.get(name)
                     if status:
                         status.running = False
                         status.pid = None
-                        status.restart_count += 0
+                        status.restart_count += 1
+                    if cfg.restart_on_crash and proc.returncode != 0:
+                        should_restart = True
 
-            if cfg.restart_on_crash and proc.returncode != 0 and name in self._processes:
+            if should_restart:
                 delay = cfg.restart_delay
                 LOG.info("Channel %s: restarting in %ss (rc=%s)", name, delay, rc)
                 await asyncio.sleep(delay)

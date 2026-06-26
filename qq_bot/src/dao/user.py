@@ -127,6 +127,8 @@ def get_poke_description(user_id: str) -> str:
     if user_id is not None and user_id != "":
         if str(user_id) != str(master_id):
             user = query_user(user_id)
+            if user is None:
+                return f"一位陌生同学轻轻地戳了戳爱丽丝的脸。"
             favor = user.relation
             user_name = user.user_name
             if favor == 5000:
@@ -159,6 +161,8 @@ def get_poke_description(user_id: str) -> str:
 
 def get_user_description(user_id: str) -> str:
     user = query_user(user_id)
+    if user is None:
+        return f"关于用户{user_id}：该用户的信息暂未记录。"
     desc = f"职业：Lv.{user.level}的{user.profession}\n" \
            f"经验值：{user.exp}/{user.level * 100}\n" \
            f"生命值：{user.hp}/{user.hpmax}\n" \

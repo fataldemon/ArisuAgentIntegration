@@ -40,10 +40,15 @@ def check_death(user_id: str) -> bool:
 def resurrection_from_graveyard(user_id: str):
     session = Session()
     dead = session.query(Tomb).filter_by(dead_user_id=user_id).first()
+    if dead is None:
+        session.close()
+        return
+    dead_user_id = dead.dead_user_id
+    dead_name = dead.dead_name
     session.delete(dead)
     session.commit()
     session.close()
-    print(f"▲已将{dead.dead_user_id}:{dead.dead_name}从墓地复活")
+    print(f"▲已将{dead_user_id}:{dead_name}从墓地复活")
 
 
 def clear_graveyard():

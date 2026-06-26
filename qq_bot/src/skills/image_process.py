@@ -43,7 +43,6 @@ def get_ocr(img_path) -> str:
         return resp.text
 
 
-@DeprecationWarning
 def get_pic_desc(content: str, img_path: str) -> str:
     _headers = {"Authorization": f"Bearer {glm_key}",
                 "Content-Type": "application/json"}
@@ -149,7 +148,7 @@ async def ocr_function(event: MessageEvent):
     message = event.get_message()
     img_check = False
     for seg in message:
-        if seg.type == "img":
+        if seg.type == "image":
             img_check = True
             img_url = seg.data['src']
             result = get_ocr(img_url)
