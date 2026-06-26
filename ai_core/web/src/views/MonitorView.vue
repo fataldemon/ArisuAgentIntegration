@@ -277,6 +277,18 @@ function renderEntry(entry: MonitorEntry): string {
     lines.push(sRaw(C_META, '    (empty response body)'))
   }
 
+  const functionCalls: any[] = resp.function_calls || []
+  if (functionCalls.length > 0) {
+    lines.push(sRaw(C_TOOL, '    --- function_calls ---'))
+    for (const fc of functionCalls) {
+      const fcName = fc.name || '?'
+      const fcArgs = typeof fc.arguments === 'string'
+        ? fc.arguments.substring(0, 200)
+        : JSON.stringify(fc.arguments || '').substring(0, 200)
+      lines.push(s(C_TOOL, `    \u2192 ${fcName}(${fcArgs})`))
+    }
+  }
+
   const rawEvents: any[] = resp.raw_events || []
   if (rawEvents.length > 0) {
     lines.push('')

@@ -1,0 +1,17 @@
+{
+  "chat": {
+    "enabled_tools": [
+      "read_file", "list_directory", "search_files", "search_content",
+      "write_file", "edit_file", "delete_file",
+      "terminal_command",
+      "screenshot", "list_windows", "get_active_window",
+      "click", "type_text", "scroll", "press_keys", "drag",
+      "list_processes", "get_process_info", "kill_process",
+      "list_skills", "read_skill",
+      "echo"
+    ]
+  },
+  "default": {
+    "enabled_tools": []
+  }
+}

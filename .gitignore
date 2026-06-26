@@ -15,6 +15,7 @@ venv/
 db/*.db
 db/*.db-journal
 db/*.db-wal
+db/*.db-shm
 db/*.db.bak
 
 # IDE
@@ -32,6 +33,7 @@ ai_core/config/mcp_servers.json
 ai_core/config/channels.json
 ai_core/config/globals.json
 ai_core/config/inference.json
+ai_core/game_workspace/
 ai_core/media_cache/
 ai_core/images_cache/
 ai_core/gif_cache/
@@ -43,12 +45,14 @@ ai_core/embedding/**/vector/*.bak
 # === Frontend ===
 ai_core/web/node_modules/
 ai_core/web/dist/
+*.tsbuildinfo
 
 # === QQ Bot runtime ===
 qq_bot/.venv/
 qq_bot/.env
 qq_bot/.env.prod
 qq_bot/db/
+qq_bot/logs/
 qq_bot/MyDataset-*.jsonl
 
 # === Bilibili runtime ===

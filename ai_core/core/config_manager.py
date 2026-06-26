@@ -41,6 +41,7 @@ GLOBALS_FILE = os.path.join(CONFIG_DIR, "globals.json")
 GLOBALS_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "globals.example.json")
 INFERENCE_FILE = os.path.join(CONFIG_DIR, "inference.json")
 INFERENCE_EXAMPLE_FILE = os.path.join(CONFIG_DIR, "inference.example.json")
+TOOLS_FILE = os.path.join(CONFIG_DIR, "tools.json")
 
 _DEFAULT_INFERENCE = {
     "chat": {
@@ -254,6 +255,7 @@ class ConfigManager:
         self._mcp_tool_call_timeout: float = 30.0
         self._mcp_max_tool_rounds: int = 5
         self._expression_config: ExpressionConfig = ExpressionConfig()
+        self._channel_tools: Dict[str, set] = {}
         # Synchronous load so that the manager is ready immediately after
         # construction. We avoid touching the asyncio lock here because
         # construction is expected during single-threaded startup.
@@ -262,6 +264,7 @@ class ConfigManager:
         self._reload_expression_sync()
         self._reload_globals_sync()
         self._reload_inference_sync()
+        self._reload_tools_sync()
 
     # ----- providers ---------------------------------------------------------
 
@@ -570,6 +573,23 @@ class ConfigManager:
             self._inference.update(config)
             self._dump_inference_sync()
             return deepcopy(self._inference)
+
+    # ----- channel tools ------------------------------------------------------
+
+    def _reload_tools_sync(self) -> None:
+        if not os.path.exists(TOOLS_FILE):
+            self._channel_tools = {}
+            return
+        with open(TOOLS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        self._channel_tools = {
+            name: set(ch.get("enabled_tools", []))
+            for name, ch in data.items()
+        }
+
+    def get_channel_tools(self, channel: str) -> set:
+        channel = channel or "default"
+        return self._channel_tools.get(channel, set())
 
 
 _singleton: Optional[ConfigManager] = None

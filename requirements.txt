@@ -24,3 +24,13 @@ mcp~=1.2.0
 
 # --- Skill front-matter parsing ---
 pyyaml~=6.0.2
+
+# --- Desktop tools (optional, fails gracefully if not available) ---
+pyautogui~=0.9.53
+
+# --- Document parsing (read_file supports PDF/Word/Excel/PPT) ---
+PyPDF2~=3.0
+python-docx~=1.1
+openpyxl~=3.1
+xlrd~=2.0
+python-pptx~=0.6

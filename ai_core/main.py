@@ -46,7 +46,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 from sse_starlette.sse import EventSourceResponse
@@ -87,6 +87,9 @@ from template import (
     max_chat_len,
     max_quick_reply,
 )
+from tools.permissions import get_pending_manager
+from tools.registry import get_tool_registry
+from tools.schema import PermissionLevel
 from utils.websocketutils import WebsocketManager
 
 logging.basicConfig(
@@ -124,6 +127,12 @@ async def lifespan(app: FastAPI):
     # Eager singletons -- catches obvious config errors on boot.
     cm = get_config_manager()
     get_skill_manager()
+    # Register built-in tools on startup.
+    try:
+        import tools.builtin  # noqa: F401  -- side-effect imports trigger registration
+        LOG.info("Built-in tools registered: %d", len(get_tool_registry().list_tools()))
+    except Exception as e:
+        LOG.warning("Built-in tool registration failed: %r", e)
     persona_manager = get_persona_manager()
     try:
         import sys as _sys
@@ -303,6 +312,45 @@ async def admin_abort(abort_id: str):
 # ---------------------------------------------------------------------------
 # Admin: REST + Vue SPA mount
 # ---------------------------------------------------------------------------
+
+@app.post("/v1/tools/execute")
+async def tools_execute(body: dict = Body(...)):
+    tool_name = body.get("tool_name", "")
+    arguments = body.get("arguments", {})
+    confirm = body.get("confirm", True)
+    pending_id = body.get("pending_id", "")
+
+    reg = get_tool_registry()
+    tool = reg.get_tool(tool_name)
+    if tool is None:
+        raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name!r}")
+
+    if tool.permission_level in (PermissionLevel.WRITE, PermissionLevel.CONTROL):
+        pm = get_pending_manager()
+        if pending_id:
+            pending = pm.resolve(pending_id, confirm)
+            if pending is None:
+                raise HTTPException(status_code=404, detail="Pending request not found or expired")
+            if not confirm:
+                return {"success": False, "output": "", "error": "User rejected the operation"}
+        elif not confirm:
+            return {"success": False, "output": "", "error": "Confirmation required"}
+
+    result = await reg.call_tool(tool_name, arguments)
+    return {
+        "success": result.success,
+        "output": result.output,
+        "error": result.error,
+    }
+
+
+@app.post("/v1/tools/pending")
+async def tools_create_pending(body: dict = Body(...)):
+    tool_name = body.get("tool_name", "")
+    arguments = body.get("arguments", {})
+    pending_id = get_pending_manager().create_pending(tool_name, arguments)
+    return {"pending_id": pending_id, "tool_name": tool_name}
+
 
 register_admin_routes(app)
 register_hippocampus_routes(app)

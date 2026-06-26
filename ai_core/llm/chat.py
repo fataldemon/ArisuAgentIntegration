@@ -66,6 +66,9 @@ from models.base import (
 # They now come from ``embedding/<character>/persona.json`` via
 # :mod:`core.persona_manager`. ``template.py`` no longer exports those.
 
+from tools.permissions import get_pending_manager
+from tools.registry import get_tool_registry
+from tools.schema import PermissionLevel
 from .backends import get_backend
 from .backends.base import GenerationResult, StreamChunk
 
@@ -250,6 +253,7 @@ def _prepare_messages(
             if "tool_calls" not in msg:
                 msg["tool_calls"] = []
             msg["tool_calls"].append({
+                "id": m.function_call.get("id") or f"call_{uuid.uuid4().hex[:12]}",
                 "type": "function",
                 "function": {
                     "name": m.function_call.get("name", ""),
@@ -354,6 +358,9 @@ def _build_persona_system_prefix(character: str, embeddings_text: str) -> Tuple[
     user_desc = get_config_manager().get_globals_flat().get("USER_DESCRIPTION", "").strip()
     if user_desc:
         system_prefix = system_prefix + "\n" + user_desc
+    tool_guidance = _build_tool_guidance()
+    if tool_guidance:
+        system_prefix = system_prefix + "\n" + tool_guidance
     image_setting = persona.image_setting or None
     return system_prefix, image_setting
 
@@ -361,6 +368,74 @@ def _build_persona_system_prefix(character: str, embeddings_text: str) -> Tuple[
 _CONVERSATION_START_SEPARATOR = (
     "----------------------CONVERSATION START FROM HERE------------------------------"
 )
+
+
+def _build_tool_guidance() -> str:
+    try:
+        tools = get_tool_registry().list_tools()
+    except Exception:
+        return ""
+    if not tools:
+        return ""
+
+    names = {t["function"]["name"] for t in tools}
+
+    sections = ["""
+## 工具使用指引
+
+你拥有多种工具能力。当需要完成具体操作时，**真正调用对应工具**，而不要只是在对话中说"我来帮你做"。以下是按场景分类的工具使用指引："""]
+
+    if "read_file" in names or "list_directory" in names or "search_files" in names or "search_content" in names or "write_file" in names or "edit_file" in names or "delete_file" in names:
+        sections.append(f"""
+### 文件操作
+- 想知道工作空间里有什么文件 → **list_directory**
+- 要读某个文件的内容 → **read_file**
+- 要找某种类型的文件 → **search_files**
+- 要在文件内容里搜索关键词 → **search_content**
+- 要创建或覆盖一个文件 → **write_file**
+- 要修改文件里的某段内容 → **edit_file**
+- 要删除某个文件或文件夹 → **delete_file**""")
+
+    if "terminal_command" in names:
+        sections.append(f"""
+### 终端命令
+- 要运行脚本或程序 → **terminal_command**（如 python main.py、node server.js）
+- 要做版本管理 → **terminal_command**（如 git status、git add、git commit）
+- 要查看文件列表或内容 → **terminal_command**（如 ls、cat filename）
+- 要安装依赖 → **terminal_command**（如 pip install xxx）
+- 注意：终端命令工作目录为工作空间，超时30秒"""  )
+
+    if "screenshot" in names or "list_windows" in names or "get_active_window" in names or "click" in names or "type_text" in names or "scroll" in names or "press_keys" in names or "drag" in names:
+        sections.append(f"""
+### 桌面操作
+- 想看屏幕当前显示什么 → **screenshot**
+- 要截取特定窗口 → 先用 **list_windows** 找到窗口标题，再用 **screenshot**（指定窗口名）
+- 想知道当前打开的是什么窗口 → **get_active_window**
+- 要在某个位置点击 → **click**（需要先通过截图确认坐标）
+- 要输入文字 → **type_text**
+- 要按快捷键 → **press_keys**（如 ctrl,c）
+- 要滚动页面 → **scroll**
+- 注意：click/type_text/press_keys 等桌面控制操作需要用户确认"""  )
+
+    if "list_processes" in names or "get_process_info" in names or "kill_process" in names:
+        sections.append(f"""
+### 进程管理
+- 想知道系统里在运行什么程序 → **list_processes**
+- 要看某个进程的详细信息 → **get_process_info**（需要PID）
+- 要强制关闭某个程序 → **kill_process**（需要PID，谨慎使用）""")
+
+    if "list_skills" in names or "read_skill" in names:
+        sections.append(f"""
+### 技能知识
+- 想知道有哪些可用的技能模块 → **list_skills**
+- 要查看某个技能的具体内容 → **read_skill**""")
+
+    if "echo" in names:
+        sections.append(f"""
+### 测试
+- 要测试工具调用链路是否正常 → **echo**""")
+    return "\n".join(sections)
+
 
 
 def _insert_image_setting(messages: List[Dict[str, Any]], image_setting: str, prefetch_files: bool = False, character: str = "", provider_cfg=None) -> None:
@@ -474,6 +549,7 @@ async def _execute_mcp_tool(
         "role": "assistant",
         "content": "",
         "tool_calls": [{
+            "id": f"call_{uuid.uuid4().hex[:12]}",
             "type": "function",
             "function": {"name": tool_name, "arguments": arguments},
         }],
@@ -491,14 +567,26 @@ async def _execute_mcp_tool(
     }
 
 
-async def _gather_tools(req: ChatCompletionRequest) -> Tuple[Optional[List[Dict[str, Any]]], Set[str]]:
-    """Combine request ``functions`` + MCP server tools + Skill virtual tools.
+def _parse_arguments(arguments: str) -> Dict[str, Any]:
+    """Parse a JSON string or dict into a dict of arguments."""
+    if isinstance(arguments, dict):
+        return arguments
+    try:
+        return json.loads(arguments) if arguments else {}
+    except (json.JSONDecodeError, TypeError):
+        return {}
 
-    Returns ``(tools, mcp_tool_names)`` where ``mcp_tool_names`` is the set of
-    tool names that originate from MCP servers (used for server_side routing).
+
+async def _gather_tools(req: ChatCompletionRequest) -> Tuple[Optional[List[Dict[str, Any]]], Set[str], Set[str]]:
+    """Combine request ``functions`` + MCP server tools + Skill virtual tools + builtin tools.
+
+    Returns ``(tools, mcp_tool_names, builtin_names)`` where ``mcp_tool_names``
+    is the set of tool names that originate from MCP servers and ``builtin_names``
+    is the set of built-in tool names (used for server_side routing).
     """
     tools: List[Dict[str, Any]] = []
     mcp_names: Set[str] = set()
+    builtin_names: Set[str] = set()
     if req.functions:
         tools.extend(req.functions)
     cm = get_config_manager()
@@ -515,13 +603,28 @@ async def _gather_tools(req: ChatCompletionRequest) -> Tuple[Optional[List[Dict[
             tools.extend(mcp_tools)
         except Exception as e:
             LOG.warning("Failed to gather MCP tools: %r", e)
-    # Always advertise skill virtual tools so the LLM can ``read_skill`` / ``list_skills``.
+    try:
+        builtin_tools = get_tool_registry().list_tools()
+        channel = req.channel or "default"
+        enabled = cm.get_channel_tools(channel)
+        for t in builtin_tools:
+            name = (t.get("function") or {}).get("name", "")
+            if name:
+                builtin_names.add(name)
+        if enabled:
+            builtin_tools = [t for t in builtin_tools
+                             if ((t.get("function") or {}).get("name", "")) in enabled]
+        else:
+            builtin_tools = []
+        tools.extend(builtin_tools)
+    except Exception as e:
+        LOG.warning("Failed to gather builtin tools: %r", e)
     try:
         from core.skill_manager import get_skill_manager
         tools.extend(get_skill_manager().virtual_tools())
     except Exception as e:
         LOG.warning("Failed to gather skill tools: %r", e)
-    return tools or None, mcp_names
+    return tools or None, mcp_names, builtin_names
 
 
 # ---------------------------------------------------------------------------
@@ -540,7 +643,7 @@ async def chat(
     backend = get_backend()
     provider_cfg = backend.config  # type: ignore[attr-defined]
     messages = _prepare_messages(request.messages, provider_cfg=provider_cfg)
-    tools, mcp_names = await _gather_tools(request)
+    tools, mcp_names, _builtin_names = await _gather_tools(request)
 
     request_id = request.request_id or str(uuid.uuid4())
     request_ts = datetime.now(timezone.utc).isoformat()
@@ -739,7 +842,7 @@ async def chat_on_setting(
                               prefetch_files=bool(provider_cfg.prefetch_media),
                               character=request.character or "",
                               provider_cfg=provider_cfg)
-    tools, mcp_names = await _gather_tools(request)
+    tools, mcp_names, builtin_names = await _gather_tools(request)
     sampling = _sampling_from_request(request, max_tokens)
     extra_body = (
         {"chat_template_kwargs": {"enable_thinking": bool(request.enable_thinking)}}
@@ -830,8 +933,50 @@ async def chat_on_setting(
                     if log_entry is not None:
                         _append_vllm_request_log(log_entry)
                     executed_any = True
+                elif name in builtin_names:
+                    tool = get_tool_registry().get_tool(name)
+                    if tool is not None and tool.permission_level == PermissionLevel.READ:
+                        args = _parse_arguments(fc.get("arguments", "{}"))
+                        result_str = await get_tool_registry().call_tool(name, args)
+                        output = result_str.output if result_str.success else f"Error: {result_str.error}"
+                        messages.append({
+                            "role": "assistant",
+                            "content": "",
+                            "tool_calls": [{
+                                "id": f"call_{uuid.uuid4().hex[:12]}",
+                                "type": "function",
+                                "function": {"name": name, "arguments": fc.get("arguments", "{}")},
+                            }],
+                        })
+                        messages.append({
+                            "role": "tool",
+                            "content": f"<tool_response>\n{output}\n</tool_response>",
+                        })
+                        _append_vllm_request_log({
+                            "ts": datetime.now(timezone.utc).isoformat(),
+                            "type": "builtin_tool_execution",
+                            "tool_name": name,
+                            "arguments": fc.get("arguments", ""),
+                            "result": output[:2000],
+                        })
+                        executed_any = True
+                    else:
+                        fc_first = result.function_calls[0]
+                        return ChatCompletionResponseChoice(
+                            index=index,
+                            thought=thought,
+                            embedding_list=embedding_index_list,
+                            message=ChatMessage(
+                                role="assistant",
+                                content=answer or "",
+                                function_call={
+                                    "name": fc_first.get("name", ""),
+                                    "arguments": fc_first.get("arguments", ""),
+                                },
+                            ),
+                            finish_reason="function_call",
+                        )
                 else:
-                    # Frontend or Skill function — return to caller.
                     fc = result.function_calls[0]
                     return ChatCompletionResponseChoice(
                         index=index,
@@ -848,7 +993,7 @@ async def chat_on_setting(
                         finish_reason="function_call",
                     )
             if not executed_any:
-                break  # no MCP tools to execute (shouldn't happen due to name check)
+                break
         # Max rounds exhausted — return whatever text we have.
         return ChatCompletionResponseChoice(
             index=index,
@@ -931,7 +1076,7 @@ async def chat_on_setting_stream(
                               prefetch_files=bool(provider_cfg.prefetch_media),
                               character=request.character or "",
                               provider_cfg=provider_cfg)
-    tools, mcp_names = await _gather_tools(request)
+    tools, mcp_names, _builtin_names = await _gather_tools(request)
     sampling = _sampling_from_request(request, max_tokens)
     extra_body = (
         {"chat_template_kwargs": {"enable_thinking": bool(request.enable_thinking)}}
@@ -964,6 +1109,7 @@ async def chat_on_setting_stream(
     collected_text: List[str] = []
     collected_function_calls: List[Dict[str, Any]] = []
     collected_raw_events: List[Dict[str, Any]] = []
+    last_finish_reason: Optional[str] = None
 
     try:
         it = await backend.generate_stream(
@@ -982,6 +1128,7 @@ async def chat_on_setting_stream(
                 collected_function_calls = chunk.function_calls
             if not chunk.text and not chunk.finish_reason:
                 continue
+            last_finish_reason = chunk.finish_reason
             yield ChatCompletionResponse(
                 model=request.model,
                 object="chat.completion.chunk",
@@ -1000,6 +1147,26 @@ async def chat_on_setting_stream(
     finally:
         if request.abort_id:
             _active_requests.pop(request.abort_id, None)
+
+    if collected_function_calls:
+        fc = collected_function_calls[0]
+        yield ChatCompletionResponse(
+            model=request.model,
+            object="chat.completion.chunk",
+            choices=[
+                ChatCompletionResponseStreamChoice(
+                    index=index,
+                    delta=DeltaMessage(
+                        function_call={
+                            "id": fc.get("id", ""),
+                            "name": fc.get("name", ""),
+                            "arguments": fc.get("arguments", ""),
+                        },
+                    ),
+                    finish_reason="function_call",
+                )
+            ],
+        )
 
     # Log the full conversation turn after streaming ends.
     try:
@@ -1031,7 +1198,7 @@ async def chat_on_setting_stream(
                 "extra_body": extra_body,
             },
             "response": {
-                "finish_reason": "stop",
+                "finish_reason": last_finish_reason or "stop",
                 "function_calls": collected_function_calls or None,
                 "answer": clean_answer or full_answer,
                 "thought": thought,

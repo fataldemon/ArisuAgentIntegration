@@ -34,6 +34,7 @@ class ChatMessage(BaseModel):
 class DeltaMessage(BaseModel):
     role: Optional[Literal["user", "assistant", "system"]] = None
     content: Optional[str] = None
+    function_call: Optional[Dict] = None
 
 
 class ChatCompletionRequest(BaseModel):
@@ -56,6 +57,7 @@ class ChatCompletionRequest(BaseModel):
     type: Optional[int] = 0  # 0是普通对话，1是总结知识点，2是对话历史长期记忆
     request_id: Optional[str] = ""
     abort_id: Optional[str] = None
+    channel: Optional[str] = ""
 
 
 class ChatCompletionResponseChoice(BaseModel):

@@ -29,7 +29,7 @@
           :class="['message-row', msg.role]"
         >
           <img v-if="msg.role === 'assistant'" :src="getEmotionAvatar(parseEmotions(msg.content))" class="avatar" />
-          <div class="message-bubble-wrap">
+          <div v-if="msg.role === 'user' || msg.role === 'assistant'" class="message-bubble-wrap">
             <div :class="['message-bubble', msg.role]">
               <template v-if="msg.role === 'assistant'">
                 <div v-if="msg.thought" class="thinking-section">
@@ -62,6 +62,21 @@
             <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
           </div>
           <img v-if="msg.role === 'user'" :src="userAvatar" class="avatar" />
+          <div v-if="msg.role === 'tool_call' || msg.role === 'tool_result'" class="tool-msg-row">
+            <n-collapse :default-expanded-names="msg.role === 'tool_result' ? [] : ['tool']">
+              <n-collapse-item name="tool">
+                <template #header>
+                  <span class="tool-msg-header">
+                    <span v-if="msg.role === 'tool_call'" class="tool-icon">&#x1F527;</span>
+                    <span v-else class="tool-icon">{{ msg.content.startsWith('Error') ? '&#x274C;' : '&#x2705;' }}</span>
+                    <strong>{{ msg.toolName }}</strong>
+                    <span v-if="msg.role === 'tool_call'" class="tool-running">running...</span>
+                  </span>
+                </template>
+                <pre class="tool-msg-body" v-if="msg.role === 'tool_result'">{{ msg.content }}</pre>
+              </n-collapse-item>
+            </n-collapse>
+          </div>
         </div>
 
         <div v-if="isStreaming && streamingSessionId === sessionId" class="message-row assistant">
@@ -104,13 +119,12 @@
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 4 }"
           :placeholder="$t('chat.typeMessage')"
-          :disabled="isStreaming"
           @keydown="handleKeydown"
           class="chat-input"
         />
         <n-button
           type="primary"
-          :disabled="isStreaming || !inputText.trim()"
+          :disabled="!inputText.trim()"
           @click="sendMessage"
           class="send-btn"
         >
@@ -125,6 +139,21 @@
           {{ $t('chat.stopGenerating') }}
         </n-button>
       </div>
+
+      <n-modal v-model:show="showToolConfirm" preset="card" title="Tool Confirmation" style="max-width: 480px">
+        <div style="margin-bottom: 12px; font-size: 14px;">
+          <strong>{{ toolConfirmName }}</strong> requires your approval to run.
+        </div>
+        <div style="background: #f5f5f5; border-radius: 6px; padding: 10px; font-size: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">
+          {{ JSON.stringify(toolConfirmArgs, null, 2) }}
+        </div>
+        <template #footer>
+          <n-space justify="end">
+            <n-button @click="onToolConfirm(false)">Reject</n-button>
+            <n-button type="primary" @click="onToolConfirm(true)">Approve</n-button>
+          </n-space>
+        </template>
+      </n-modal>
     </div>
 
     <div class="param-panel">
@@ -213,6 +242,8 @@ import {
   NCollapseItem,
   NSpin,
   NTag,
+  NModal,
+  NSpace,
   useMessage,
 } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
@@ -223,10 +254,12 @@ const { t } = useI18n()
 const message = useMessage()
 
 interface ChatMessage {
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'tool_call' | 'tool_result'
   content: string
   thought?: string
   timestamp: number
+  toolName?: string
+  toolArgs?: Record<string, any>
 }
 
 interface ContentPart {
@@ -273,6 +306,22 @@ const presencePenaltyStr = computed({
 })
 const abortController = ref<AbortController | null>(null)
 const currentAbortId = ref('')
+
+const readPermissionTools = new Set([
+  'echo', 'read_file', 'list_directory', 'search_files', 'search_content',
+  'list_skills', 'read_skill',
+  'screenshot', 'list_windows', 'get_active_window',
+  'list_processes', 'get_process_info',
+])
+
+const showToolConfirm = ref(false)
+const toolConfirmName = ref('')
+const toolConfirmArgs = ref<Record<string, any>>({})
+const toolConfirmResolve = ref<((approved: boolean) => void) | null>(null)
+const toolExecuting = ref(false)
+const toolExecutingName = ref('')
+
+const _MAX_TOOL_ROUNDS = 8
 
 async function loadInferenceParams() {
   try {
@@ -479,6 +528,10 @@ function fmtTs(ts: number): string {
   return `[${M}-${D} ${h}:${m}]`
 }
 
+function stripTimestamp(text: string): string {
+  return text.replace(/^\s*\[\d{2}-\d{2}\s+\d{2}:\d{2}\]\s*/, '')
+}
+
 async function fetchSessions() {
   try {
     const prefix = `chat:${identity.value || 'default'}:`
@@ -648,12 +701,216 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
+function isReadTool(name: string): boolean {
+  return readPermissionTools.has(name)
+}
+
+async function executeToolCall(name: string, args: Record<string, any>): Promise<{ success: boolean; output: string; error?: string }> {
+  const res = await fetch('/v1/tools/execute', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool_name: name, arguments: args, confirm: true }),
+  })
+  return res.json()
+}
+
+function requestToolConfirmation(name: string, args: Record<string, any>): Promise<boolean> {
+  return new Promise((resolve) => {
+    toolConfirmName.value = name
+    toolConfirmArgs.value = args
+    toolConfirmResolve.value = resolve
+    showToolConfirm.value = true
+  })
+}
+
+function onToolConfirm(approved: boolean) {
+  showToolConfirm.value = false
+  const resolve = toolConfirmResolve.value
+  toolConfirmResolve.value = null
+  if (resolve) resolve(approved)
+}
+
+async function handleToolCall(
+  name: string,
+  args: Record<string, any>,
+): Promise<string> {
+  if (isReadTool(name)) {
+    toolExecuting.value = true
+    toolExecutingName.value = name
+    try {
+      const result = await executeToolCall(name, args)
+      return result.success ? result.output : `Error: ${result.error || 'Unknown error'}`
+    } finally {
+      toolExecuting.value = false
+      toolExecutingName.value = ''
+    }
+  }
+
+  const approved = await requestToolConfirmation(name, args)
+  if (!approved) {
+    return 'User rejected the operation.'
+  }
+
+  toolExecuting.value = true
+  toolExecutingName.value = name
+  try {
+    const result = await executeToolCall(name, args)
+    return result.success ? result.output : `Error: ${result.error || 'Unknown error'}`
+  } finally {
+    toolExecuting.value = false
+    toolExecutingName.value = ''
+  }
+}
+
+function buildRequestMessages(): any[] {
+  const targetMsgs = sessionCache[sessionId.value]
+  if (!targetMsgs) return []
+  return targetMsgs.map((m) => {
+    if (m.role === 'tool_call') {
+      return {
+        role: 'assistant',
+        content: '',
+        function_call: {
+          name: m.toolName,
+          arguments: m.toolArgs ? JSON.stringify(m.toolArgs) : '{}',
+        },
+      }
+    }
+    if (m.role === 'tool_result') {
+      return { role: 'tool', content: m.content.replace(/\[image,base64=[^\]]+\]/g, '[image removed]') }
+    }
+    const ts = fmtTs(m.timestamp)
+    if (m.role === 'user' && identity.value.trim()) {
+      return { role: m.role, content: `${ts} \uFF08${identity.value.trim()}\u8BF4\uFF09${m.content}` }
+    }
+    return { role: m.role, content: `${ts} ${m.content}` }
+  })
+}
+
+async function streamChat(messages: any[]): Promise<{ content: string; thought: string; functionCall: { name: string; arguments: string } | null }> {
+  const res = await fetch('/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: '',
+      character: character.value,
+      messages,
+      stream: true,
+      temperature: temperature.value,
+      top_p: topP.value,
+      top_k: topK.value ? Number(topK.value) : undefined,
+      repetition_penalty: repetitionPenalty.value ? Number(repetitionPenalty.value) : undefined,
+      presence_penalty: presencePenalty.value ? Number(presencePenalty.value) : undefined,
+      max_tokens: parseInt(maxTokensStr.value) || 15000,
+      on_embedding: onEmbedding.value,
+      enable_thinking: enableThinking.value,
+      abort_id: currentAbortId.value,
+      channel: 'chat',
+    }),
+    signal: abortController.value!.signal,
+  })
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+  let functionCall: { name: string; arguments: string } | null = null
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let done = false
+
+  while (!done) {
+    const result = await reader.read()
+    if (result.done) break
+
+    buffer += decoder.decode(result.value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed.startsWith('data: ')) continue
+      const payload = trimmed.slice(6).trim()
+      if (payload === '[DONE]') {
+        done = true
+        break
+      }
+      try {
+        const parsed = JSON.parse(payload)
+        const token = parsed.choices?.[0]?.delta?.content
+        if (token) {
+          rawStreamText.value += token
+          scrollToBottom()
+        }
+        const fc = parsed.choices?.[0]?.delta?.function_call
+        if (fc && fc.name) {
+          functionCall = { name: fc.name, arguments: fc.arguments || '{}', id: fc.id || '' }
+        }
+      } catch {}
+    }
+  }
+
+  const { thought, content } = parseThinkBlock(rawStreamText.value, enableThinking.value)
+  return { content, thought, functionCall }
+}
+
+async function sendNonStreaming(messages: any[]): Promise<{
+  content: string
+  thought: string
+  finishReason: string
+  functionCall: { name: string; arguments: string } | null
+}> {
+  const res = await fetch('/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: '',
+      character: character.value,
+      messages,
+      stream: false,
+      temperature: temperature.value,
+      top_p: topP.value,
+      top_k: topK.value ? Number(topK.value) : undefined,
+      repetition_penalty: repetitionPenalty.value ? Number(repetitionPenalty.value) : undefined,
+      presence_penalty: presencePenalty.value ? Number(presencePenalty.value) : undefined,
+      max_tokens: parseInt(maxTokensStr.value) || 15000,
+      on_embedding: onEmbedding.value,
+      enable_thinking: enableThinking.value,
+      abort_id: currentAbortId.value,
+      channel: 'chat',
+    }),
+    signal: abortController.value!.signal,
+  })
+
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
+  const data = await res.json()
+  const choice = data.choices?.[0]
+  if (!choice) throw new Error('Empty response')
+
+  const msg = choice.message || {}
+  return {
+    content: msg.content || '',
+    thought: choice.thought || '',
+    finishReason: choice.finish_reason || 'stop',
+    functionCall: msg.function_call || null,
+  }
+}
+
 async function sendMessage() {
   const text = inputText.value.trim()
-  if (!text || isStreaming.value) return
+  if (!text) return
   const sid = sessionId.value
   const targetMsgs = sessionCache[sid]
   if (!targetMsgs) return
+
+  if (isStreaming.value) {
+    await abortStream()
+    isStreaming.value = false
+    streamingSessionId.value = ''
+    rawStreamText.value = ''
+    abortController.value = null
+    currentAbortId.value = ''
+  }
   streamingSessionId.value = sid
 
   const userMsg: ChatMessage = {
@@ -662,10 +919,8 @@ async function sendMessage() {
     timestamp: Date.now(),
   }
   targetMsgs.push(userMsg)
-  saveMessages()
   hippoSave('user', text, sid)
   inputText.value = ''
-  scrollToBottom()
 
   isStreaming.value = true
   rawStreamText.value = ''
@@ -673,82 +928,8 @@ async function sendMessage() {
   abortController.value = new AbortController()
 
   try {
-    const apiMessages = messages.value.map((m) => {
-      const ts = fmtTs(m.timestamp)
-      if (m.role === 'user' && identity.value.trim()) {
-        return { role: m.role, content: `${ts} （${identity.value.trim()}说）${m.content}` }
-      }
-      return { role: m.role, content: `${ts} ${m.content}` }
-    })
-
-    const res = await fetch('/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: '',
-        character: character.value,
-        messages: apiMessages,
-        stream: true,
-        temperature: temperature.value,
-        top_p: topP.value,
-        top_k: topK.value ? Number(topK.value) : undefined,
-        repetition_penalty: repetitionPenalty.value ? Number(repetitionPenalty.value) : undefined,
-        presence_penalty: presencePenalty.value ? Number(presencePenalty.value) : undefined,
-        max_tokens: parseInt(maxTokensStr.value) || 15000,
-        on_embedding: onEmbedding.value,
-        enable_thinking: enableThinking.value,
-        abort_id: currentAbortId.value,
-      }),
-      signal: abortController.value.signal,
-    })
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status}`)
-    }
-
-    const reader = res.body!.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-    let done = false
-
-    while (!done) {
-      const result = await reader.read()
-      if (result.done) break
-
-      buffer += decoder.decode(result.value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed.startsWith('data: ')) continue
-        const payload = trimmed.slice(6).trim()
-        if (payload === '[DONE]') {
-          done = true
-          break
-        }
-        try {
-          const parsed = JSON.parse(payload)
-          const token = parsed.choices?.[0]?.delta?.content
-          if (token) {
-            rawStreamText.value += token
-            scrollToBottom()
-          }
-        } catch {
-        }
-      }
-    }
-
-    const { thought, content } = parseThinkBlock(rawStreamText.value, enableThinking.value)
-    const assistantMsg: ChatMessage = {
-      role: 'assistant',
-      content: content,
-      thought: thought || undefined,
-      timestamp: Date.now(),
-    }
-    targetMsgs.push(assistantMsg)
-    saveMessages()
-    hippoSave('assistant', content, sid)
+    const apiMessages = buildRequestMessages()
+    await runAgentLoop(apiMessages, targetMsgs, sid)
   } catch (e: any) {
     if (e.name !== 'AbortError') {
       const errorMsg: ChatMessage = {
@@ -757,19 +938,7 @@ async function sendMessage() {
         timestamp: Date.now(),
       }
       targetMsgs.push(errorMsg)
-      saveMessages()
       hippoSave('assistant', errorMsg.content, sid)
-    } else if (rawStreamText.value) {
-      const { thought, content } = parseThinkBlock(rawStreamText.value, enableThinking.value)
-      const partialMsg: ChatMessage = {
-        role: 'assistant',
-        content: content || '[Aborted]',
-        thought: thought || undefined,
-        timestamp: Date.now(),
-      }
-      targetMsgs.push(partialMsg)
-      saveMessages()
-      hippoSave('assistant', content || '[Aborted]', sid)
     }
   } finally {
     isStreaming.value = false
@@ -778,6 +947,122 @@ async function sendMessage() {
     abortController.value = null
     currentAbortId.value = ''
     scrollToBottom()
+  }
+}
+
+async function runAgentLoop(
+  apiMessages: any[],
+  targetMsgs: ChatMessage[],
+  sid: string,
+) {
+  let currentMessages = apiMessages
+
+  for (let round = 0; round < _MAX_TOOL_ROUNDS; round++) {
+    if (round === 0) {
+      const { content, thought, functionCall } = await streamChat(currentMessages)
+
+      if (!functionCall) {
+        const cleanContent = stripTimestamp(content)
+        const assistantMsg: ChatMessage = {
+          role: 'assistant',
+          content: cleanContent,
+          thought: thought || undefined,
+          timestamp: Date.now(),
+        }
+        targetMsgs.push(assistantMsg)
+        hippoSave('assistant', cleanContent, sid)
+        return
+      }
+
+      if (content) {
+        targetMsgs.push({
+          role: 'assistant',
+          content: stripTimestamp(content),
+          thought: thought || undefined,
+          timestamp: Date.now(),
+        })
+      }
+
+      let args: Record<string, any> = {}
+      try { args = JSON.parse(functionCall.arguments) } catch { args = {} }
+
+      const toolIdx = targetMsgs.length
+      targetMsgs.push({
+        role: 'tool_call',
+        content: '',
+        toolName: functionCall.name,
+        toolArgs: args,
+        timestamp: Date.now(),
+      })
+
+      const toolResult = await handleToolCall(functionCall.name, args)
+
+      const toolMsg = targetMsgs[toolIdx]
+      toolMsg.role = 'tool_result'
+      toolMsg.content = toolResult
+
+      currentMessages.push({
+        role: 'assistant',
+        content: content || '',
+        function_call: functionCall,
+      })
+      currentMessages.push({
+        role: 'tool',
+        content: toolResult,
+      })
+      rawStreamText.value = ''
+    } else {
+      const { content, thought, finishReason, functionCall } = await sendNonStreaming(currentMessages)
+
+      if (!functionCall || finishReason !== 'function_call') {
+        const cleanContent = stripTimestamp(content || '')
+        targetMsgs.push({
+          role: 'assistant',
+          content: cleanContent,
+          thought: thought || undefined,
+          timestamp: Date.now(),
+        })
+        hippoSave('assistant', cleanContent, sid)
+        return
+      }
+
+      if (content) {
+        targetMsgs.push({
+          role: 'assistant',
+          content: stripTimestamp(content),
+          thought: thought || undefined,
+          timestamp: Date.now(),
+        })
+      }
+
+      let args: Record<string, any> = {}
+      try { args = JSON.parse(functionCall.arguments) } catch { args = {} }
+
+      const toolIdx = targetMsgs.length
+      targetMsgs.push({
+        role: 'tool_call',
+        content: '',
+        toolName: functionCall.name,
+        toolArgs: args,
+        timestamp: Date.now(),
+      })
+
+      const toolResult = await handleToolCall(functionCall.name, args)
+
+      const toolMsg = targetMsgs[toolIdx]
+      toolMsg.role = 'tool_result'
+      toolMsg.content = toolResult
+
+      currentMessages.push({
+        role: 'assistant',
+        content: content || '',
+        function_call: functionCall,
+      })
+      currentMessages.push({
+        role: 'tool',
+        content: toolResult,
+      })
+    }
   }
 }
 
@@ -813,6 +1098,46 @@ onMounted(() => {
   height: calc(100vh - 56px);
   background: #F0F4FA;
   margin: -24px;
+}
+
+.tool-msg-row {
+  display: flex;
+  justify-content: center;
+  margin: 4px 0;
+}
+
+.tool-msg-row .n-collapse {
+  max-width: 85%;
+  min-width: 260px;
+}
+
+.tool-msg-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.tool-icon {
+  font-size: 14px;
+}
+
+.tool-running {
+  font-size: 11px;
+  color: #999;
+  margin-left: 4px;
+}
+
+.tool-msg-body {
+  font-size: 12px;
+  background: #f8f8f8;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 0;
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .chat-area {
