@@ -255,9 +255,13 @@ class ConfigManager:
         self._mcp_tool_call_timeout: float = 30.0
         self._mcp_max_tool_rounds: int = 5
         self._expression_config: ExpressionConfig = ExpressionConfig()
-        # Capability-based tool permissions (tools.json v2).
+        # Capability-based tool permissions (global allow/ask/deny) plus
+        # per-directory rules for out-of-workspace file access.
         self._capability_states: Dict[str, str] = {}
-        self._channel_capabilities: Dict[str, set] = {}
+        self._file_rules: Dict[str, Dict[str, list]] = {
+            "read": {"allow": [], "deny": []},
+            "write": {"allow": [], "deny": []},
+        }
         # Synchronous load so that the manager is ready immediately after
         # construction. We avoid touching the asyncio lock here because
         # construction is expected during single-threaded startup.
@@ -579,85 +583,93 @@ class ConfigManager:
     # ----- tool capabilities --------------------------------------------------
 
     def _reload_tools_sync(self) -> None:
-        """Load tools.json (v2 capability schema), migrating v1 if needed.
+        """Load tools.json, migrating older schemas to the current (v3) form.
 
-        v1 schema: ``{<channel>: {"enabled_tools": [names]}}``
-        v2 schema: ``{"capabilities": {key: "allow"|"ask"|"deny"},
-                       "channels": {<channel>: [cap_keys]}}``
+        v1: ``{<channel>: {"enabled_tools": [names]}}``
+        v2: ``{"capabilities": {...}, "channels": {<channel>: [caps]}}``
+        v3: ``{"capabilities": {key: allow|ask|deny}, "file_rules": {read/write: {allow/deny: [dirs]}}}``
+
+        Authorization is purely global in v3 — the per-channel dimension is gone.
+        Out-of-workspace file access is governed by per-directory rules.
         """
         from tools.capabilities import default_states
 
         defaults = default_states()
+
+        def _empty_rules():
+            return {"read": {"allow": [], "deny": []}, "write": {"allow": [], "deny": []}}
+
         if not os.path.exists(TOOLS_FILE):
             self._capability_states = dict(defaults)
-            self._channel_capabilities = {"chat": set(defaults.keys())}
+            self._file_rules = _empty_rules()
             return
         with open(TOOLS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        if "capabilities" in data or "channels" in data:
-            # v2 already
+        if "channels" in data:
+            # v2 -> v3: drop channels; keep capabilities (minus file.*.system
+            # which are now rule-based); seed empty file_rules.
             caps = data.get("capabilities", {})
-            self._capability_states = {k: (v if v in ("allow", "ask", "deny") else defaults.get(k, "ask"))
-                                       for k, v in caps.items()}
-            # backfill any missing capabilities from defaults
-            for k, v in defaults.items():
-                self._capability_states.setdefault(k, v)
-            self._channel_capabilities = {
-                name: set(caps_list) for name, caps_list in data.get("channels", {}).items()
+            self._capability_states = self._merge_caps(caps, defaults)
+            self._file_rules = _empty_rules()
+            self._dump_tools_sync()
+            return
+
+        if "capabilities" in data or "file_rules" in data:
+            # v3 already
+            self._capability_states = self._merge_caps(data.get("capabilities", {}), defaults)
+            fr = data.get("file_rules", {}) or {}
+            self._file_rules = {
+                "read": {"allow": list((fr.get("read") or {}).get("allow", [])),
+                         "deny": list((fr.get("read") or {}).get("deny", []))},
+                "write": {"allow": list((fr.get("write") or {}).get("allow", [])),
+                          "deny": list((fr.get("write") or {}).get("deny", []))},
             }
             return
 
-        # v1 -> v2 migration. Uses the static capability mapping from
-        # tools.capabilities (no registry dependency) so it works even though
-        # builtin tools register only later during lifespan startup.
+        # v1 -> v3 migration (no registry dependency; works at boot).
         from tools.capabilities import resolve_capability
         read_caps = {"file.read.workspace", "desktop.observe", "process.observe", "skill.read", "test.run"}
         states = dict(defaults)
-        self._channel_capabilities = {}
-        for ch_name, ch in data.items():
-            ch_caps = set()
+        for _ch_name, ch in data.items():
             for tool_name in ch.get("enabled_tools", []):
                 cap = resolve_capability(tool_name, {})
-                if not cap:
-                    continue
-                ch_caps.add(cap)
-                states[cap] = "allow" if cap in read_caps else "ask"
-            if ch_caps:
-                self._channel_capabilities[ch_name] = ch_caps
+                if cap and cap in defaults:
+                    states[cap] = "allow" if cap in read_caps else "ask"
         self._capability_states = states
-        # Persist the migrated form immediately.
+        self._file_rules = _empty_rules()
         self._dump_tools_sync()
+
+    @staticmethod
+    def _merge_caps(caps: Dict[str, str], defaults: Dict[str, str]) -> Dict[str, str]:
+        out = {k: (v if v in ("allow", "ask", "deny") else defaults.get(k, "ask"))
+               for k, v in caps.items() if k in defaults}
+        for k, v in defaults.items():
+            out.setdefault(k, v)
+        return out
 
     def _dump_tools_sync(self) -> None:
         _atomic_write_json(TOOLS_FILE, {
             "capabilities": {k: self._capability_states[k]
                              for k in sorted(self._capability_states)},
-            "channels": {name: sorted(s) for name, s in self._channel_capabilities.items()},
+            "file_rules": self._file_rules,
         })
 
     def get_capability_states(self) -> Dict[str, str]:
         return deepcopy(self._capability_states)
 
-    def get_channel_capabilities(self, channel: str) -> set:
-        channel = channel or "default"
-        return self._channel_capabilities.get(channel, set())
-
     def get_channel_tools(self, channel: str) -> set:
-        """Compat: tool names enabled for ``channel`` (derived from capabilities).
+        """Tool names enabled globally (channel arg kept for call-site compat).
 
-        A tool is enabled if any of its capabilities is enabled for the channel
-        and that capability's state is not ``deny``.
+        Authorization is global in v3; a tool is enabled if any of its
+        capabilities has a state other than ``deny``.
         """
         from tools.capabilities import all_capabilities_for
-        channel = channel or "default"
-        enabled_caps = self._channel_capabilities.get(channel, set())
-        out = set()
-        # Lazily iterate registry tools; avoid import cycle at module import.
         from tools.registry import get_tool_registry
+        out = set()
         for d in get_tool_registry().list_defs():
             for cap in all_capabilities_for(d.name):
-                if cap in enabled_caps and self._capability_states.get(cap, "ask") != "deny":
+                if self._capability_states.get(cap, "ask") != "deny":
                     out.add(d.name)
                     break
         return out
@@ -669,9 +681,27 @@ class ConfigManager:
                     self._capability_states[k] = v
             self._dump_tools_sync()
 
-    async def set_channel_capabilities(self, channel: str, caps: List[str]) -> None:
+    # ----- file rules (out-of-workspace) --------------------------------------
+
+    def get_file_rules(self) -> Dict[str, Dict[str, list]]:
+        return deepcopy(self._file_rules)
+
+    async def add_file_rule(self, op: str, decision: str, directory: str) -> None:
+        if op not in self._file_rules or decision not in ("allow", "deny") or not directory:
+            return
         async with self._lock:
-            self._channel_capabilities[channel or "default"] = set(caps)
+            bucket = self._file_rules[op][decision]
+            if directory not in bucket:
+                bucket.append(directory)
+                bucket.sort()
+            self._dump_tools_sync()
+
+    async def remove_file_rule(self, op: str, decision: str, directory: str) -> None:
+        if op not in self._file_rules or decision not in ("allow", "deny"):
+            return
+        async with self._lock:
+            bucket = self._file_rules[op][decision]
+            self._file_rules[op][decision] = [d for d in bucket if d != directory]
             self._dump_tools_sync()
 
 

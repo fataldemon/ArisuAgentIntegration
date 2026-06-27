@@ -2,27 +2,22 @@
   "capabilities": {
     "desktop.control": "ask",
     "desktop.observe": "allow",
-    "file.read.system": "deny",
     "file.read.workspace": "allow",
-    "file.write.system": "deny",
-    "file.write.workspace": "ask",
+    "file.write.workspace": "allow",
     "process.control": "ask",
     "process.observe": "allow",
     "shell.exec": "ask",
     "skill.read": "allow",
     "test.run": "allow"
   },
-  "channels": {
-    "chat": [
-      "desktop.control",
-      "desktop.observe",
-      "file.read.workspace",
-      "file.write.workspace",
-      "process.control",
-      "process.observe",
-      "shell.exec",
-      "skill.read",
-      "test.run"
-    ]
+  "file_rules": {
+    "read": {
+      "allow": [],
+      "deny": []
+    },
+    "write": {
+      "allow": [],
+      "deny": []
+    }
   }
 }

@@ -655,8 +655,6 @@ def register_admin_routes(app: FastAPI) -> None:
         from tools.capabilities import CAPABILITIES, DOMAIN_ORDER, tools_for_capability
         cm_cfg = get_config_manager()
         states = cm_cfg.get_capability_states()
-        known = ["chat", "default"]
-        channel_caps = {ch: sorted(cm_cfg.get_channel_capabilities(ch)) for ch in known}
         return {
             "domains": DOMAIN_ORDER,
             "capabilities": [
@@ -671,7 +669,7 @@ def register_admin_routes(app: FastAPI) -> None:
                 }
                 for c in CAPABILITIES
             ],
-            "channels": channel_caps,
+            "file_rules": cm_cfg.get_file_rules(),
         }
 
     @app.put("/admin/api/tools/capabilities")
@@ -680,10 +678,18 @@ def register_admin_routes(app: FastAPI) -> None:
         await get_config_manager().set_capability_states(states)
         return {"ok": True}
 
-    @app.put("/admin/api/tools/channels/{channel}")
-    async def set_channel_capabilities(channel: str, body: Dict[str, Any]):
-        caps = body.get("capabilities", [])
-        await get_config_manager().set_channel_capabilities(channel, caps)
+    @app.post("/admin/api/tools/file-rules")
+    async def add_file_rule(body: Dict[str, Any]):
+        await get_config_manager().add_file_rule(
+            body.get("op", ""), body.get("decision", ""), body.get("directory", "")
+        )
+        return {"ok": True}
+
+    @app.delete("/admin/api/tools/file-rules")
+    async def remove_file_rule(body: Dict[str, Any]):
+        await get_config_manager().remove_file_rule(
+            body.get("op", ""), body.get("decision", ""), body.get("directory", "")
+        )
         return {"ok": True}
 
     @app.get("/admin/api/tools/registry")

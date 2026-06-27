@@ -320,29 +320,60 @@ async def tools_execute(body: dict = Body(...)):
     arguments = body.get("arguments", {}) or {}
     confirm = body.get("confirm", True)
     pending_id = body.get("pending_id", "")
+    permission_decision = body.get("permission_decision", "")  # "" | "once" | "always"
 
     reg = get_tool_registry()
     tool = reg.get_tool(tool_name)
     if tool is None:
         raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name!r}")
 
-    # Capability-based authorization. File tools resolve to a workspace or
-    # system capability depending on the ``scope`` argument.
+    cm_cfg = get_config_manager()
     cap = resolve_capability(tool_name, arguments)
-    state = get_config_manager().get_capability_states().get(cap, "ask")
-    if state == "deny":
-        return {"success": False, "output": "", "error": f"Capability denied: {cap}"}
-    if state == "ask":
-        pm = get_pending_manager()
-        if pending_id:
-            pending = pm.resolve(pending_id, confirm)
-            if pending is None:
-                raise HTTPException(status_code=404, detail="Pending request not found or expired")
-            if not confirm:
-                return {"success": False, "output": "", "error": "User rejected the operation"}
-        elif not confirm:
-            return {"success": False, "output": "", "error": "Confirmation required"}
-    # state == "allow": execute directly
+
+    # Out-of-workspace file access is governed by per-directory rules, not a
+    # global capability state. Deny/allow short-circuit; a miss asks the caller
+    # to obtain an explicit decision (allow once / always allow this dir / deny).
+    if cap in ("file.read.system", "file.write.system"):
+        op = "read" if cap.startswith("file.read") else "write"
+        target = arguments.get("filename") or arguments.get("path") or ""
+        from tools.file_rules import check_permission, parent_dir_of
+        import os as _os
+        target_abs = _os.path.realpath(target)
+        verdict = check_permission(target_abs, op, cm_cfg.get_file_rules())
+        if verdict == "deny":
+            return {"success": False, "output": "", "error": f"Path denied by rule: {target_abs}"}
+        if verdict == "prompt":
+            if permission_decision == "once":
+                pass  # execute this once, do not persist
+            elif permission_decision == "always":
+                await cm_cfg.add_file_rule(op, "allow", parent_dir_of(target_abs))
+            else:
+                return {
+                    "success": False,
+                    "output": "",
+                    "error": "Out-of-workspace path requires permission",
+                    "needs_permission": True,
+                    "op": op,
+                    "path": target_abs,
+                    "dir": parent_dir_of(target_abs),
+                }
+        # verdict == "allow": execute directly
+    else:
+        # Global capability authorization (allow/ask/deny).
+        state = cm_cfg.get_capability_states().get(cap, "ask")
+        if state == "deny":
+            return {"success": False, "output": "", "error": f"Capability denied: {cap}"}
+        if state == "ask":
+            pm = get_pending_manager()
+            if pending_id:
+                pending = pm.resolve(pending_id, confirm)
+                if pending is None:
+                    raise HTTPException(status_code=404, detail="Pending request not found or expired")
+                if not confirm:
+                    return {"success": False, "output": "", "error": "User rejected the operation"}
+            elif not confirm:
+                return {"success": False, "output": "", "error": "Confirmation required"}
+        # state == "allow": execute directly
 
     result = await reg.call_tool(tool_name, arguments)
     return {
