@@ -59,6 +59,10 @@ class ToolRegistry:
             })
         return out
 
+    def list_defs(self) -> List[ToolDef]:
+        """Raw :class:`ToolDef` objects (with group/category/guidance metadata)."""
+        return list(self._tools.values())
+
     async def call_tool(self, name: str, arguments: Dict[str, Any]) -> ToolResult:
         tool = self._tools.get(name)
         if tool is None:

@@ -66,9 +66,11 @@ from models.base import (
 # They now come from ``embedding/<character>/persona.json`` via
 # :mod:`core.persona_manager`. ``template.py`` no longer exports those.
 
+from tools.groups import get_group, groups_in_order
 from tools.permissions import get_pending_manager
+from tools.capabilities import resolve_capability
 from tools.registry import get_tool_registry
-from tools.schema import PermissionLevel
+from tools.schema import PermissionLevel, ToolDef, ToolGroup
 from .backends import get_backend
 from .backends.base import GenerationResult, StreamChunk
 
@@ -318,7 +320,7 @@ def _build_status_from_globals() -> str:
     )
 
 
-def _build_persona_system_prefix(character: str, embeddings_text: str) -> Tuple[str, Optional[str]]:
+def _build_persona_system_prefix(character: str, embeddings_text: str, channel: str = "default") -> Tuple[str, Optional[str]]:
     """Build the system prompt prefix from the character's ``persona.json``.
 
     Returns ``(system_prefix, image_setting)``.  ``image_setting`` is the
@@ -358,7 +360,8 @@ def _build_persona_system_prefix(character: str, embeddings_text: str) -> Tuple[
     user_desc = get_config_manager().get_globals_flat().get("USER_DESCRIPTION", "").strip()
     if user_desc:
         system_prefix = system_prefix + "\n" + user_desc
-    tool_guidance = _build_tool_guidance()
+    identity = get_config_manager().get_globals_flat().get("IDENTITY", "").strip()
+    tool_guidance = _build_tool_guidance(channel, identity)
     if tool_guidance:
         system_prefix = system_prefix + "\n" + tool_guidance
     image_setting = persona.image_setting or None
@@ -370,70 +373,76 @@ _CONVERSATION_START_SEPARATOR = (
 )
 
 
-def _build_tool_guidance() -> str:
-    try:
-        tools = get_tool_registry().list_tools()
-    except Exception:
+# Display order of sub-categories inside the "system" group. Categories not
+# listed here (e.g. future ones) are appended after, alphabetically.
+_CATEGORY_ORDER = ["文件操作", "终端命令", "桌面操作", "进程管理", "网络检索", "代码运行"]
+
+
+def _channel_builtin_tools(channel: str) -> List[ToolDef]:
+    """Built-in ToolDefs enabled for ``channel`` (empty list if none).
+
+    Shared by :func:`_gather_tools` (what we advertise to the model) and
+    :func:`_build_tool_guidance` (what we teach the model) so the two never
+    drift apart.
+    """
+    enabled = get_config_manager().get_channel_tools(channel or "default")
+    if not enabled:
+        return []
+    return [d for d in get_tool_registry().list_defs() if d.name in enabled]
+
+
+def _build_tool_guidance(channel: str, identity: str) -> str:
+    """Render the tool-calling guidance for ``channel`` from tool metadata.
+
+    Returns "" when no built-in tools are enabled for the channel, so a bare
+    ``default`` channel advertises nothing it cannot actually call. Tools are
+    grouped by :class:`ToolGroup`; each group renders its own guidance, and
+    within a group distinct ``category`` values become ``###`` sub-headings.
+    """
+    defs = _channel_builtin_tools(channel)
+    if not defs:
         return ""
-    if not tools:
-        return ""
+    ident = identity or "老师"
 
-    names = {t["function"]["name"] for t in tools}
+    by_group: Dict[str, List[ToolDef]] = {}
+    for d in defs:
+        by_group.setdefault(d.group, []).append(d)
 
-    sections = ["""
-## 工具使用指引
+    # Known groups first (in their defined order), then any unknown group names.
+    ordered_groups: List[Tuple[str, Optional[ToolGroup], List[ToolDef]]] = []
+    known = set()
+    for g in groups_in_order():
+        known.add(g.name)
+        if g.name in by_group:
+            ordered_groups.append((g.name, g, by_group[g.name]))
+    for gname, tools in by_group.items():
+        if gname not in known:
+            ordered_groups.append((gname, get_group(gname), tools))
 
-你拥有多种工具能力。当需要完成具体操作时，**真正调用对应工具**，而不要只是在对话中说"我来帮你做"。以下是按场景分类的工具使用指引："""]
+    sections: List[str] = []
+    for gname, group, tools_in_group in ordered_groups:
+        display = group.display if group else gname
+        sections.append(f"## {display}")
+        if group:
+            sections.append(group.guidance.replace("{identity}", ident))
 
-    if "read_file" in names or "list_directory" in names or "search_files" in names or "search_content" in names or "write_file" in names or "edit_file" in names or "delete_file" in names:
-        sections.append(f"""
-### 文件操作
-- 想知道工作空间里有什么文件 → **list_directory**
-- 要读某个文件的内容 → **read_file**
-- 要找某种类型的文件 → **search_files**
-- 要在文件内容里搜索关键词 → **search_content**
-- 要创建或覆盖一个文件 → **write_file**
-- 要修改文件里的某段内容 → **edit_file**
-- 要删除某个文件或文件夹 → **delete_file**""")
+        by_cat: Dict[str, List[ToolDef]] = {}
+        for t in tools_in_group:
+            by_cat.setdefault(t.category, []).append(t)
+        non_empty = [c for c in by_cat if c]
+        if len(non_empty) <= 1:
+            for t in tools_in_group:
+                if t.guidance:
+                    sections.append(f"- {t.guidance}")
+        else:
+            cats = [c for c in _CATEGORY_ORDER if c in by_cat]
+            cats += sorted(c for c in non_empty if c not in _CATEGORY_ORDER)
+            for cat in cats:
+                sections.append(f"### {cat}")
+                for t in by_cat[cat]:
+                    if t.guidance:
+                        sections.append(f"- {t.guidance}")
 
-    if "terminal_command" in names:
-        sections.append(f"""
-### 终端命令
-- 要运行脚本或程序 → **terminal_command**（如 python main.py、node server.js）
-- 要做版本管理 → **terminal_command**（如 git status、git add、git commit）
-- 要查看文件列表或内容 → **terminal_command**（如 ls、cat filename）
-- 要安装依赖 → **terminal_command**（如 pip install xxx）
-- 注意：终端命令工作目录为工作空间，超时30秒"""  )
-
-    if "screenshot" in names or "list_windows" in names or "get_active_window" in names or "click" in names or "type_text" in names or "scroll" in names or "press_keys" in names or "drag" in names:
-        sections.append(f"""
-### 桌面操作
-- 想看屏幕当前显示什么 → **screenshot**
-- 要截取特定窗口 → 先用 **list_windows** 找到窗口标题，再用 **screenshot**（指定窗口名）
-- 想知道当前打开的是什么窗口 → **get_active_window**
-- 要在某个位置点击 → **click**（需要先通过截图确认坐标）
-- 要输入文字 → **type_text**
-- 要按快捷键 → **press_keys**（如 ctrl,c）
-- 要滚动页面 → **scroll**
-- 注意：click/type_text/press_keys 等桌面控制操作需要用户确认"""  )
-
-    if "list_processes" in names or "get_process_info" in names or "kill_process" in names:
-        sections.append(f"""
-### 进程管理
-- 想知道系统里在运行什么程序 → **list_processes**
-- 要看某个进程的详细信息 → **get_process_info**（需要PID）
-- 要强制关闭某个程序 → **kill_process**（需要PID，谨慎使用）""")
-
-    if "list_skills" in names or "read_skill" in names:
-        sections.append(f"""
-### 技能知识
-- 想知道有哪些可用的技能模块 → **list_skills**
-- 要查看某个技能的具体内容 → **read_skill**""")
-
-    if "echo" in names:
-        sections.append(f"""
-### 测试
-- 要测试工具调用链路是否正常 → **echo**""")
     return "\n".join(sections)
 
 
@@ -604,19 +613,18 @@ async def _gather_tools(req: ChatCompletionRequest) -> Tuple[Optional[List[Dict[
         except Exception as e:
             LOG.warning("Failed to gather MCP tools: %r", e)
     try:
-        builtin_tools = get_tool_registry().list_tools()
         channel = req.channel or "default"
-        enabled = cm.get_channel_tools(channel)
-        for t in builtin_tools:
-            name = (t.get("function") or {}).get("name", "")
-            if name:
-                builtin_names.add(name)
-        if enabled:
-            builtin_tools = [t for t in builtin_tools
-                             if ((t.get("function") or {}).get("name", "")) in enabled]
-        else:
-            builtin_tools = []
-        tools.extend(builtin_tools)
+        builtin_defs = _channel_builtin_tools(channel)
+        for d in builtin_defs:
+            builtin_names.add(d.name)
+            tools.append({
+                "type": "function",
+                "function": {
+                    "name": d.name,
+                    "description": d.description,
+                    "parameters": d.parameters,
+                },
+            })
     except Exception as e:
         LOG.warning("Failed to gather builtin tools: %r", e)
     try:
@@ -833,7 +841,7 @@ async def chat_on_setting(
             LOG.warning("process_embedding failed: %r", e)
             embeddings_text = ""
     system_prefix, image_setting = _build_persona_system_prefix(
-        request.character or "", embeddings_text
+        request.character or "", embeddings_text, request.channel or "default"
     )
 
     messages = _prepare_messages(
@@ -937,9 +945,10 @@ async def chat_on_setting(
                         _append_vllm_request_log(log_entry)
                     executed_any = True
                 elif name in builtin_names:
-                    tool = get_tool_registry().get_tool(name)
-                    if tool is not None and tool.permission_level == PermissionLevel.READ:
-                        args = _parse_arguments(fc.get("arguments", "{}"))
+                    args = _parse_arguments(fc.get("arguments", "{}"))
+                    cap = resolve_capability(name, args)
+                    state = get_config_manager().get_capability_states().get(cap, "ask")
+                    if state == "allow":
                         result_str = await get_tool_registry().call_tool(name, args)
                         output = result_str.output if result_str.success else f"Error: {result_str.error}"
                         messages.append({
@@ -964,6 +973,8 @@ async def chat_on_setting(
                         })
                         executed_any = True
                     else:
+                        # ask (needs confirmation) or deny (treated as ask):
+                        # return the function_call to the caller for confirmation.
                         fc_first = result.function_calls[0]
                         return ChatCompletionResponseChoice(
                             index=index,
@@ -1068,7 +1079,7 @@ async def chat_on_setting_stream(
             LOG.warning("process_embedding failed: %r", e)
 
     system_prefix, image_setting = _build_persona_system_prefix(
-        request.character or "", embeddings_text
+        request.character or "", embeddings_text, request.channel or "default"
     )
     messages = _prepare_messages(
         request.messages, provider_cfg=provider_cfg, system_prefix=system_prefix,

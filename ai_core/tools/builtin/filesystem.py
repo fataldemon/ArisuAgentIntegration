@@ -32,13 +32,38 @@ def _workspace_root() -> str:
     return _os.environ.get("TOOL_WORKSPACE", default)
 
 
-def _safe_path(filename: str) -> str:
+def _resolve_path(filename: str, scope: str = "workspace") -> str:
+    """Resolve a file path.
+
+    ``workspace`` (default) confines the path to the workspace sandbox and
+    rejects traversal. ``system`` allows any path on disk — this is gated by
+    the ``file.*.system`` capability at the execution layer, so the sandbox is
+    only lifted when the operator has explicitly authorized system file access.
+    """
+    if scope == "system":
+        return os.path.realpath(filename)
     root = os.path.realpath(_workspace_root())
     candidate = os.path.realpath(os.path.join(root, filename))
     common = os.path.commonpath([root, candidate])
     if common != root:
         raise ValueError(f"Path traversal denied: {filename!r}")
     return candidate
+
+
+def _resolve_base(path: str, scope: str) -> str:
+    """Resolve a directory base for list/search operations."""
+    if scope == "system":
+        return os.path.realpath(path) if path else os.getcwd()
+    root = os.path.realpath(_workspace_root())
+    base = os.path.realpath(os.path.join(root, path)) if path else root
+    if os.path.commonpath([root, base]) != root:
+        raise ValueError(f"Path traversal denied: {path!r}")
+    return base
+
+
+def _display_root(scope: str) -> str:
+    """The reference path used to render relative paths in results."""
+    return os.getcwd() if scope == "system" else os.path.realpath(_workspace_root())
 
 
 def _ext(filename: str) -> str:
@@ -174,8 +199,8 @@ def _read_pptx(path: str, filename: str) -> str:
         return f"Error reading PPT {filename}: {e}"
 
 
-async def _read_file(filename: str, offset: int = 0, limit: int = 2000) -> str:
-    path = _safe_path(filename)
+async def _read_file(filename: str, offset: int = 0, limit: int = 2000, scope: str = "workspace") -> str:
+    path = _resolve_path(filename, scope)
     ext = _ext(filename)
 
     try:
@@ -202,13 +227,14 @@ async def _read_file(filename: str, offset: int = 0, limit: int = 2000) -> str:
         return f"Error reading {filename}: {e}"
 
 
-async def _list_directory(path: str = "") -> str:
+async def _list_directory(path: str = "", scope: str = "workspace") -> str:
     root = _workspace_root()
-    os.makedirs(root, exist_ok=True)
-    target = os.path.join(root, path) if path else root
-    target = os.path.realpath(target)
-    if not target.startswith(os.path.realpath(root)):
-        return f"Error: path traversal denied — {path!r}"
+    if scope != "system":
+        os.makedirs(root, exist_ok=True)
+    try:
+        target = _resolve_base(path, scope)
+    except ValueError as e:
+        return f"Error: {e}"
     try:
         names = sorted(os.listdir(target))
     except NotADirectoryError:
@@ -230,18 +256,18 @@ async def _list_directory(path: str = "") -> str:
     return "\n".join(lines)
 
 
-async def _search_files(pattern: str, path: str = "") -> str:
-    root = _workspace_root()
-    base = os.path.join(root, path) if path else root
-    base = os.path.realpath(base)
-    if not base.startswith(os.path.realpath(root)):
-        return f"Error: path traversal denied — {path!r}"
+async def _search_files(pattern: str, path: str = "", scope: str = "workspace") -> str:
+    try:
+        base = _resolve_base(path, scope)
+    except ValueError as e:
+        return f"Error: {e}"
+    ref = _display_root(scope)
     matches = []
     try:
         for dirpath, _dirnames, filenames in os.walk(base):
             for fn in filenames:
                 if fnmatch.fnmatch(fn, pattern):
-                    rel = os.path.relpath(os.path.join(dirpath, fn), root)
+                    rel = os.path.relpath(os.path.join(dirpath, fn), ref)
                     size = os.path.getsize(os.path.join(dirpath, fn))
                     matches.append(f"  {rel}  ({size} bytes)")
     except OSError as e:
@@ -252,12 +278,12 @@ async def _search_files(pattern: str, path: str = "") -> str:
     return f"Found {len(matches)} file(s) matching {pattern!r}:\n" + "\n".join(matches)
 
 
-async def _search_content(pattern: str, glob: str = "*", path: str = "", max_results: int = 30) -> str:
-    root = _workspace_root()
-    base = os.path.join(root, path) if path else root
-    base = os.path.realpath(base)
-    if not base.startswith(os.path.realpath(root)):
-        return f"Error: path traversal denied — {path!r}"
+async def _search_content(pattern: str, glob: str = "*", path: str = "", max_results: int = 30, scope: str = "workspace") -> str:
+    try:
+        base = _resolve_base(path, scope)
+    except ValueError as e:
+        return f"Error: {e}"
+    ref = _display_root(scope)
     results = []
     try:
         compiled = re.compile(pattern, re.IGNORECASE)
@@ -273,7 +299,7 @@ async def _search_content(pattern: str, glob: str = "*", path: str = "", max_res
                     with open(full, "r", encoding="utf-8", errors="replace") as f:
                         for lineno, line in enumerate(f, 1):
                             if compiled.search(line):
-                                rel = os.path.relpath(full, root)
+                                rel = os.path.relpath(full, ref)
                                 results.append(f"  {rel}:{lineno}: {line.strip()[:200]}")
                                 if len(results) >= max_results:
                                     break
@@ -290,8 +316,8 @@ async def _search_content(pattern: str, glob: str = "*", path: str = "", max_res
     return f"Found {len(results)} match(es) for {pattern!r}:\n" + "\n".join(results)
 
 
-async def _write_file(filename: str, content: str) -> str:
-    path = _safe_path(filename)
+async def _write_file(filename: str, content: str, scope: str = "workspace") -> str:
+    path = _resolve_path(filename, scope)
     ext = _ext(filename)
     os.makedirs(os.path.dirname(path) or _workspace_root(), exist_ok=True)
 
@@ -313,8 +339,8 @@ async def _write_file(filename: str, content: str) -> str:
             return f"Error writing {filename}: {e}"
 
 
-async def _edit_file(filename: str, old_string: str, new_string: str) -> str:
-    path = _safe_path(filename)
+async def _edit_file(filename: str, old_string: str, new_string: str, scope: str = "workspace") -> str:
+    path = _resolve_path(filename, scope)
     try:
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -336,8 +362,8 @@ async def _edit_file(filename: str, old_string: str, new_string: str) -> str:
         return f"Error writing {filename}: {e}"
 
 
-async def _delete_file(filename: str) -> str:
-    path = _safe_path(filename)
+async def _delete_file(filename: str, scope: str = "workspace") -> str:
+    path = _resolve_path(filename, scope)
     try:
         os.remove(path)
         return f"Deleted {filename}"
@@ -364,11 +390,15 @@ def register() -> None:
                 "filename": {"type": "string", "description": "工作空间内的文件路径，相对路径。"},
                 "offset": {"type": "integer", "description": "从第几行开始读（0开始），仅文本文件有效。"},
                 "limit": {"type": "integer", "description": "最多返回多少行（默认2000），仅文本文件有效。"},
+                "scope": {"type": "string", "enum": ["workspace", "system"], "description": "路径作用域：workspace=工作空间内（默认，相对路径）；system=工作空间外（需授权，绝对路径）。"},
             },
             "required": ["filename"],
         },
         permission_level=PermissionLevel.READ,
         handler=_read_file,
+        group="system",
+        category="文件操作",
+        guidance="要读某个文件的内容 → read_file",
     ))
     reg.register(ToolDef(
         name="list_directory",
@@ -377,11 +407,15 @@ def register() -> None:
             "type": "object",
             "properties": {
                 "path": {"type": "string", "description": "子目录路径，相对于工作空间根目录。不填则为根目录。"},
+                "scope": {"type": "string", "enum": ["workspace", "system"], "description": "路径作用域：workspace=工作空间内（默认）；system=工作空间外（需授权，path 为绝对路径）。"},
             },
             "required": [],
         },
         permission_level=PermissionLevel.READ,
         handler=_list_directory,
+        group="system",
+        category="文件操作",
+        guidance="想知道工作空间里有什么文件 → list_directory",
     ))
     reg.register(ToolDef(
         name="search_files",
@@ -391,11 +425,15 @@ def register() -> None:
             "properties": {
                 "pattern": {"type": "string", "description": "文件名匹配模式，支持通配符 * 和 **。"},
                 "path": {"type": "string", "description": "搜索的子目录，不填则搜索整个工作空间。"},
+                "scope": {"type": "string", "enum": ["workspace", "system"], "description": "路径作用域：workspace=工作空间内（默认）；system=工作空间外（需授权，path 为绝对路径）。"},
             },
             "required": ["pattern"],
         },
         permission_level=PermissionLevel.READ,
         handler=_search_files,
+        group="system",
+        category="文件操作",
+        guidance="要找某种类型的文件 → search_files",
     ))
     reg.register(ToolDef(
         name="search_content",
@@ -406,11 +444,15 @@ def register() -> None:
                 "pattern": {"type": "string", "description": "正则表达式搜索模式。"},
                 "glob": {"type": "string", "description": "文件名过滤，如 *.py。默认 * 匹配所有文件。"},
                 "path": {"type": "string", "description": "搜索的子目录。"},
+                "scope": {"type": "string", "enum": ["workspace", "system"], "description": "路径作用域：workspace=工作空间内（默认）；system=工作空间外（需授权，path 为绝对路径）。"},
             },
             "required": ["pattern"],
         },
         permission_level=PermissionLevel.READ,
         handler=_search_content,
+        group="system",
+        category="文件操作",
+        guidance="要在文件内容里搜索关键词 → search_content",
     ))
     reg.register(ToolDef(
         name="write_file",
@@ -420,11 +462,15 @@ def register() -> None:
             "properties": {
                 "filename": {"type": "string", "description": "文件路径，相对于工作空间根目录。"},
                 "content": {"type": "string", "description": "文件内容。文本文件直接传入文本，二进制文件传入base64编码字符串。"},
+                "scope": {"type": "string", "enum": ["workspace", "system"], "description": "路径作用域：workspace=工作空间内（默认）；system=工作空间外（需授权，filename 为绝对路径）。"},
             },
             "required": ["filename", "content"],
         },
         permission_level=PermissionLevel.WRITE,
         handler=_write_file,
+        group="system",
+        category="文件操作",
+        guidance="要创建或覆盖一个文件 → write_file",
     ))
     reg.register(ToolDef(
         name="edit_file",
@@ -435,11 +481,15 @@ def register() -> None:
                 "filename": {"type": "string", "description": "要编辑的文件路径。"},
                 "old_string": {"type": "string", "description": "要被替换的精确文本，必须在文件中唯一。"},
                 "new_string": {"type": "string", "description": "替换后的新文本。"},
+                "scope": {"type": "string", "enum": ["workspace", "system"], "description": "路径作用域：workspace=工作空间内（默认）；system=工作空间外（需授权，filename 为绝对路径）。"},
             },
             "required": ["filename", "old_string", "new_string"],
         },
         permission_level=PermissionLevel.WRITE,
         handler=_edit_file,
+        group="system",
+        category="文件操作",
+        guidance="要修改文件里的某段内容 → edit_file",
     ))
     reg.register(ToolDef(
         name="delete_file",
@@ -448,9 +498,13 @@ def register() -> None:
             "type": "object",
             "properties": {
                 "filename": {"type": "string", "description": "要删除的文件或目录路径。"},
+                "scope": {"type": "string", "enum": ["workspace", "system"], "description": "路径作用域：workspace=工作空间内（默认）；system=工作空间外（需授权，filename 为绝对路径）。"},
             },
             "required": ["filename"],
         },
         permission_level=PermissionLevel.WRITE,
         handler=_delete_file,
+        group="system",
+        category="文件操作",
+        guidance="要删除某个文件或文件夹 → delete_file",
     ))

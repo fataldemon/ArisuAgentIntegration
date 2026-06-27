@@ -648,6 +648,60 @@ def register_admin_routes(app: FastAPI) -> None:
         result = await get_config_manager().set_inference_config(body)
         return result
 
+    # ------------------- tool capabilities -------------------
+
+    @app.get("/admin/api/tools/capabilities")
+    async def get_tool_capabilities():
+        from tools.capabilities import CAPABILITIES, DOMAIN_ORDER, tools_for_capability
+        cm_cfg = get_config_manager()
+        states = cm_cfg.get_capability_states()
+        known = ["chat", "default"]
+        channel_caps = {ch: sorted(cm_cfg.get_channel_capabilities(ch)) for ch in known}
+        return {
+            "domains": DOMAIN_ORDER,
+            "capabilities": [
+                {
+                    "key": c.key,
+                    "display": c.display,
+                    "domain": c.domain,
+                    "description": c.description,
+                    "default_state": c.default_state,
+                    "state": states.get(c.key, c.default_state),
+                    "tools": tools_for_capability(c.key),
+                }
+                for c in CAPABILITIES
+            ],
+            "channels": channel_caps,
+        }
+
+    @app.put("/admin/api/tools/capabilities")
+    async def set_tool_capabilities(body: Dict[str, Any]):
+        states = body.get("states", {})
+        await get_config_manager().set_capability_states(states)
+        return {"ok": True}
+
+    @app.put("/admin/api/tools/channels/{channel}")
+    async def set_channel_capabilities(channel: str, body: Dict[str, Any]):
+        caps = body.get("capabilities", [])
+        await get_config_manager().set_channel_capabilities(channel, caps)
+        return {"ok": True}
+
+    @app.get("/admin/api/tools/registry")
+    async def get_tool_registry_meta():
+        from tools.capabilities import all_capabilities_for
+        from tools.registry import get_tool_registry
+        out = []
+        for d in get_tool_registry().list_defs():
+            out.append({
+                "name": d.name,
+                "description": d.description,
+                "group": d.group,
+                "category": d.category,
+                "permission_level": d.permission_level.value,
+                "capabilities": all_capabilities_for(d.name),
+            })
+        return {"tools": out}
+
     # ------------------- channel config -------------------
 
     _CHANNELS_FILE = os.path.join(

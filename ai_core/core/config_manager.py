@@ -255,7 +255,9 @@ class ConfigManager:
         self._mcp_tool_call_timeout: float = 30.0
         self._mcp_max_tool_rounds: int = 5
         self._expression_config: ExpressionConfig = ExpressionConfig()
-        self._channel_tools: Dict[str, set] = {}
+        # Capability-based tool permissions (tools.json v2).
+        self._capability_states: Dict[str, str] = {}
+        self._channel_capabilities: Dict[str, set] = {}
         # Synchronous load so that the manager is ready immediately after
         # construction. We avoid touching the asyncio lock here because
         # construction is expected during single-threaded startup.
@@ -574,22 +576,103 @@ class ConfigManager:
             self._dump_inference_sync()
             return deepcopy(self._inference)
 
-    # ----- channel tools ------------------------------------------------------
+    # ----- tool capabilities --------------------------------------------------
 
     def _reload_tools_sync(self) -> None:
+        """Load tools.json (v2 capability schema), migrating v1 if needed.
+
+        v1 schema: ``{<channel>: {"enabled_tools": [names]}}``
+        v2 schema: ``{"capabilities": {key: "allow"|"ask"|"deny"},
+                       "channels": {<channel>: [cap_keys]}}``
+        """
+        from tools.capabilities import default_states
+
+        defaults = default_states()
         if not os.path.exists(TOOLS_FILE):
-            self._channel_tools = {}
+            self._capability_states = dict(defaults)
+            self._channel_capabilities = {"chat": set(defaults.keys())}
             return
         with open(TOOLS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
-        self._channel_tools = {
-            name: set(ch.get("enabled_tools", []))
-            for name, ch in data.items()
-        }
+
+        if "capabilities" in data or "channels" in data:
+            # v2 already
+            caps = data.get("capabilities", {})
+            self._capability_states = {k: (v if v in ("allow", "ask", "deny") else defaults.get(k, "ask"))
+                                       for k, v in caps.items()}
+            # backfill any missing capabilities from defaults
+            for k, v in defaults.items():
+                self._capability_states.setdefault(k, v)
+            self._channel_capabilities = {
+                name: set(caps_list) for name, caps_list in data.get("channels", {}).items()
+            }
+            return
+
+        # v1 -> v2 migration. Uses the static capability mapping from
+        # tools.capabilities (no registry dependency) so it works even though
+        # builtin tools register only later during lifespan startup.
+        from tools.capabilities import resolve_capability
+        read_caps = {"file.read.workspace", "desktop.observe", "process.observe", "skill.read", "test.run"}
+        states = dict(defaults)
+        self._channel_capabilities = {}
+        for ch_name, ch in data.items():
+            ch_caps = set()
+            for tool_name in ch.get("enabled_tools", []):
+                cap = resolve_capability(tool_name, {})
+                if not cap:
+                    continue
+                ch_caps.add(cap)
+                states[cap] = "allow" if cap in read_caps else "ask"
+            if ch_caps:
+                self._channel_capabilities[ch_name] = ch_caps
+        self._capability_states = states
+        # Persist the migrated form immediately.
+        self._dump_tools_sync()
+
+    def _dump_tools_sync(self) -> None:
+        _atomic_write_json(TOOLS_FILE, {
+            "capabilities": {k: self._capability_states[k]
+                             for k in sorted(self._capability_states)},
+            "channels": {name: sorted(s) for name, s in self._channel_capabilities.items()},
+        })
+
+    def get_capability_states(self) -> Dict[str, str]:
+        return deepcopy(self._capability_states)
+
+    def get_channel_capabilities(self, channel: str) -> set:
+        channel = channel or "default"
+        return self._channel_capabilities.get(channel, set())
 
     def get_channel_tools(self, channel: str) -> set:
+        """Compat: tool names enabled for ``channel`` (derived from capabilities).
+
+        A tool is enabled if any of its capabilities is enabled for the channel
+        and that capability's state is not ``deny``.
+        """
+        from tools.capabilities import all_capabilities_for
         channel = channel or "default"
-        return self._channel_tools.get(channel, set())
+        enabled_caps = self._channel_capabilities.get(channel, set())
+        out = set()
+        # Lazily iterate registry tools; avoid import cycle at module import.
+        from tools.registry import get_tool_registry
+        for d in get_tool_registry().list_defs():
+            for cap in all_capabilities_for(d.name):
+                if cap in enabled_caps and self._capability_states.get(cap, "ask") != "deny":
+                    out.add(d.name)
+                    break
+        return out
+
+    async def set_capability_states(self, states: Dict[str, str]) -> None:
+        async with self._lock:
+            for k, v in states.items():
+                if v in ("allow", "ask", "deny"):
+                    self._capability_states[k] = v
+            self._dump_tools_sync()
+
+    async def set_channel_capabilities(self, channel: str, caps: List[str]) -> None:
+        async with self._lock:
+            self._channel_capabilities[channel or "default"] = set(caps)
+            self._dump_tools_sync()
 
 
 _singleton: Optional[ConfigManager] = None

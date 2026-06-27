@@ -29,4 +29,7 @@ def register() -> None:
         },
         permission_level=PermissionLevel.READ,
         handler=_echo_handler,
+        group="test",
+        category="测试",
+        guidance="要测试工具调用链路是否正常 → echo",
     ))

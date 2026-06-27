@@ -83,6 +83,9 @@ def register() -> None:
         },
         permission_level=PermissionLevel.READ,
         handler=_list_processes,
+        group="system",
+        category="进程管理",
+        guidance="想知道系统在运行什么程序 → list_processes",
     ))
     reg.register(ToolDef(
         name="get_process_info",
@@ -96,6 +99,9 @@ def register() -> None:
         },
         permission_level=PermissionLevel.READ,
         handler=_get_process_info,
+        group="system",
+        category="进程管理",
+        guidance="要看某进程详细信息 → get_process_info（需PID）",
     ))
     reg.register(ToolDef(
         name="kill_process",
@@ -110,4 +116,7 @@ def register() -> None:
         },
         permission_level=PermissionLevel.CONTROL,
         handler=_kill_process,
+        group="system",
+        category="进程管理",
+        guidance="要强制关闭某程序 → kill_process（需PID，谨慎）",
     ))

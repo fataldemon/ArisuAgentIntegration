@@ -34,6 +34,8 @@ _reg.register(ToolDef(
     parameters={"type": "object", "properties": {}, "required": []},
     permission_level=PermissionLevel.READ,
     handler=_list_skills_handler,
+    group="skills",
+    guidance="想知道有哪些可用技能模块 → list_skills",
 ))
 _reg.register(ToolDef(
     name="read_skill",
@@ -45,4 +47,6 @@ _reg.register(ToolDef(
     },
     permission_level=PermissionLevel.READ,
     handler=_read_skill_handler,
+    group="skills",
+    guidance="要查看某技能的具体内容 → read_skill",
 ))

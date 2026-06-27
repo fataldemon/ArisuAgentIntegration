@@ -202,6 +202,9 @@ def register() -> None:
         },
         permission_level=PermissionLevel.READ,
         handler=_screenshot,
+        group="system",
+        category="桌面操作",
+        guidance="想看屏幕当前显示什么 → screenshot（可指定窗口名）",
     ))
     reg.register(ToolDef(
         name="list_windows",
@@ -209,6 +212,9 @@ def register() -> None:
         parameters={"type": "object", "properties": {}, "required": []},
         permission_level=PermissionLevel.READ,
         handler=_list_windows,
+        group="system",
+        category="桌面操作",
+        guidance="要获取所有窗口标题以选截图目标 → list_windows",
     ))
     reg.register(ToolDef(
         name="get_active_window",
@@ -216,6 +222,9 @@ def register() -> None:
         parameters={"type": "object", "properties": {}, "required": []},
         permission_level=PermissionLevel.READ,
         handler=_get_active_window,
+        group="system",
+        category="桌面操作",
+        guidance="想知道当前前台是什么窗口 → get_active_window",
     ))
     reg.register(ToolDef(
         name="click",
@@ -230,6 +239,9 @@ def register() -> None:
         },
         permission_level=PermissionLevel.CONTROL,
         handler=_click,
+        group="system",
+        category="桌面操作",
+        guidance="要在某坐标点击 → click（先截图确认坐标，需用户确认）",
     ))
     reg.register(ToolDef(
         name="type_text",
@@ -244,6 +256,9 @@ def register() -> None:
         },
         permission_level=PermissionLevel.CONTROL,
         handler=_type_text,
+        group="system",
+        category="桌面操作",
+        guidance="要输入文字 → type_text（需用户确认）",
     ))
     reg.register(ToolDef(
         name="scroll",
@@ -257,6 +272,9 @@ def register() -> None:
         },
         permission_level=PermissionLevel.CONTROL,
         handler=_scroll,
+        group="system",
+        category="桌面操作",
+        guidance="要滚动页面 → scroll（需用户确认）",
     ))
     reg.register(ToolDef(
         name="press_keys",
@@ -270,6 +288,9 @@ def register() -> None:
         },
         permission_level=PermissionLevel.CONTROL,
         handler=_press_keys,
+        group="system",
+        category="桌面操作",
+        guidance="要按快捷键 → press_keys（如 ctrl,c，需用户确认）",
     ))
     reg.register(ToolDef(
         name="drag",
@@ -285,4 +306,7 @@ def register() -> None:
         },
         permission_level=PermissionLevel.CONTROL,
         handler=_drag,
+        group="system",
+        category="桌面操作",
+        guidance="要拖拽（移动窗口/拖放） → drag（需用户确认）",
     ))

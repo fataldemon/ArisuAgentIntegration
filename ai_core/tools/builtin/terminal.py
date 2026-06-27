@@ -93,4 +93,7 @@ def register() -> None:
         },
         permission_level=PermissionLevel.CONTROL,
         handler=_terminal_command,
+        group="system",
+        category="终端命令",
+        guidance="要运行脚本/做版本管理/装依赖/查文件 → terminal_command（工作目录为工作空间，超时30秒，仅白名单）",
     ))

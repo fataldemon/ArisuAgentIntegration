@@ -88,6 +88,7 @@ from template import (
     max_quick_reply,
 )
 from tools.permissions import get_pending_manager
+from tools.capabilities import resolve_capability
 from tools.registry import get_tool_registry
 from tools.schema import PermissionLevel
 from utils.websocketutils import WebsocketManager
@@ -316,7 +317,7 @@ async def admin_abort(abort_id: str):
 @app.post("/v1/tools/execute")
 async def tools_execute(body: dict = Body(...)):
     tool_name = body.get("tool_name", "")
-    arguments = body.get("arguments", {})
+    arguments = body.get("arguments", {}) or {}
     confirm = body.get("confirm", True)
     pending_id = body.get("pending_id", "")
 
@@ -325,7 +326,13 @@ async def tools_execute(body: dict = Body(...)):
     if tool is None:
         raise HTTPException(status_code=404, detail=f"Unknown tool: {tool_name!r}")
 
-    if tool.permission_level in (PermissionLevel.WRITE, PermissionLevel.CONTROL):
+    # Capability-based authorization. File tools resolve to a workspace or
+    # system capability depending on the ``scope`` argument.
+    cap = resolve_capability(tool_name, arguments)
+    state = get_config_manager().get_capability_states().get(cap, "ask")
+    if state == "deny":
+        return {"success": False, "output": "", "error": f"Capability denied: {cap}"}
+    if state == "ask":
         pm = get_pending_manager()
         if pending_id:
             pending = pm.resolve(pending_id, confirm)
@@ -335,6 +342,7 @@ async def tools_execute(body: dict = Body(...)):
                 return {"success": False, "output": "", "error": "User rejected the operation"}
         elif not confirm:
             return {"success": False, "output": "", "error": "Confirmation required"}
+    # state == "allow": execute directly
 
     result = await reg.call_tool(tool_name, arguments)
     return {

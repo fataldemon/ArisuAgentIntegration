@@ -20,12 +20,31 @@ class PermissionLevel(str, Enum):
 
 
 @dataclass
+class ToolGroup:
+    """A logical group of tools rendered together in the system prompt.
+
+    Each group carries its own guidance preamble (with an optional
+    ``{identity}`` placeholder substituted at render time) and a display order.
+    Tools reference a group by its ``name``; only groups that have at least one
+    enabled tool are emitted into the prompt.
+    """
+
+    name: str
+    display: str
+    guidance: str
+    order: int = 0
+
+
+@dataclass
 class ToolDef:
     name: str
     description: str
     parameters: Dict[str, Any]
     permission_level: PermissionLevel
     handler: Callable[..., Coroutine[Any, Any, str]]
+    group: str = "system"
+    category: str = ""
+    guidance: str = ""
 
 
 @dataclass
