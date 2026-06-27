@@ -249,6 +249,7 @@ import {
 import { useI18n } from 'vue-i18n'
 import HelpTip from '../components/HelpTip.vue'
 import { inferenceApi } from '../api/inference'
+import { toolsApi } from '../api/tools'
 
 const { t } = useI18n()
 const message = useMessage()
@@ -307,12 +308,38 @@ const presencePenaltyStr = computed({
 const abortController = ref<AbortController | null>(null)
 const currentAbortId = ref('')
 
-const readPermissionTools = new Set([
-  'echo', 'read_file', 'list_directory', 'search_files', 'search_content',
-  'list_skills', 'read_skill',
-  'screenshot', 'list_windows', 'get_active_window',
-  'list_processes', 'get_process_info',
-])
+// Capability-based tool authorization (fetched from backend). A tool call is
+// auto-executed when its resolved capability state is "allow"; "ask" shows the
+// confirmation modal; "deny" is rejected by the server.
+const toolCapabilityStates = ref<Record<string, string>>({})
+
+const _FILE_READ_TOOLS = new Set(['read_file', 'list_directory', 'search_files', 'search_content'])
+const _FILE_WRITE_TOOLS = new Set(['write_file', 'edit_file', 'delete_file'])
+const _STATIC_CAPABILITY: Record<string, string> = {
+  terminal_command: 'shell.exec',
+  screenshot: 'desktop.observe', list_windows: 'desktop.observe', get_active_window: 'desktop.observe',
+  click: 'desktop.control', type_text: 'desktop.control', scroll: 'desktop.control', press_keys: 'desktop.control', drag: 'desktop.control',
+  list_processes: 'process.observe', get_process_info: 'process.observe',
+  kill_process: 'process.control',
+  list_skills: 'skill.read', read_skill: 'skill.read',
+  echo: 'test.run',
+}
+
+function resolveCapability(name: string, args: Record<string, any>): string {
+  const scope = args?.scope === 'system' ? 'system' : 'workspace'
+  if (_FILE_READ_TOOLS.has(name)) return scope === 'system' ? 'file.read.system' : 'file.read.workspace'
+  if (_FILE_WRITE_TOOLS.has(name)) return scope === 'system' ? 'file.write.system' : 'file.write.workspace'
+  return _STATIC_CAPABILITY[name] || ''
+}
+
+async function loadToolCapabilityStates() {
+  try {
+    const data = await toolsApi.getCapabilities()
+    const map: Record<string, string> = {}
+    for (const c of data.capabilities) map[c.key] = c.state
+    toolCapabilityStates.value = map
+  } catch {}
+}
 
 const showToolConfirm = ref(false)
 const toolConfirmName = ref('')
@@ -701,8 +728,9 @@ function handleKeydown(e: KeyboardEvent) {
   }
 }
 
-function isReadTool(name: string): boolean {
-  return readPermissionTools.has(name)
+function isAutoTool(name: string, args: Record<string, any>): boolean {
+  const cap = resolveCapability(name, args)
+  return toolCapabilityStates.value[cap] === 'allow'
 }
 
 async function executeToolCall(name: string, args: Record<string, any>): Promise<{ success: boolean; output: string; error?: string }> {
@@ -734,7 +762,7 @@ async function handleToolCall(
   name: string,
   args: Record<string, any>,
 ): Promise<string> {
-  if (isReadTool(name)) {
+  if (isAutoTool(name, args)) {
     toolExecuting.value = true
     toolExecutingName.value = name
     try {
@@ -1089,6 +1117,7 @@ onMounted(() => {
   loadInferenceParams()
   loadIdentity()
   fetchCharacters()
+  loadToolCapabilityStates()
 })
 </script>
 

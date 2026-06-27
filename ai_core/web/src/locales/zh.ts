@@ -218,6 +218,18 @@ export default {
     descPlaceholder: '描述（可选）',
     hint: '在通道配置中输入 ${变量名} 即可引用全局变量',
     confirmDeleteVar: '确定删除此变量？',
+    settingsTab: '全局设置',
+    toolsTab: '工具权限',
+  },
+  tools: {
+    title: '工具权限管理',
+    desc: '按操作能力（capability）授权内置工具。允许=自动执行无需确认；需确认=每次调用弹窗确认；拒绝=不可用。文件工具的"工作空间外"操作需单独授权。',
+    stateAllow: '允许',
+    stateAsk: '需确认',
+    stateDeny: '拒绝',
+    enableChat: '启用给 chat 渠道',
+    save: '保存权限',
+    saved: '工具权限已保存',
   },
   inference: {
     title: '推理参数',

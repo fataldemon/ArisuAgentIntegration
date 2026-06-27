@@ -218,6 +218,18 @@ export default {
     descPlaceholder: 'Description (optional)',
     hint: 'Type ${VAR_NAME} in channel configs to reference global variables',
     confirmDeleteVar: 'Delete this variable?',
+    settingsTab: 'Global Settings',
+    toolsTab: 'Tool Permissions',
+  },
+  tools: {
+    title: 'Tool Permission Management',
+    desc: 'Authorize built-in tools by capability. Allow=auto-execute without confirmation; Ask=confirm each call; Deny=unavailable. File tools require separate authorization for out-of-workspace access.',
+    stateAllow: 'Allow',
+    stateAsk: 'Ask',
+    stateDeny: 'Deny',
+    enableChat: 'Enable for chat channel',
+    save: 'Save Permissions',
+    saved: 'Tool permissions saved',
   },
   inference: {
     title: 'Inference Parameters',
