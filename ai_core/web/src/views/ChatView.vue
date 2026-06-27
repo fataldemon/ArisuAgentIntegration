@@ -343,6 +343,7 @@ const _STATIC_CAPABILITY: Record<string, string> = {
   list_processes: 'process.observe', get_process_info: 'process.observe',
   kill_process: 'process.control',
   list_skills: 'skill.read', read_skill: 'skill.read',
+  web_search: 'web.search', access_website: 'web.fetch',
   echo: 'test.run',
 }
 
