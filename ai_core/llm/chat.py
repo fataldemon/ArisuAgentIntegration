@@ -378,13 +378,23 @@ _CONVERSATION_START_SEPARATOR = (
 _CATEGORY_ORDER = ["文件操作", "终端命令", "桌面操作", "进程管理", "网络检索", "代码运行"]
 
 
+# Builtin (AI Core) tools are only advertised to these channels. Other channels
+# — notably the QQ bot, which has its own tool system and its own per-turn tool
+# curation — must NOT receive AI Core builtins, otherwise their tool sets get
+# polluted with tools their dispatch loop can't handle. Add a channel here only
+# when it explicitly opts into the AI Core builtin tools.
+_BUILTIN_CHANNELS = {"chat"}
+
+
 def _channel_builtin_tools(channel: str) -> List[ToolDef]:
     """Built-in ToolDefs enabled for ``channel`` (empty list if none).
 
     Shared by :func:`_gather_tools` (what we advertise to the model) and
     :func:`_build_tool_guidance` (what we teach the model) so the two never
-    drift apart.
+    drift apart. Returns ``[]`` for any channel not in :data:`_BUILTIN_CHANNELS`.
     """
+    if (channel or "default") not in _BUILTIN_CHANNELS:
+        return []
     enabled = get_config_manager().get_channel_tools(channel or "default")
     if not enabled:
         return []
