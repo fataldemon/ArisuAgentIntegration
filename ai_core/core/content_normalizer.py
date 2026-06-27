@@ -67,6 +67,14 @@ DEFAULT_GIF_MAX_FRAMES = 16
 # Videos exceeding this byte count are replaced by placeholder text.
 DEFAULT_MAX_VIDEO_BYTES = 50 * 1024 * 1024  # 50 MB
 
+# Frame/resolution budget for user videos before they are sent to the upstream
+# LLM. Heavy source videos (e.g. 1000+ frames at high res) make the provider's
+# CPU-side decode during prefill take minutes, intermittently blowing the read
+# timeout -- worse as the multimodal cache evicts with growing context.
+# Sampling down keeps decode trivial and predictable.
+DEFAULT_VIDEO_MAX_FRAMES = 16
+DEFAULT_VIDEO_MAX_DIM = 768
+
 # Media cache directory (URL downloads, GIF→MP4 conversions).
 _MEDIA_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(
     os.path.abspath(__file__))), "media_cache")
@@ -244,6 +252,15 @@ def _prefetch_url(url: str, timeout: float = 15.0) -> Optional[Tuple[bytes, str]
                     )
             except Exception:
                 pass  # if resize fails, keep original
+        elif mime_root.startswith("video/"):
+            # Heavy source videos can make the upstream LLM's prefill decode
+            # take minutes; cap frames + resolution so decode stays trivial.
+            capped = _enforce_video_budget(
+                data, max_frames=DEFAULT_VIDEO_MAX_FRAMES, max_dim=DEFAULT_VIDEO_MAX_DIM
+            )
+            if capped is not None:
+                data = capped
+                mime = "video/mp4"
 
         _media_cache_put(url_key, data)
         _media_cache_put(url_key, mime.encode(), ".mime")
@@ -748,6 +765,98 @@ def _gif_bytes_to_mp4(gif_bytes: bytes, fps: int = 2) -> Optional[bytes]:
         LOG.warning("GIF → MP4 conversion failed: %r", e)
     finally:
         for p in (gif_path, mp4_path):
+            if p:
+                try:
+                    os.unlink(p)
+                except OSError:
+                    pass
+    return None
+
+
+def _enforce_video_budget(
+    data: bytes,
+    *,
+    max_frames: int = DEFAULT_VIDEO_MAX_FRAMES,
+    max_dim: int = DEFAULT_VIDEO_MAX_DIM,
+) -> Optional[bytes]:
+    """Re-encode a video so it never exceeds the frame/resolution budget.
+
+    Returns the re-encoded MP4 bytes when the source exceeded the budget, or
+    ``None`` when the source was already within budget *or* ffmpeg/ffprobe is
+    unavailable / failed (the caller then keeps the original bytes).
+    """
+    import shutil
+    import subprocess
+    import tempfile
+    if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
+        return None
+    src_path = None
+    out_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
+            f.write(data)
+            src_path = f.name
+        probe = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height,nb_frames,duration",
+                "-of", "default=noprint_wrappers=1",
+                src_path,
+            ],
+            capture_output=True, timeout=20,
+        )
+        info: Dict[str, str] = {}
+        for line in probe.stdout.decode(errors="replace").splitlines():
+            if "=" in line:
+                k, _, v = line.partition("=")
+                info[k.strip()] = v.strip()
+        try:
+            width = int(info.get("width", 0) or 0)
+            height = int(info.get("height", 0) or 0)
+            nb_frames = int(info.get("nb_frames", 0) or 0)
+        except ValueError:
+            width = height = nb_frames = 0
+        try:
+            duration = float(info.get("duration", 0) or 0)
+        except ValueError:
+            duration = 0.0
+
+        within_dim = width > 0 and height > 0 and max(width, height) <= max_dim
+        within_frames = nb_frames > 0 and nb_frames <= max_frames
+        if within_dim and within_frames:
+            return None  # already within budget; keep original bytes
+
+        fps = max(1.0, max_frames / duration) if duration > 0 else 2.0
+        out_path = src_path + ".capped.mp4"
+        cmd = [
+            "ffmpeg", "-y", "-i", src_path,
+            "-an",
+            "-vf", f"fps={fps:.3f},scale={max_dim}:{max_dim}:force_original_aspect_ratio=decrease:force_divisible_by=2",
+            "-frames:v", str(max_frames),
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "28",
+            "-pix_fmt", "yuv420p", "-movflags", "+faststart",
+            out_path,
+        ]
+        result = subprocess.run(cmd, capture_output=True, timeout=30)
+        if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+            with open(out_path, "rb") as f:
+                capped = f.read()
+            LOG.info(
+                "Video budget capped: %dx%d/%s frames/%.2fs -> <=%d frames/<=%dpx (%d -> %d bytes)",
+                width, height, (nb_frames or "?"), duration, max_frames, max_dim,
+                len(data), len(capped),
+            )
+            return capped
+        LOG.warning(
+            "video budget ffmpeg failed (rc=%d): %s",
+            result.returncode,
+            result.stderr.decode(errors="replace")[-800:],
+        )
+    except Exception as e:
+        LOG.warning("Video budget enforcement failed: %r", e)
+    finally:
+        for p in (src_path, out_path):
             if p:
                 try:
                     os.unlink(p)
