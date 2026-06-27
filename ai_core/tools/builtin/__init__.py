@@ -9,13 +9,14 @@ from core.skill_manager import get_skill_manager
 from tools.registry import get_tool_registry
 from tools.schema import PermissionLevel, ToolDef
 
-from . import desktop, echo, filesystem, process, terminal
+from . import desktop, echo, filesystem, process, terminal, web
 
 echo.register()
 filesystem.register()
 terminal.register()
 desktop.register()
 process.register()
+web.register()
 
 _reg = get_tool_registry()
 

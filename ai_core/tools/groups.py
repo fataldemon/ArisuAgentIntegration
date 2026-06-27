@@ -34,9 +34,19 @@ TOOL_GROUPS: List[ToolGroup] = [
         ),
     ),
     ToolGroup(
+        name="web",
+        display="网络检索",
+        order=2,
+        guidance=(
+            "你可以联网搜索信息与图片，以及打开网页阅读内容或截图查看页面。"
+            "搜索结果或网页截图会直接呈给你（视觉可用时你能看到图片/截图）。"
+            "需要查资料、看最新动态、找图片，或访问某个网址时使用。"
+        ),
+    ),
+    ToolGroup(
         name="memory",
         display="记忆召回",
-        order=2,
+        order=3,
         guidance=(
             "你可以召回过往的对话片段，涵盖与{identity}以及其他人的交流。"
             "当需要回忆之前聊过的具体内容——某个时间、某个话题、或某人说过的话——时，调用记忆召回。"
@@ -45,7 +55,7 @@ TOOL_GROUPS: List[ToolGroup] = [
     ToolGroup(
         name="skills",
         display="技能知识",
-        order=3,
+        order=4,
         guidance=(
             "系统预置了一些技能模块（能力说明文档）。想了解系统还提供了哪些专业能力、"
             "或查阅某项能力的详细用法时，先列出技能再阅读对应说明。"
@@ -54,13 +64,13 @@ TOOL_GROUPS: List[ToolGroup] = [
     ToolGroup(
         name="reminder",
         display="提醒日程",
-        order=4,
+        order=5,
         guidance="你可以为{identity}设置、查看或取消定时提醒。",
     ),
     ToolGroup(
         name="game",
         display="游戏世界设定",
-        order=5,
+        order=6,
         guidance=(
             "在基沃托斯，你可以在不同的学校、校区与地点之间移动，也能乘坐铁道往返车站；"
             "这些行动会改变你当前所在的位置。你还可以为其他人起外号，"
@@ -70,7 +80,7 @@ TOOL_GROUPS: List[ToolGroup] = [
     ToolGroup(
         name="test",
         display="测试",
-        order=6,
+        order=7,
         guidance="用于自检工具调用链路是否正常工作。",
     ),
 ]

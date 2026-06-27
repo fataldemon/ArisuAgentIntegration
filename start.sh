@@ -65,6 +65,14 @@ if [ ! -f "ai_core/web/dist/.installed" ]; then
     echo "[Frontend] Done."
 fi
 
+# --- SearXNG (optional, powers web_search) ---
+if command -v docker &> /dev/null; then
+    docker start searxng > /dev/null 2>&1 || docker run -d --name searxng -p 8888:8080 -v "$SCRIPT_DIR/searxng/settings.yml:/etc/searxng/settings.yml" searxng/searxng > /dev/null 2>&1
+    echo "[OK] SearXNG on http://localhost:8888 (web search)"
+else
+    echo "[SKIP] Docker not found - SearXNG (web search) disabled. Install Docker to enable web_search."
+fi
+
 echo
 echo "========================================"
 echo "[RUN] Starting AI Core ..."

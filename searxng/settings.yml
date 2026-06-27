@@ -1,0 +1,17 @@
+# SearXNG settings override for ArisuAgentIntegration.
+# Mounted into the container at /etc/searxng/settings.yml by start.bat / start.sh.
+# `use_default_settings: true` keeps all default engines enabled; we only unlock
+# the JSON output format (disabled by default) and disable the in-built limiter
+# (this is a single-user, localhost instance).
+use_default_settings: true
+
+server:
+  base_url: http://localhost:8888/
+  limiter: false
+  image_proxy: true
+
+search:
+  safe_search: 0
+  formats:
+    - html
+    - json

@@ -35,5 +35,9 @@ openpyxl~=3.1
 xlrd~=2.0
 python-pptx~=0.6
 
+# --- Web tools (search via SearXNG, website access via CDP browser) ---
+playwright>=1.40
+trafilatura>=1.6
+
 # --- Admin web UI (mounted to /admin on the same FastAPI app) ---
 gradio>=5.0

@@ -55,11 +55,15 @@ CAPABILITIES: List[Capability] = [
                "终止进程", STATE_ASK),
     Capability("skill.read", "读取", "技能",
                "列出/阅读技能模块文档", STATE_ALLOW),
+    Capability("web.search", "搜索", "网络检索",
+               "通过 SearXNG 搜索网页或图片", STATE_ALLOW),
+    Capability("web.fetch", "访问", "网络检索",
+               "打开网页并截图/抽取内容", STATE_ALLOW),
     Capability("test.run", "执行", "测试",
                "运行测试工具", STATE_ALLOW),
 ]
 
-DOMAIN_ORDER: List[str] = ["文件", "终端", "桌面", "进程", "技能", "测试"]
+DOMAIN_ORDER: List[str] = ["文件", "终端", "桌面", "进程", "网络检索", "技能", "测试"]
 
 _CAP_BY_KEY: Dict[str, Capability] = {c.key: c for c in CAPABILITIES}
 
@@ -93,6 +97,8 @@ _STATIC_CAPABILITY: Dict[str, str] = {
     "kill_process": "process.control",
     "list_skills": "skill.read",
     "read_skill": "skill.read",
+    "web_search": "web.search",
+    "access_website": "web.fetch",
     "echo": "test.run",
 }
 
