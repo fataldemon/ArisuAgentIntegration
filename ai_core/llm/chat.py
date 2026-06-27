@@ -430,8 +430,20 @@ def _build_tool_guidance(channel: str, identity: str) -> str:
         for t in tools_in_group:
             by_cat.setdefault(t.category, []).append(t)
         non_empty = [c for c in by_cat if c]
+
+        def _cat_note(cat: str) -> Optional[str]:
+            # Category-level hints that depend on runtime context (not static
+            # per-tool guidance). Currently only the file workspace boundary.
+            if cat == "文件操作":
+                return (f"- 文件默认在工作空间内（相对路径）；要访问工作空间之外的文件，"
+                        f"加 scope=system 并用绝对路径——首次访问某目录时{ident}会授权")
+            return None
+
         if len(non_empty) <= 1:
             for t in tools_in_group:
+                note = _cat_note(t.category)
+                if note:
+                    sections.append(note)
                 if t.guidance:
                     sections.append(f"- {t.guidance}")
         else:
@@ -439,6 +451,9 @@ def _build_tool_guidance(channel: str, identity: str) -> str:
             cats += sorted(c for c in non_empty if c not in _CATEGORY_ORDER)
             for cat in cats:
                 sections.append(f"### {cat}")
+                note = _cat_note(cat)
+                if note:
+                    sections.append(note)
                 for t in by_cat[cat]:
                     if t.guidance:
                         sections.append(f"- {t.guidance}")

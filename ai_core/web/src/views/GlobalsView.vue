@@ -153,9 +153,6 @@
                 <n-radio value="ask">{{ $t('tools.stateAsk') }}</n-radio>
                 <n-radio value="deny">{{ $t('tools.stateDeny') }}</n-radio>
               </n-radio-group>
-              <n-checkbox v-model:checked="cap.chatEnabled" size="small">
-                {{ $t('tools.enableChat') }}
-              </n-checkbox>
             </div>
           </div>
         </div>
@@ -164,6 +161,33 @@
         <n-button type="primary" @click="saveTools" :loading="savingTools">
           {{ $t('tools.save') }}
         </n-button>
+
+        <n-divider />
+        <div class="cap-domain-title">{{ $t('tools.fileRulesTitle') }}</div>
+        <n-text depth="3" style="display:block; font-size:12px; margin-bottom:10px">
+          {{ $t('tools.fileRulesDesc') }}
+        </n-text>
+
+        <div v-for="op in (['read','write'] as const)" :key="op" class="rule-op-block">
+          <div class="rule-op-title">{{ op === 'read' ? $t('tools.readRules') : $t('tools.writeRules') }}</div>
+          <div v-for="decision in (['allow','deny'] as const)" :key="decision">
+            <div class="rule-decision-label">
+              {{ decision === 'allow' ? $t('tools.stateAllow') : $t('tools.stateDeny') }}
+            </div>
+            <div v-if="fileRules[op][decision].length === 0" class="rule-empty">{{ $t('tools.noRules') }}</div>
+            <div v-for="d in fileRules[op][decision]" :key="d" class="rule-row">
+              <code class="rule-dir">{{ d }}</code>
+              <n-button size="tiny" quaternary type="error" @click="removeRule(op, decision, d)">✕</n-button>
+            </div>
+          </div>
+        </div>
+
+        <div class="rule-add-row">
+          <n-select v-model:value="newRuleOp" :options="[{label:'read',value:'read'},{label:'write',value:'write'}]" size="small" style="width:90px" />
+          <n-select v-model:value="newRuleDecision" :options="[{label:$t('tools.stateAllow'),value:'allow'},{label:$t('tools.stateDeny'),value:'deny'}]" size="small" style="width:100px" />
+          <n-input v-model:value="newRuleDir" :placeholder="$t('tools.dirPlaceholder')" size="small" style="flex:1" />
+          <n-button size="small" type="primary" @click="addRule">{{ $t('tools.addRule') }}</n-button>
+        </div>
       </n-card>
     </n-tab-pane>
   </n-tabs>
@@ -174,7 +198,7 @@ import { ref, reactive, onMounted } from 'vue'
 import {
   NSpace, NCard, NInput, NSwitch, NButton, NText, NDivider,
   NSlider, NInputNumber, NGrid, NGi, NTabs, NTabPane, NTag,
-  NRadioGroup, NRadio, NCheckbox, useMessage,
+  NRadioGroup, NRadio, NSelect, useMessage,
 } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
 import { globalsApi } from '../api/globals'
@@ -193,8 +217,11 @@ interface EndpointEntry {
   value: string
 }
 
-interface ToolCap extends CapabilityInfo {
-  chatEnabled: boolean
+interface ToolCap extends CapabilityInfo {}
+
+interface FileRules {
+  read: { allow: string[]; deny: string[] }
+  write: { allow: string[]; deny: string[] }
 }
 
 const ENDPOINT_NAMES = [
@@ -240,6 +267,10 @@ const inference = reactive({
 const toolCaps = ref<ToolCap[]>([])
 const domains = ref<string[]>([])
 const savingTools = ref(false)
+const fileRules = ref<FileRules>({ read: { allow: [], deny: [] }, write: { allow: [], deny: [] } })
+const newRuleDir = ref('')
+const newRuleOp = ref<'read' | 'write'>('read')
+const newRuleDecision = ref<'allow' | 'deny'>('allow')
 
 function capsByDomain(domain: string): ToolCap[] {
   return toolCaps.value.filter(c => c.domain === domain)
@@ -249,8 +280,8 @@ async function fetchTools() {
   try {
     const data = await toolsApi.getCapabilities()
     domains.value = data.domains
-    const chatCaps = new Set(data.channels.chat || [])
-    toolCaps.value = data.capabilities.map(c => ({ ...c, chatEnabled: chatCaps.has(c.key) }))
+    toolCaps.value = data.capabilities.map(c => ({ ...c }))
+    fileRules.value = data.file_rules || { read: { allow: [], deny: [] }, write: { allow: [], deny: [] } }
   } catch (e: any) {
     message.error(e?.message || 'Failed to load tool capabilities')
   }
@@ -260,18 +291,36 @@ async function saveTools() {
   savingTools.value = true
   try {
     const states: Record<string, string> = {}
-    const chatEnabled: string[] = []
     for (const c of toolCaps.value) {
       states[c.key] = c.state
-      if (c.chatEnabled) chatEnabled.push(c.key)
     }
     await toolsApi.setCapabilities(states)
-    await toolsApi.setChannelCapabilities('chat', chatEnabled)
     message.success(t('tools.saved'))
   } catch (e: any) {
     message.error(e?.message || 'Failed to save tool capabilities')
   } finally {
     savingTools.value = false
+  }
+}
+
+async function addRule() {
+  const dir = newRuleDir.value.trim()
+  if (!dir) return
+  try {
+    await toolsApi.addFileRule(newRuleOp.value, newRuleDecision.value, dir)
+    newRuleDir.value = ''
+    await fetchTools()
+  } catch (e: any) {
+    message.error(e?.message || 'Failed to add rule')
+  }
+}
+
+async function removeRule(op: 'read' | 'write', decision: 'allow' | 'deny', dir: string) {
+  try {
+    await toolsApi.removeFileRule(op, decision, dir)
+    await fetchTools()
+  } catch (e: any) {
+    message.error(e?.message || 'Failed to remove rule')
   }
 }
 
@@ -461,5 +510,50 @@ onMounted(() => {
   align-items: flex-end;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.rule-op-block {
+  margin-bottom: 14px;
+}
+
+.rule-op-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: #333;
+  margin-bottom: 6px;
+}
+
+.rule-decision-label {
+  font-size: 12px;
+  color: #888;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+
+.rule-empty {
+  font-size: 12px;
+  color: #aaa;
+  padding-left: 8px;
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0 2px 8px;
+}
+
+.rule-dir {
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 12px;
+  color: #444;
+  word-break: break-all;
+}
+
+.rule-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
 }
 </style>
