@@ -140,17 +140,38 @@
         </n-button>
       </div>
 
-      <n-modal v-model:show="showToolConfirm" preset="card" title="Tool Confirmation" style="max-width: 480px">
-        <div style="margin-bottom: 12px; font-size: 14px;">
-          <strong>{{ toolConfirmName }}</strong> requires your approval to run.
+      <n-modal v-model:show="showToolConfirm" preset="card" :title="$t('chat.toolConfirm')" style="max-width: 520px">
+        <div style="margin-bottom: 10px; font-size: 14px;">
+          <strong>{{ toolConfirmName }}</strong>
+          <span style="color:#888; font-size:12px;"> {{ $t('chat.toolConfirmDesc') }}</span>
         </div>
-        <div style="background: #f5f5f5; border-radius: 6px; padding: 10px; font-size: 12px; max-height: 200px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">
+        <div v-if="toolConfirmIsSystemFile" style="background:#fff7e6; border:1px solid #ffd591; border-radius:6px; padding:8px 10px; font-size:12px; margin-bottom:10px; word-break:break-all;">
+          <strong>{{ $t('chat.outOfWorkspace') }}</strong><br/>
+          {{ toolConfirmPath }}
+        </div>
+        <div style="background: #f5f5f5; border-radius: 6px; padding: 10px; font-size: 12px; max-height: 160px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;">
           {{ JSON.stringify(toolConfirmArgs, null, 2) }}
         </div>
+
+        <div style="margin-top: 10px;">
+          <n-input
+            v-model:value="toolConfirmQuestion"
+            :placeholder="$t('chat.askExplainPlaceholder')"
+            size="small"
+          />
+          <n-button size="small" style="margin-top: 6px;" :loading="toolConfirmExplaining" @click="requestToolExplanation">
+            {{ $t('chat.requestExplain') }}
+          </n-button>
+          <div v-if="toolConfirmExplanation" style="background:#e6f7ff; border:1px solid #91d5ff; border-radius:6px; padding:8px 10px; font-size:12px; margin-top:8px; white-space:pre-wrap;">
+            {{ toolConfirmExplanation }}
+          </div>
+        </div>
+
         <template #footer>
-          <n-space justify="end">
-            <n-button @click="onToolConfirm(false)">Reject</n-button>
-            <n-button type="primary" @click="onToolConfirm(true)">Approve</n-button>
+          <n-space justify="end" :wrap="false">
+            <n-button @click="onToolDecision('deny')">{{ $t('chat.toolReject') }}</n-button>
+            <n-button v-if="toolConfirmIsSystemFile" @click="onToolDecision('always')">{{ $t('chat.alwaysAllowDir') }}</n-button>
+            <n-button type="primary" @click="onToolDecision('once')">{{ $t('chat.allowOnce') }}</n-button>
           </n-space>
         </template>
       </n-modal>
@@ -344,7 +365,13 @@ async function loadToolCapabilityStates() {
 const showToolConfirm = ref(false)
 const toolConfirmName = ref('')
 const toolConfirmArgs = ref<Record<string, any>>({})
-const toolConfirmResolve = ref<((approved: boolean) => void) | null>(null)
+const toolConfirmPath = ref('')
+const toolConfirmDir = ref('')
+const toolConfirmIsSystemFile = ref(false)
+const toolConfirmQuestion = ref('')
+const toolConfirmExplanation = ref('')
+const toolConfirmExplaining = ref(false)
+const toolConfirmResolve = ref<((decision: 'once' | 'always' | 'deny') => void) | null>(null)
 const toolExecuting = ref(false)
 const toolExecutingName = ref('')
 
@@ -733,61 +760,115 @@ function isAutoTool(name: string, args: Record<string, any>): boolean {
   return toolCapabilityStates.value[cap] === 'allow'
 }
 
-async function executeToolCall(name: string, args: Record<string, any>): Promise<{ success: boolean; output: string; error?: string }> {
+async function executeToolCall(
+  name: string,
+  args: Record<string, any>,
+  permissionDecision: '' | 'once' | 'always' = '',
+): Promise<any> {
   const res = await fetch('/v1/tools/execute', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tool_name: name, arguments: args, confirm: true }),
+    body: JSON.stringify({
+      tool_name: name,
+      arguments: args,
+      confirm: true,
+      permission_decision: permissionDecision,
+    }),
   })
   return res.json()
 }
 
-function requestToolConfirmation(name: string, args: Record<string, any>): Promise<boolean> {
+async function requestToolExplanation() {
+  toolConfirmExplaining.value = true
+  toolConfirmExplanation.value = ''
+  try {
+    const res = await fetch('/v1/tools/explain', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tool_name: toolConfirmName.value,
+        arguments: toolConfirmArgs.value,
+        question: toolConfirmQuestion.value,
+      }),
+    })
+    const data = await res.json()
+    toolConfirmExplanation.value = data.explanation || data.error || '(无解释返回)'
+  } catch (e: any) {
+    toolConfirmExplanation.value = `解释请求失败：${e?.message || e}`
+  } finally {
+    toolConfirmExplaining.value = false
+  }
+}
+
+function requestToolDecision(
+  name: string,
+  args: Record<string, any>,
+  path: string,
+  dir: string,
+): Promise<'once' | 'always' | 'deny'> {
   return new Promise((resolve) => {
     toolConfirmName.value = name
     toolConfirmArgs.value = args
+    toolConfirmPath.value = path
+    toolConfirmDir.value = dir
+    toolConfirmIsSystemFile.value = !!dir
+    toolConfirmQuestion.value = ''
+    toolConfirmExplanation.value = ''
     toolConfirmResolve.value = resolve
     showToolConfirm.value = true
   })
 }
 
-function onToolConfirm(approved: boolean) {
+function onToolDecision(decision: 'once' | 'always' | 'deny') {
   showToolConfirm.value = false
   const resolve = toolConfirmResolve.value
   toolConfirmResolve.value = null
-  if (resolve) resolve(approved)
+  if (resolve) resolve(decision)
 }
 
 async function handleToolCall(
   name: string,
   args: Record<string, any>,
 ): Promise<string> {
-  if (isAutoTool(name, args)) {
+  const runExec = async (perm: '' | 'once' | 'always') => {
     toolExecuting.value = true
     toolExecutingName.value = name
     try {
-      const result = await executeToolCall(name, args)
-      return result.success ? result.output : `Error: ${result.error || 'Unknown error'}`
+      const r = await executeToolCall(name, args, perm)
+      return r
     } finally {
       toolExecuting.value = false
       toolExecutingName.value = ''
     }
   }
 
-  const approved = await requestToolConfirmation(name, args)
-  if (!approved) {
-    return 'User rejected the operation.'
+  if (isAutoTool(name, args)) {
+    const r = await runExec('')
+    return r.success ? r.output : `Error: ${r.error || 'Unknown error'}`
   }
 
-  toolExecuting.value = true
-  toolExecutingName.value = name
-  try {
-    const result = await executeToolCall(name, args)
-    return result.success ? result.output : `Error: ${result.error || 'Unknown error'}`
-  } finally {
-    toolExecuting.value = false
-    toolExecutingName.value = ''
+  const cap = resolveCapability(name, args)
+  const isSystemFile = cap === 'file.read.system' || cap === 'file.write.system'
+
+  if (isSystemFile) {
+    // Probe: an existing rule may auto-allow; otherwise the server returns
+    // needs_permission and we prompt the user (once / always-this-dir / deny).
+    const probe = await runExec('')
+    if (probe.success) return probe.output
+    if (probe.needs_permission) {
+      const decision = await requestToolDecision(name, args, probe.path, probe.dir)
+      if (decision === 'deny') return 'User rejected the operation.'
+      const r = await runExec(decision) // 'once' | 'always'
+      return r.success ? r.output : `Error: ${r.error || 'Unknown error'}`
+    }
+    return `Error: ${probe.error || 'Unknown error'}`
   }
+
+  // Ask-capability tool: prompt (once / deny; explanation available).
+  const decision = await requestToolDecision(name, args, '', '')
+  if (decision === 'deny') return 'User rejected the operation.'
+  const r = await runExec('')
+  return r.success ? r.output : `Error: ${r.error || 'Unknown error'}`
 }
 
 function buildRequestMessages(): any[] {

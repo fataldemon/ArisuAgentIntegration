@@ -1,4 +1,4 @@
-import { get, put } from './client'
+import { get, put, post, del } from './client'
 
 export interface CapabilityInfo {
   key: string
@@ -13,13 +13,16 @@ export interface CapabilityInfo {
 export interface CapabilitiesData {
   domains: string[]
   capabilities: CapabilityInfo[]
-  channels: Record<string, string[]>
+  file_rules: { read: { allow: string[]; deny: string[] }; write: { allow: string[]; deny: string[] } }
 }
 
 export const toolsApi = {
   getCapabilities: () => get<CapabilitiesData>('/tools/capabilities'),
   setCapabilities: (states: Record<string, string>) => put('/tools/capabilities', { states }),
-  setChannelCapabilities: (channel: string, capabilities: string[]) =>
-    put(`/tools/channels/${channel}`, { capabilities }),
+  addFileRule: (op: string, decision: string, directory: string) =>
+    post('/tools/file-rules', { op, decision, directory }),
+  removeFileRule: (op: string, decision: string, directory: string) =>
+    del('/tools/file-rules', { op, decision, directory }),
   getRegistry: () => get<{ tools: any[] }>('/tools/registry'),
 }
+

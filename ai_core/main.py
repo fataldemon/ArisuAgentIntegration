@@ -391,6 +391,41 @@ async def tools_create_pending(body: dict = Body(...)):
     return {"pending_id": pending_id, "tool_name": tool_name}
 
 
+@app.post("/v1/tools/explain")
+async def tools_explain(body: dict = Body(...)):
+    """Ask the LLM to explain a tool call so the user can make an informed decision."""
+    import json as _json
+    from models.base import ChatMessage
+    tool_name = body.get("tool_name", "")
+    arguments = body.get("arguments", {}) or {}
+    question = (body.get("question") or "").strip()
+    args_str = _json.dumps(arguments, ensure_ascii=False, indent=2)
+    sys_prompt = (
+        "你是工具操作解释助手。用户正在决定是否允许执行一个工具调用。"
+        "请用简洁的中文解释这个操作具体会做什么、影响哪些文件或系统、是否危险。"
+        "只做解释，不要尝试执行该操作。"
+    )
+    user_msg = f"工具：{tool_name}\n参数：\n{args_str}\n"
+    if question:
+        user_msg += f"\n用户的疑问：{question}\n请重点回答这个问题。"
+    request = ChatCompletionRequest(
+        model="gpt-3.5-turbo",
+        messages=[
+            ChatMessage(role="system", content=sys_prompt),
+            ChatMessage(role="user", content=user_msg),
+        ],
+        enable_thinking=False,
+        on_embedding=False,
+        stream=False,
+        type=0,
+    )
+    try:
+        choice = await chat(request=request, max_tokens=500)
+        return {"explanation": (choice.message.content or "").strip()}
+    except Exception as e:
+        return {"explanation": "", "error": str(e)}
+
+
 register_admin_routes(app)
 register_hippocampus_routes(app)
 
