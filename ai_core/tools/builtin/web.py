@@ -36,7 +36,9 @@ async def _web_search(query: str, category: str = "general", max_results: int = 
         "language": "auto",
     }
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
+        # trust_env=False so requests to the localhost SearXNG never get routed
+        # through any system HTTP proxy (which would return 5xx for localhost).
+        async with httpx.AsyncClient(timeout=20.0, trust_env=False) as client:
             resp = await client.get(f"{_SEARXNG_URL}/search", params=params, headers={"User-Agent": "ArisuAgent/1.0"})
             if resp.status_code != 200:
                 return f"Error: SearXNG returned HTTP {resp.status_code}. 确认 SearXNG 已启动且开启了 json 输出（docker start searxng）。"
