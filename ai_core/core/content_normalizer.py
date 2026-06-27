@@ -212,7 +212,14 @@ def _prefetch_url(url: str, timeout: float = 15.0) -> Optional[Tuple[bytes, str]
         data = resp.content
         if not data:
             return None
-        mime = resp.headers.get("Content-Type", "") or _guess_mime_from_url(url)
+        header_mime = (resp.headers.get("Content-Type", "") or "").split(";")[0].strip().lower()
+        if header_mime in _GENERIC_MIME_TYPES:
+            sniffed = _sniff_mime(data)
+            mime = sniffed if sniffed != "application/octet-stream" else (
+                header_mime or _guess_mime_from_url(url)
+            )
+        else:
+            mime = header_mime or _guess_mime_from_url(url)
 
         # Resize oversized images to avoid blowing up prompt token count.
         mime_root = mime.split(";")[0].strip().lower()
@@ -244,6 +251,65 @@ def _prefetch_url(url: str, timeout: float = 15.0) -> Optional[Tuple[bytes, str]
     except Exception as e:
         LOG.debug("Failed to prefetch %s: %r", url, e)
         return None
+
+
+# Content-Types that carry no real format information. When a CDN returns one
+# of these we sniff the actual bytes instead -- some providers (notably QQ
+# multimedia) ship valid MP4 videos labelled ``application/octet-stream``, and
+# upstream LLMs key off the ``data:<mime>;base64`` prefix to pick a decoder, so
+# a generic MIME makes the multimodal prefill deadlock.
+_GENERIC_MIME_TYPES = {
+    "application/octet-stream",
+    "binary/octet-stream",
+    "application/x-download",
+    "application/x-msdownload",
+    "application/force-download",
+    "",
+}
+
+
+def _sniff_mime(data: bytes) -> str:
+    """Detect the real MIME type from content magic bytes.
+
+    Returns ``application/octet-stream`` when the signature is unrecognised so
+    callers can fall back gracefully. Covers the common image/video/audio
+    containers seen from IM CDNs.
+    """
+    if not data or len(data) < 12:
+        return "application/octet-stream"
+    # ISO BMFF (MP4/MOV/M4V/3GP/HEIC): an ``ftyp`` box sits at offset 4.
+    if data[4:8] == b"ftyp":
+        brand = data[8:12]
+        if brand in (b"M4A ", b"M4B ", b"M4P "):
+            return "audio/mp4"
+        return "video/mp4"
+    if data[:4] == b"\x1aE\xdf\xa3":          # EBML -> Matroska/WebM
+        return "video/webm"
+    if data[:4] == b"RIFF":
+        if data[8:12] == b"WEBP":
+            return "image/webp"
+        if data[8:12] == b"WAVE":
+            return "audio/wav"
+        return "video/x-msvideo"               # AVI
+    if data[:3] == b"FLV":
+        return "video/x-flv"
+    if data[:4] == b"\x00\x00\x01\xba":        # MPEG-PS
+        return "video/mpeg"
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if data[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if data[:6] in (b"GIF87a", b"GIF89a"):
+        return "image/gif"
+    if data[:2] == b"BM":
+        return "image/bmp"
+    if data[:4] == b"OggS":
+        return "audio/ogg"
+    if data[:4] == b"fLaC":
+        return "audio/flac"
+    if data[:3] == b"ID3" or (data[0] == 0xFF and (data[1] & 0xE0) == 0xE0):
+        return "audio/mpeg"
+    return "application/octet-stream"
 
 
 def _guess_mime_from_url(url: str) -> str:
@@ -825,7 +891,7 @@ def _url_exceeds_limit(url: str, max_bytes: int) -> bool:
             return os.path.getsize(url[7:]) > max_bytes
         except OSError:
             return False
-    if url.startswith("data:video/"):
+    if url.startswith("data:"):
         header_end = url.find(",")
         if header_end > 0:
             payload_len = len(url) - header_end - 1
