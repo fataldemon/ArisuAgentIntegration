@@ -1462,12 +1462,14 @@ onMounted(() => {
 
 .tool-msg-row {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  /* align the tool card's left edge with the assistant bubble (avatar 40px + row gap 10px) */
+  padding-left: 50px;
   margin: 4px 0;
 }
 
 .tool-msg-row .n-collapse {
-  max-width: 85%;
+  width: 85%;
   min-width: 260px;
 }
 
