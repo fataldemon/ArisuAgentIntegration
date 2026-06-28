@@ -632,17 +632,63 @@ async function deleteSession(id: string) {
   }
 }
 
+function parseToolCallFromText(text: string): { name: string, args: Record<string, any> } | null {
+  const m = text.match(/<tool_call>\s*(.*?)\s*<\/tool_call>/s)
+  if (!m) return null
+  const inner = m[1].trim()
+  const fm = inner.match(/<function=([^>]+)>([\s\S]*?)<\/function>/)
+  if (fm) {
+    const name = fm[1].trim()
+    const args: Record<string, any> = {}
+    for (const pm of fm[2].matchAll(/<parameter=([^>]+)>([\s\S]*?)<\/parameter>/g)) {
+      args[pm[1].trim()] = pm[2].trim()
+    }
+    return { name, args }
+  }
+  return null
+}
+
+function stripToolCallText(text: string): string {
+  return text.replace(/<tool_call>[\s\S]*?<\/tool_call>/g, '').trim()
+}
+
+function stripBase64Images(text: string): string {
+  return text.replace(/\[image,base64=[^\]]+\]/g, '[图片]')
+}
+
 async function loadSessionHistoryFor(id: string): Promise<ChatMessage[]> {
   try {
     const fullId = `chat:${identity.value || 'default'}:${id}`
     const res = await fetch(`/ctx/${encodeURIComponent(fullId)}/turn-context?limit=100`)
     const data = await res.json()
-    return (data.history || []).map((h: any) => ({
-      role: h.role,
-      content: h.content || '',
-      thought: undefined,
-      timestamp: h.timestamp ? new Date(h.timestamp).getTime() : Date.now(),
-    }))
+    const raw = data.history || []
+    const result: ChatMessage[] = []
+    for (let i = 0; i < raw.length; i++) {
+      const h = raw[i]
+      const ts = h.timestamp ? new Date(h.timestamp).getTime() : Date.now()
+      if (h.role === 'assistant') {
+        const tc = parseToolCallFromText(h.content || '')
+        if (tc) {
+          const cleanText = stripToolCallText(h.content || '')
+          if (cleanText) {
+            result.push({ role: 'assistant', content: cleanText, timestamp: ts })
+          }
+          result.push({ role: 'tool_call', content: '', toolName: tc.name, toolArgs: tc.args, timestamp: ts })
+          if (i + 1 < raw.length && raw[i + 1].role === 'function') {
+            i++
+            const funcTs = raw[i].timestamp ? new Date(raw[i].timestamp).getTime() : ts
+            result.push({ role: 'tool_result', content: stripBase64Images(raw[i].content || ''), toolName: tc.name, toolArgs: tc.args, timestamp: funcTs })
+          }
+        } else {
+          result.push({ role: 'assistant', content: h.content || '', timestamp: ts })
+        }
+      } else if (h.role === 'function') {
+        // already consumed by preceding assistant tool_call; skip if standalone
+      } else {
+        result.push({ role: h.role, content: h.content || '', timestamp: ts })
+      }
+    }
+    return result
   } catch { return [] }
 }
 
@@ -1101,12 +1147,15 @@ async function runAgentLoop(
       }
 
       if (content) {
-        targetMsgs.push({
-          role: 'assistant',
-          content: stripTimestamp(content),
-          thought: thought || undefined,
-          timestamp: Date.now(),
-        })
+        const cleanContent0 = stripToolCallText(stripTimestamp(content))
+        if (cleanContent0) {
+          targetMsgs.push({
+            role: 'assistant',
+            content: cleanContent0,
+            thought: thought || undefined,
+            timestamp: Date.now(),
+          })
+        }
       }
 
       let args: Record<string, any> = {}
@@ -1125,7 +1174,7 @@ async function runAgentLoop(
 
       const toolMsg = targetMsgs[toolIdx]
       toolMsg.role = 'tool_result'
-      toolMsg.content = toolResult
+      toolMsg.content = stripBase64Images(toolResult)
 
       const tcText0 = formatToolCallText(functionCall.name, args)
       hippoSave('assistant', (content ? stripTimestamp(content) + '\n' : '') + tcText0, sid)
@@ -1157,12 +1206,15 @@ async function runAgentLoop(
       }
 
       if (content) {
-        targetMsgs.push({
-          role: 'assistant',
-          content: stripTimestamp(content),
-          thought: thought || undefined,
-          timestamp: Date.now(),
-        })
+        const cleanContentN = stripToolCallText(stripTimestamp(content))
+        if (cleanContentN) {
+          targetMsgs.push({
+            role: 'assistant',
+            content: cleanContentN,
+            thought: thought || undefined,
+            timestamp: Date.now(),
+          })
+        }
       }
 
       let args: Record<string, any> = {}
@@ -1181,7 +1233,7 @@ async function runAgentLoop(
 
       const toolMsg = targetMsgs[toolIdx]
       toolMsg.role = 'tool_result'
-      toolMsg.content = toolResult
+      toolMsg.content = stripBase64Images(toolResult)
 
       const tcTextN = formatToolCallText(functionCall.name, args)
       hippoSave('assistant', (content ? stripTimestamp(content) + '\n' : '') + tcTextN, sid)
