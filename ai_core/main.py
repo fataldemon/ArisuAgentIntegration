@@ -46,8 +46,9 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import uvicorn
-from fastapi import Body, FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import Body, FastAPI, HTTPException, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import ValidationError
 from sse_starlette.sse import EventSourceResponse
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -424,6 +425,63 @@ async def tools_explain(body: dict = Body(...)):
         return {"explanation": (choice.message.content or "").strip()}
     except Exception as e:
         return {"explanation": "", "error": str(e)}
+
+
+# ---------------------------------------------------------------------------
+# Sticker management + file upload
+# ---------------------------------------------------------------------------
+
+_STICKERS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "stickers")
+_WORKSPACE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "game_workspace", "uploads")
+
+
+@app.get("/admin/api/stickers")
+async def list_stickers():
+    os.makedirs(_STICKERS_DIR, exist_ok=True)
+    files = []
+    for f in sorted(os.listdir(_STICKERS_DIR)):
+        if f.lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp")):
+            files.append({"name": f, "url": f"/admin/api/stickers/{f}"})
+    return {"stickers": files}
+
+
+@app.post("/admin/api/stickers")
+async def upload_sticker(file: UploadFile = File(...)):
+    os.makedirs(_STICKERS_DIR, exist_ok=True)
+    import re
+    safe_name = re.sub(r'[^\w.\-]', '_', file.filename or "sticker.png")
+    dest = os.path.join(_STICKERS_DIR, safe_name)
+    with open(dest, "wb") as f:
+        f.write(await file.read())
+    return {"name": safe_name, "url": f"/admin/api/stickers/{safe_name}"}
+
+
+@app.delete("/admin/api/stickers/{name}")
+async def delete_sticker(name: str):
+    path = os.path.join(_STICKERS_DIR, name)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Sticker not found")
+    os.remove(path)
+    return {"ok": True}
+
+
+@app.get("/admin/api/stickers/{name}")
+async def get_sticker(name: str):
+    path = os.path.join(_STICKERS_DIR, name)
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="Sticker not found")
+    return FileResponse(path)
+
+
+@app.post("/v1/upload")
+async def upload_file(file: UploadFile = File(...)):
+    os.makedirs(_WORKSPACE_DIR, exist_ok=True)
+    import re
+    safe_name = re.sub(r'[^\w.\-]', '_', file.filename or "upload.bin")
+    dest = os.path.join(_WORKSPACE_DIR, safe_name)
+    with open(dest, "wb") as f:
+        f.write(await file.read())
+    return {"filename": safe_name, "path": f"uploads/{safe_name}", "size": os.path.getsize(dest)}
 
 
 register_admin_routes(app)

@@ -113,18 +113,72 @@
         </div>
       </div>
 
-      <div class="input-area">
+      <div class="input-area" @drop="handleDrop" @dragover="handleDragOver">
+        <div v-if="attachments.length > 0" class="attachment-bar">
+          <div v-for="(att, idx) in attachments" :key="idx" class="attachment-chip">
+            <span v-if="att.type === 'image'" class="att-icon">🖼️</span>
+            <span v-else-if="att.type === 'text'" class="att-icon">📄</span>
+            <span v-else class="att-icon">📦</span>
+            <span class="att-name">{{ att.name }}</span>
+            <n-button size="tiny" quaternary type="error" @click="removeAttachment(idx)">✕</n-button>
+          </div>
+        </div>
+
+        <n-popover trigger="click" placement="top-start" :width="360">
+          <template #trigger>
+            <n-button quaternary circle class="emoji-btn" @click="loadStickers">
+              😊
+            </n-button>
+          </template>
+          <div class="sticker-panel">
+            <n-tabs type="segment" size="small">
+              <n-tab-pane name="emoji" tab="Emoji">
+                <div class="emoji-grid">
+                  <span
+                    v-for="emoji in _EMOJI_SET"
+                    :key="emoji"
+                    class="emoji-item"
+                    @click="insertEmoji(emoji)"
+                  >{{ emoji }}</span>
+                </div>
+              </n-tab-pane>
+              <n-tab-pane name="stickers" tab="表情包">
+                <div class="sticker-grid">
+                  <div
+                    v-for="st in stickers"
+                    :key="st.name"
+                    class="sticker-item"
+                    @click="addStickerToAttachments(st)"
+                  >
+                    <img :src="st.url" :alt="st.name" />
+                  </div>
+                  <div class="sticker-upload" @click="triggerStickerUpload">
+                    <span>＋</span>
+                  </div>
+                </div>
+                <div v-if="stickers.length === 0" class="sticker-empty">
+                  还没有自定义表情，点击 ＋ 上传
+                </div>
+              </n-tab-pane>
+            </n-tabs>
+          </div>
+        </n-popover>
+
         <n-input
           v-model:value="inputText"
           type="textarea"
           :autosize="{ minRows: 1, maxRows: 4 }"
           :placeholder="$t('chat.typeMessage')"
           @keydown="handleKeydown"
+          @paste="handlePaste"
           class="chat-input"
         />
+        <n-button quaternary circle class="upload-btn" @click="triggerFileInput">
+          📎
+        </n-button>
         <n-button
           type="primary"
-          :disabled="!inputText.trim()"
+          :disabled="!inputText.trim() && attachments.length === 0"
           @click="sendMessage"
           class="send-btn"
         >
@@ -265,6 +319,9 @@ import {
   NTag,
   NModal,
   NSpace,
+  NPopover,
+  NTabs,
+  NTabPane,
   useMessage,
 } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
@@ -333,6 +390,158 @@ const currentAbortId = ref('')
 // auto-executed when its resolved capability state is "allow"; "ask" shows the
 // confirmation modal; "deny" is rejected by the server.
 const toolCapabilityStates = ref<Record<string, string>>({})
+
+// ----- emoji + stickers + attachments -----
+const _EMOJI_SET = [
+  '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩',
+  '😘','😗','😚','😙','😋','😛','😜','🤪','😝','🤗','🤭','🤫','🤔','😐','😑','😶',
+  '😏','😒','🙄','😬','😮‍💨','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮',
+  '🥵','🥶','🥴','😵','🤯','🤠','🥳','😎','🤓','🧐','😕','😟','🙁','😮','😯','😲',
+  '😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫',
+  '🥱','😤','😡','😠','🤬','😈','👿','💀','💩','🤡','👻','👽','🤖','🎃','😺','❤️',
+  '🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘',
+  '👍','👎','👌','✌️','🤞','🤟','🤘','👊','✊','🎉','🎊','🔥','⭐','✨','💯','💢',
+]
+
+interface StickerItem { name: string; url: string }
+const stickers = ref<StickerItem[]>([])
+const stickerPanelOpen = ref(false)
+
+interface Attachment {
+  type: 'image' | 'text' | 'binary'
+  name: string
+  data: string
+  preview?: string
+}
+const attachments = ref<Attachment[]>([])
+
+const _TEXT_EXTS = new Set(['txt','py','js','ts','jsx','tsx','vue','html','css','json','yaml','yml','toml','md','rst','csv','xml','svg','sh','bat','ps1','ini','cfg','conf','log','c','cpp','h','hpp','rs','go','java','kt','swift','rb','php','sql'])
+
+async function loadStickers() {
+  try {
+    const res = await fetch('/admin/api/stickers')
+    const data = await res.json()
+    stickers.value = data.stickers || []
+  } catch {}
+}
+
+async function uploadSticker(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  try {
+    const res = await fetch('/admin/api/stickers', { method: 'POST', body: form })
+    await res.json()
+    await loadStickers()
+    message.success('表情上传成功')
+  } catch { message.error('表情上传失败') }
+}
+
+function insertEmoji(emoji: string) {
+  inputText.value += emoji
+  stickerPanelOpen.value = false
+}
+
+async function addStickerToAttachments(sticker: StickerItem) {
+  try {
+    const res = await fetch(sticker.url)
+    const blob = await res.blob()
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1]
+      attachments.value.push({ type: 'image', name: sticker.name, data: base64 })
+    }
+    reader.readAsDataURL(blob)
+  } catch {}
+  stickerPanelOpen.value = false
+}
+
+function handleFileInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  if (target.files) {
+    for (const file of Array.from(target.files)) {
+      processFile(file)
+    }
+    target.value = ''
+  }
+}
+
+function handlePaste(e: ClipboardEvent) {
+  const items = e.clipboardData?.items
+  if (!items) return
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) {
+        e.preventDefault()
+        processFile(file)
+      }
+    }
+  }
+}
+
+function handleDrop(e: DragEvent) {
+  e.preventDefault()
+  const files = e.dataTransfer?.files
+  if (!files) return
+  for (const file of Array.from(files)) {
+    processFile(file)
+  }
+}
+
+function handleDragOver(e: DragEvent) {
+  e.preventDefault()
+}
+
+async function processFile(file: File) {
+  const ext = file.name.rsplit('.', 1)[-1]?.toLowerCase() || ''
+  if (file.type.startsWith('image/') || ['png','jpg','jpeg','gif','webp','bmp'].includes(ext)) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1]
+      attachments.value.push({ type: 'image', name: file.name, data: base64 })
+    }
+    reader.readAsDataURL(file)
+  } else if (_TEXT_EXTS.has(ext) || file.size < 50000) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      attachments.value.push({ type: 'text', name: file.name, data: reader.result as string })
+    }
+    reader.readAsText(file)
+  } else {
+    // Binary file → upload to workspace
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/v1/upload', { method: 'POST', body: form })
+      const data = await res.json()
+      attachments.value.push({ type: 'binary', name: file.name, data: data.path || '' })
+      message.info(`${file.name} 已上传，AI 可用 read_file 读取`)
+    } catch { message.error(`${file.name} 上传失败`) }
+  }
+}
+
+function removeAttachment(idx: number) {
+  attachments.value.splice(idx, 1)
+}
+
+function triggerFileInput() {
+  const el = document.createElement('input')
+  el.type = 'file'
+  el.multiple = true
+  el.onchange = handleFileInput
+  el.click()
+}
+
+function triggerStickerUpload() {
+  const el = document.createElement('input')
+  el.type = 'file'
+  el.accept = 'image/*'
+  el.onchange = (e) => {
+    const target = e.target as HTMLInputElement
+    if (target.files?.[0]) uploadSticker(target.files[0])
+  }
+  el.click()
+}
 
 const _FILE_READ_TOOLS = new Set(['read_file', 'list_directory', 'search_files', 'search_content'])
 const _FILE_WRITE_TOOLS = new Set(['write_file', 'edit_file', 'delete_file'])
@@ -1071,7 +1280,8 @@ async function sendNonStreaming(messages: any[]): Promise<{
 
 async function sendMessage() {
   const text = inputText.value.trim()
-  if (!text) return
+  const atts = [...attachments.value]
+  if (!text && atts.length === 0) return
   const sid = sessionId.value
   const targetMsgs = sessionCache[sid]
   if (!targetMsgs) return
@@ -1086,14 +1296,28 @@ async function sendMessage() {
   }
   streamingSessionId.value = sid
 
+  // Build message content: text + attachments merged
+  let fullContent = text
+  for (const att of atts) {
+    if (att.type === 'image') {
+      fullContent += `\n[image,base64=${att.data}]`
+    } else if (att.type === 'text') {
+      fullContent += `\n\`\`\`${att.name}\n${att.data}\n\`\`\``
+    } else if (att.type === 'binary') {
+      fullContent += `\n（已上传文件 ${att.name} 到工作空间 ${att.data}，可用 read_file 读取）`
+    }
+  }
+  fullContent = fullContent.trim()
+
   const userMsg: ChatMessage = {
     role: 'user',
-    content: text,
+    content: fullContent,
     timestamp: Date.now(),
   }
   targetMsgs.push(userMsg)
-  hippoSave('user', text, sid)
+  hippoSave('user', fullContent, sid)
   inputText.value = ''
+  attachments.value = []
 
   isStreaming.value = true
   rawStreamText.value = ''
@@ -1577,5 +1801,118 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+.attachment-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0;
+  margin-bottom: 4px;
+}
+
+.attachment-chip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #e8f4fd;
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.att-icon {
+  font-size: 14px;
+}
+
+.att-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.emoji-btn, .upload-btn {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.sticker-panel {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 2px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.emoji-item {
+  font-size: 20px;
+  cursor: pointer;
+  text-align: center;
+  padding: 2px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.emoji-item:hover {
+  background: #e8e8e8;
+}
+
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.sticker-item {
+  cursor: pointer;
+  border-radius: 6px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+}
+
+.sticker-item:hover {
+  background: #e0e0e0;
+}
+
+.sticker-item img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.sticker-upload {
+  cursor: pointer;
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: #999;
+}
+
+.sticker-upload:hover {
+  border-color: #666;
+  color: #333;
+}
+
+.sticker-empty {
+  text-align: center;
+  color: #aaa;
+  font-size: 12px;
+  padding: 20px 0;
 }
 </style>

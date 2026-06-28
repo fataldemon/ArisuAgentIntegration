@@ -34,6 +34,7 @@ ai_core/config/channels.json
 ai_core/config/globals.json
 ai_core/config/inference.json
 ai_core/game_workspace/
+ai_core/stickers/
 ai_core/browser_profile/
 ai_core/media_cache/
 ai_core/images_cache/
