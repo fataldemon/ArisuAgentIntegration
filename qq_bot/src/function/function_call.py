@@ -22,11 +22,14 @@ def format_railway(func_railway):
 
 
 def get_general_tools():
+    # NOTE: web access (search_on_internet, access_website) is now provided by
+    # the AI Core builtin tools (advertised via channel="qq"), so the QQ bot's
+    # own copies are removed from the AI-facing list to avoid duplicate tool
+    # names. The implementations stay in services.py for reference until the
+    # full tool migration to AI Core.
     functions = [
         func.func_sword_of_light,
-        func.func_search_on_internet,
         format_move(func.func_move, steps=0, school_id=0, area_id=0),
-        func.func_access_website,
         func.func_run_code,
         func.func_write_file,
         func.func_list_code_files,
@@ -44,8 +47,7 @@ def get_general_tools():
         func.func_set_daily_schedule
     ]
     available_actions = "[sword_of_light]," \
-                        "[search_on_internet]," \
-                        "[move],[access_website]," \
+                        "[move]," \
                         "[run_code_in_sandbox]," \
                         "[write_file]," \
                         "[read_code_file]," \

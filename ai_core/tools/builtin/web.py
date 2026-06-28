@@ -29,6 +29,38 @@ _SUMMARY_INSTRUCTION = (
     "你给出的总结："
 )
 
+# Per-turn screenshot budget for access_website. Screenshots are full-page and
+# can be large, so capping them bounds the vision-token cost of a browsing
+# turn. Reset at the start of each chat_on_setting(_stream) call.
+_SCREENSHOT_CAP = 3
+_screenshot_count = 0
+
+
+def reset_screenshot_cap() -> None:
+    global _screenshot_count
+    _screenshot_count = 0
+
+
+def _resize_screenshot_bytes(png: bytes, max_width: int = 1280) -> bytes:
+    """Downscale a screenshot by WIDTH (keep aspect) so text stays legible.
+
+    Unlike the media normaliser's max-dimension resize, capping only the width
+    keeps tall full-page captures readable instead of shrinking them to a
+    sliver. Falls back to the raw bytes if PIL is unavailable.
+    """
+    try:
+        import io
+        from PIL import Image
+        img = Image.open(io.BytesIO(png))
+        w, h = img.size
+        if w > max_width:
+            img = img.resize((max_width, int(h * max_width / w)), Image.LANCZOS)
+        buf = io.BytesIO()
+        img.save(buf, format="JPEG", quality=85)
+        return buf.getvalue()
+    except Exception:
+        return png
+
 
 async def _web_search(query: str, max_results: int = 5) -> str:
     """Browser-driven search (DDG→Bing + deep-dive) condensed via a type-1 call.
@@ -123,11 +155,17 @@ async def _access_website(url: str, close: bool = True, screenshot: bool = True)
             out += "\n\n相关链接：\n- " + "\n- ".join(links)
 
         if screenshot:
-            try:
-                png = await page.screenshot(full_page=False)
-                out += f"\n[image,base64={base64.b64encode(png).decode()}]"
-            except Exception as e:
-                out += f"\n（截图失败：{e}）"
+            global _screenshot_count
+            if _screenshot_count < _SCREENSHOT_CAP:
+                try:
+                    png = await page.screenshot(full_page=True)
+                    png = _resize_screenshot_bytes(png)
+                    out += f"\n[image,base64={base64.b64encode(png).decode()}]"
+                    _screenshot_count += 1
+                except Exception as e:
+                    out += f"\n（截图失败：{e}）"
+            else:
+                out += "\n（本回合截图已达上限，本次仅返回文本。）"
 
         if not close:
             out += "\n\n（页面已在浏览器中为你打开，未关闭。）"
@@ -138,6 +176,12 @@ async def _access_website(url: str, close: bool = True, screenshot: bool = True)
         if close:
             try:
                 await page.close()
+            except Exception:
+                pass
+            # QQ-style: free the browser process but keep the profile, so
+            # cookies/login survive and the next call relaunches Chrome.
+            try:
+                await _browser.close_browser()
             except Exception:
                 pass
 

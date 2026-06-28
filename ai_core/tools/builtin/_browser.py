@@ -168,6 +168,34 @@ async def get_browser():
         return _browser
 
 
+async def close_browser():
+    """Drop the CDP connection and terminate the Chrome process we launched.
+
+    The persistent ``--user-data-dir`` profile is kept on disk, so cookies /
+    login state survive and the next ``get_browser()`` call relaunches Chrome
+    with the same profile. A user-started debug Chrome (one we did not launch)
+    is left alone — only its connection is dropped.
+    """
+    global _browser, _chrome_proc
+    async with _lock:
+        if _browser is not None:
+            try:
+                await _browser.close()
+            except Exception:
+                pass
+            _browser = None
+        if _chrome_proc is not None and _chrome_proc.poll() is None:
+            try:
+                _chrome_proc.terminate()
+                try:
+                    _chrome_proc.wait(timeout=5)
+                except Exception:
+                    _chrome_proc.kill()
+            except Exception:
+                pass
+        _chrome_proc = None
+
+
 def _shutdown() -> None:
     global _chrome_proc
     if _chrome_proc is not None and _chrome_proc.poll() is None:

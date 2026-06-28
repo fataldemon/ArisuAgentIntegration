@@ -185,6 +185,56 @@ def _resolve_media_paths(parts: List[Any], character: str) -> List[Any]:
     return parts
 
 
+def _normalize_msg_content(content, provider_cfg, character: str = ""):
+    """Normalize a message body into the OpenAI content payload.
+
+    Parses legacy ``[image/audio/video,...]`` placeholders, drops modalities
+    the provider can't handle, resolves relative media paths, and prefetches
+    URL media when configured. Shared by ``_prepare_messages`` (request
+    messages) and by the tool-result path (``_dispatch_tool``) so a tool
+    result goes through the *same* media handling as user input — e.g. an
+    ``access_website`` screenshot becomes an ``image_url`` vision part instead
+    of a giant base64 text blob.
+    """
+    supports_vision, supports_audio, supports_video = _provider_supports_media(provider_cfg)
+    prefetch = bool(provider_cfg.prefetch_media)
+    parts = normalize_content(content)
+    filtered = []
+    for p in parts:
+        if p.kind == "image" and not supports_vision:
+            filtered.append(p.__class__(kind="text", text="[图片已省略]"))
+        elif p.kind == "audio" and not supports_audio:
+            filtered.append(p.__class__(kind="text", text="[音频已省略]"))
+        elif p.kind == "video" and not supports_video:
+            filtered.append(p.__class__(kind="text", text="[视频已省略]"))
+        else:
+            filtered.append(p)
+    _resolve_media_paths(filtered, character)
+    return to_openai_content(filtered, prefetch=prefetch)
+
+
+def _append_tool_response(
+    messages: List[Dict[str, Any]],
+    output: str,
+    provider_cfg=None,
+    character: str = "",
+) -> None:
+    """Append a ``role:"tool"`` response, normalising media placeholders.
+
+    Tool results go through the SAME normalisation as user input, so an
+    ``[image,base64=...]`` screenshot becomes an ``image_url`` vision part
+    (cheap, model can see it) instead of a multi-hundred-k-token base64 text
+    blob. When ``provider_cfg`` is unavailable, falls back to the raw string.
+    """
+    if provider_cfg is not None:
+        content = _normalize_msg_content(
+            f"<tool_response>\n{output}\n</tool_response>", provider_cfg, character
+        )
+    else:
+        content = f"<tool_response>\n{output}\n</tool_response>"
+    messages.append({"role": "tool", "content": content})
+
+
 def _prepare_messages(
     raw_messages: List[ChatMessage],
     *,
@@ -205,9 +255,6 @@ def _prepare_messages(
     If ``character`` is provided, relative file paths in media placeholders
     (``[image,file=...]``) are resolved against ``embedding/<char>/image/``.
     """
-    supports_vision, supports_audio, supports_video = _provider_supports_media(provider_cfg)
-    prefetch = bool(provider_cfg.prefetch_media)
-
     system_parts: List[str] = []
     if system_prefix:
         system_parts.append(system_prefix)
@@ -233,22 +280,7 @@ def _prepare_messages(
             })
             continue
 
-        parts = normalize_content(m.content)
-
-        # Filter unsupported modalities so we never silently get a 400 from a
-        # text-only provider just because the client sent an image.
-        filtered = []
-        for p in parts:
-            if p.kind == "image" and not supports_vision:
-                filtered.append(p.__class__(kind="text", text="[图片已省略]"))
-            elif p.kind == "audio" and not supports_audio:
-                filtered.append(p.__class__(kind="text", text="[音频已省略]"))
-            elif p.kind == "video" and not supports_video:
-                filtered.append(p.__class__(kind="text", text="[视频已省略]"))
-            else:
-                filtered.append(p)
-        _resolve_media_paths(filtered, character)
-        content_payload = to_openai_content(filtered, prefetch_files=prefetch)
+        content_payload = _normalize_msg_content(m.content, provider_cfg, character)
         msg: Dict[str, Any] = {"role": m.role, "content": content_payload}
         # Convert legacy ``function_call`` to ``tool_calls`` (Qwen3.6 format).
         if m.function_call:
@@ -378,12 +410,18 @@ _CONVERSATION_START_SEPARATOR = (
 _CATEGORY_ORDER = ["文件操作", "终端命令", "桌面操作", "进程管理", "网络检索", "代码运行"]
 
 
-# Builtin (AI Core) tools are only advertised to these channels. Other channels
-# — notably the QQ bot, which has its own tool system and its own per-turn tool
-# curation — must NOT receive AI Core builtins, otherwise their tool sets get
-# polluted with tools their dispatch loop can't handle. Add a channel here only
-# when it explicitly opts into the AI Core builtin tools.
-_BUILTIN_CHANNELS = {"chat"}
+# Builtin (AI Core) tools are advertised to these channels. Other channels
+# must NOT receive AI Core builtins unless they explicitly opt in here.
+_BUILTIN_CHANNELS = {"chat", "qq"}
+
+# Per-channel tool-group filter. ``None`` = advertise every group; a set =
+# only those groups. The QQ bot opts into the builtin WEB tools (and skill
+# docs) but must NOT get computer read/control tools (filesystem/terminal/
+# desktop/process) — those are out of scope for it.
+_CHANNEL_GROUPS: Dict[str, Optional[Set[str]]] = {
+    "chat": None,
+    "qq": {"web", "skills"},
+}
 
 
 def _channel_builtin_tools(channel: str) -> List[ToolDef]:
@@ -391,14 +429,21 @@ def _channel_builtin_tools(channel: str) -> List[ToolDef]:
 
     Shared by :func:`_gather_tools` (what we advertise to the model) and
     :func:`_build_tool_guidance` (what we teach the model) so the two never
-    drift apart. Returns ``[]`` for any channel not in :data:`_BUILTIN_CHANNELS`.
+    drift apart. Returns ``[]`` for any channel not in :data:`_BUILTIN_CHANNELS`,
+    and is further restricted by :data:`_CHANNEL_GROUPS` (e.g. the QQ channel
+    only sees web + skill tools).
     """
-    if (channel or "default") not in _BUILTIN_CHANNELS:
+    ch = channel or "default"
+    if ch not in _BUILTIN_CHANNELS:
         return []
-    enabled = get_config_manager().get_channel_tools(channel or "default")
+    enabled = get_config_manager().get_channel_tools(ch)
     if not enabled:
         return []
-    return [d for d in get_tool_registry().list_defs() if d.name in enabled]
+    allowed_groups = _CHANNEL_GROUPS.get(ch)
+    defs = [d for d in get_tool_registry().list_defs() if d.name in enabled]
+    if allowed_groups is not None:
+        defs = [d for d in defs if d.group in allowed_groups]
+    return defs
 
 
 def _build_tool_guidance(channel: str, identity: str) -> str:
@@ -564,6 +609,8 @@ async def _execute_mcp_tool(
     tool_name: str,
     arguments: str,
     messages: List[Dict[str, Any]],
+    provider_cfg=None,
+    character: str = "",
 ) -> Tuple[Optional[Dict[str, Any]], str]:
     """Execute an MCP tool and append tool_call + tool_result to messages.
 
@@ -590,10 +637,7 @@ async def _execute_mcp_tool(
             "function": {"name": tool_name, "arguments": arguments},
         }],
     })
-    messages.append({
-        "role": "tool",
-        "content": f"<tool_response>\n{result_str}\n</tool_response>",
-    })
+    _append_tool_response(messages, result_str, provider_cfg, character)
     return {
         "ts": datetime.now(timezone.utc).isoformat(),
         "type": "mcp_tool_execution",
@@ -619,6 +663,8 @@ async def _dispatch_tool(
     mcp_names: Set[str],
     builtin_names: Set[str],
     messages: List[Dict[str, Any]],
+    provider_cfg=None,
+    character: str = "",
 ) -> Dict[str, Any]:
     """Classify one function call and execute it server-side when allowed.
 
@@ -637,7 +683,7 @@ async def _dispatch_tool(
         from core.mcp_manager import get_mcp_manager
 
         mm = get_mcp_manager()
-        log_entry, result_str = await _execute_mcp_tool(mm, name, raw_args, messages)
+        log_entry, result_str = await _execute_mcp_tool(mm, name, raw_args, messages, provider_cfg, character)
         if log_entry is not None:
             _append_vllm_request_log(log_entry)
         return {"kind": "executed", "output": result_str, "success": True}
@@ -657,10 +703,7 @@ async def _dispatch_tool(
                     "function": {"name": name, "arguments": raw_args},
                 }],
             })
-            messages.append({
-                "role": "tool",
-                "content": f"<tool_response>\n{output}\n</tool_response>",
-            })
+            _append_tool_response(messages, output, provider_cfg, character)
             _append_vllm_request_log({
                 "ts": datetime.now(timezone.utc).isoformat(),
                 "type": "builtin_tool_execution",
@@ -941,6 +984,12 @@ async def chat_on_setting(
                               character=request.character or "",
                               provider_cfg=provider_cfg)
     tools, mcp_names, builtin_names = await _gather_tools(request)
+    # Reset the per-turn screenshot budget for access_website.
+    try:
+        from tools.builtin.web import reset_screenshot_cap
+        reset_screenshot_cap()
+    except Exception:
+        pass
     sampling = _sampling_from_request(request, max_tokens)
     extra_body = (
         {"chat_template_kwargs": {"enable_thinking": bool(request.enable_thinking)}}
@@ -1025,6 +1074,7 @@ async def chat_on_setting(
             for fc in result.function_calls:
                 dispatch = await _dispatch_tool(
                     fc, mcp_names=mcp_names, builtin_names=builtin_names, messages=messages,
+                    provider_cfg=provider_cfg, character=request.character or "",
                 )
                 if dispatch["kind"] == "executed":
                     executed_any = True
@@ -1140,6 +1190,12 @@ async def chat_on_setting_stream(
                               character=request.character or "",
                               provider_cfg=provider_cfg)
     tools, mcp_names, builtin_names = await _gather_tools(request)
+    # Reset the per-turn screenshot budget for access_website.
+    try:
+        from tools.builtin.web import reset_screenshot_cap
+        reset_screenshot_cap()
+    except Exception:
+        pass
     sampling = _sampling_from_request(request, max_tokens)
     extra_body = (
         {"chat_template_kwargs": {"enable_thinking": bool(request.enable_thinking)}}
@@ -1264,6 +1320,7 @@ async def chat_on_setting_stream(
 
             dispatch = await _dispatch_tool(
                 fc, mcp_names=mcp_names, builtin_names=builtin_names, messages=messages,
+                provider_cfg=provider_cfg, character=request.character or "",
             )
             if dispatch["kind"] == "executed":
                 # Real-time: forward the tool result, then loop so the model

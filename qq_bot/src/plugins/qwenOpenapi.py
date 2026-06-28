@@ -203,6 +203,7 @@ class Qwen(LLM):
                 clean_messages.append({"role": msg["role"], "content": msg["content"]})
         query = {
             "character": "tendou_arisu",
+            "channel": "qq",
             "functions": tools,
             "system": self.system,
             "model": "gpt-3.5-turbo",
