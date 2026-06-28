@@ -210,7 +210,7 @@ def _normalize_msg_content(content, provider_cfg, character: str = ""):
         else:
             filtered.append(p)
     _resolve_media_paths(filtered, character)
-    return to_openai_content(filtered, prefetch=prefetch)
+    return to_openai_content(filtered, prefetch_files=prefetch)
 
 
 def _append_tool_response(
