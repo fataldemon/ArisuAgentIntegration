@@ -18,3 +18,4 @@ services:
       - ./searxng/settings.yml:/etc/searxng/settings.yml
     environment:
       - SEARXNG_BASE_URL=http://localhost:8888/
+      - SEARXNG_SECRET=arisu-searxng-secret-2026
