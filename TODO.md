@@ -1,360 +1,236 @@
-# TODO：上下文管理 + 工具调用统一化
+# TODO：ArisuAgent 集成项目 — 开发路线图
 
-## 目标
+> 最后更新：2026-06-28（develop 分支）
 
-将 QQ Bot 中的**上下文管理**和**工具调用**模块提取为 AI Core 的公共模块。所有渠道（QQ Bot、Bilibili、Unity、Chat 页面）共享同一套上下文管理和工具系统。
+## 项目现状
 
----
-
-## ✅ Phase 1：上下文管理模块提取 — 已完成
-
-**实际形态**：`ai_core/hippocampus/` — 内嵌于 AI Core 进程的独立模块（非原计划的 `shared/`）。channels 通过 HTTP 调用，后续 AI Core 可直接进程内 import。
-
-### 已完成项
-
-| 功能 | 状态 |
-|---|---|
-| 独立 chat_history DAO + 引擎（裸 sqlite3, WAL） | ✅ `hippocampus/db/engine.py` + `hippocampus/dao/chat_history.py` |
-| ContextManager：会话 / 历史 / 摘要 / 时间标注 / recall / 数据集 | ✅ `hippocampus/context/manager.py` |
-| 后台自管截断 + 摘要（渠道无感） | ✅ 每次 save_message 后自动触发 |
-| FTS5 全文搜索初始化 | ✅ AI Core 启动时 `init_fts()` |
-| HTTP 端点（turn-context / message / history / recall / clear / sessions） | ✅ `hippocampus/router.py`，挂 `/ctx` |
-| QQ Bot 完全委托（去掉开关，唯一路径） | ✅ `qwenOpenapi.py` / `emaid.py` / `reminder_scheduler.py` 改造 |
-| per-session 截断锁 + drop_count 边界保护 | ✅ 修复并发 IndexError |
-| 进程树杀修复（taskkill /F /T /PID） | ✅ `channel_manager.py`，Stop 后端口 8080 无残留 |
-| _monitor 误重启修复 | ✅ Windows `terminate()` 退出码 1 不再触发 `restart_on_crash` |
-
-### 接入后行为变更（已确认的差异）
-
-| 变更 | 说明 |
-|---|---|
-| 时间标注算法 | `.seconds` → `total_seconds()`（>1 天间隔正确显示，修正原 bug） |
-| 历史持久化 | 原 `create_task` 异步写 → `await` 串行写（保证顺序） |
-| 截断归属 | 原 QQ Bot 轮末触发 → hippocampus 后台自管 |
-| 数据集位置 | `qq_bot/MyDataset-*` → `ai_core/logs/datasets/MyDataset-*` |
-| `--reload` | 去掉（`nb run` 单进程，Stop 必干净） |
-
-### PBS（保留在 QQ Bot 侧，未迁）
-
-| 项 | 原因 |
-|---|---|
-| `message_buffer` / `group_locked` | 渠道编排，紧贴 QQ 事件循环 |
-| `processing_cache`（打断/abort） | 请求并发控制 |
-| `embedding_buffer` | 响应回填，下次请求带上 |
-| `build_status`（含游戏态） | 依赖未迁的游戏 DAO |
-| 导航 `steps` 状态机 | 待 Phase 3 |
-| 工具循环 `handle_llm_conversation` | 待 Phase 2 |
+AI Core（FastAPI + Vue Admin UI）是天童爱丽丝的统一 AI 后端，管理 QQ Bot / Bilibili / Unity / Chat 多渠道。
+当前已完成：上下文管理（hippocampus）、工具框架（registry + 22 个 builtin）、权限模型（capability allow/ask/deny + 按目录文件规则）、网页搜索（SearXNG + CDP 浏览器）。
 
 ---
 
-## ✅ 额外完成：表情统一（character expressions）
+## ✅ 已完成
 
-| 项 | 状态 |
-|---|---|
-| 表情映射收归 persona.extra（70 条 label→image+favor） | ✅ `persona.json` |
-| 表情图统一尺寸（480px 最长边） | ✅ `embedding/tendou_arisu/expression/image/` |
-| 表情图处理工具 | ✅ `ai_core/core/expression_image.py` |
-| 后端上传端点 + 供图端点 | ✅ `admin/routes.py` |
-| Chat 前端动态拉取 expressions + 兜底 | ✅ `ChatView.vue` |
-| QQ Bot 拉 persona expressions + 兜底 + favor 保留 | ✅ `emotion.py` |
+### Phase 1：上下文管理（hippocampus）
+- `ai_core/hippocampus/`：独立 chat_history DAO（WAL + FTS5）、ContextManager（会话/历史/摘要/时间标注/recall/数据集）、HTTP 端点挂 `/ctx`
+- QQ Bot 完全委托 hippocampus（去掉开关，唯一路径）
+- 并发安全修复（per-session 截断锁 + drop_count 边界保护 + 进程树杀 + monitor 误重启）
 
-### PBS（表情相关）
+### Phase 2：Agent 工具框架
+- **ToolRegistry + ToolDef schema**：`ai_core/tools/{schema,registry,permissions}.py`
+- **6 个工具组**（系统操作/网络检索/记忆召回/技能知识/提醒日程/游戏世界设定/测试）
+- **22 个 builtin 工具**：文件操作 7 个、终端 1 个、桌面 8 个、进程 3 个、技能 2 个、网页 2 个（web_search + access_website）、测试 1 个
+- **元数据驱动引导**：`_build_tool_guidance(channel, identity)` 按组/分类渲染系统提示词，用模型原生 `<tool_call>` 文本格式做 few-shot
+- **权限模型**：
+  - 全局能力 `allow/ask/deny`（权限管理页）
+  - 工作空间外文件：按目录规则（allow 自动 / deny 拒绝 / 无匹配弹窗）
+  - 弹窗四选项：允许本次 / 始终允许该目录 / 请求解释（LLM 解释操作）/ 拒绝
+- **文件工具 scope 参数**：`scope=workspace`（沙箱）/ `scope=system`（工作空间外，按目录规则授权）
+- **Chat 页面 agent loop**：client-side `runAgentLoop`，多轮工具调用 + 四选项确认弹窗 + `<tool_call>` 文本持久化
+- **网页搜索**：SearXNG（自部署 Docker，免 key，Bing 可用）+ 图片搜索
+- **网页访问**：CDP 浏览器管理器（真 Chrome 优先 + 反检测 + Playwright Chromium 兜底），`access_website(url, close, screenshot)`，动态内容等待 + 滚动 + `bring_to_front`
+- **builtin 工具仅下发给 chat 渠道**（`_BUILTIN_CHANNELS = {"chat"}`），不泄漏给 QQ/default
 
-| 项 | 说明 |
-|---|---|
-| 表情上传前端 UI | 后端 endpoint 已有，CharactersView 缺上传编辑界面 |
-| 图片尺寸微调 | 当前统一最长边 480，未来可能需要正方形画布 |
+### 表情统一
+- persona.extra expressions（70 条 label→image+favor）+ 480px 表情图
+- Chat 前端动态拉取 + QQ Bot 兜底
+
+### Bug 修复（本会话）
+- QQ Bot：reminder_scheduler hippo 导入、recall_memory 委托 hippocampus、`<think>` 切片 off-by-one、set_talker_name 列表名、area_map matcher、hikari_yo try/except、image_process 段类型 + @DeprecationWarning
+- DAO None 守卫：user.py / tomb.py / map.py（+ session.close）
+- AI Core：工具去重（list_skills/read_skill）、channel_manager restart 逻辑修复、chat 工具调用上下文 `<tool_call>` 文本持久化（对齐 QQ）
+- 前端：keep-alive 定时器泄漏（MonitorView/ChannelsView 改 onActivated/onDeactivated）、ChatView agent loop + 四选项弹窗
+- start.bat：CRLF 行尾 + `%ProgramFiles(x86)%` 括号陷阱 + `.installed` 门禁去除 + 无条件 pause + 日志
+- SearXNG：`SEARXNG_SECRET`（修崩溃）+ docker compose（修 Windows 挂载）+ 超时 10s（Bing 能返回）+ `docker rm -f` 自动重建
 
 ---
 
-## Phase 2：通用工具迁移
+## Phase A：知识管理与记忆系统
 
-**目标**：将 QQ Bot 的 14 个通用工具提取为 AI Core 的 Built-in Functions，在服务端统一执行。
+**目标**：让 AI 自主搜索、存储、检索知识，弥补被动 RAG 的不足。支持共享知识（所有用户）+ 个人记忆（per-user）。
 
-### 工具清单
+### 设计
 
-| # | 工具 | 参数 | 依赖 | 迁移难度 |
-|---|------|------|------|---------|
-| 1 | `search_on_internet` | query | Chrome/Playwright CDP (port 9222) | 中 |
-| 2 | `access_website` | url | Chrome/Playwright CDP | 中 |
-| 3 | `run_code_in_sandbox` | language, code | Docker (python:3.11-slim) | 中 |
-| 4 | `start_interactive_code` | language, code | Docker + persistent session | 高 |
-| 5 | `send_interactive_input` | user_input | Docker active session | 高 |
-| 6 | `close_current_session` | (none) | Docker active session | 低 |
-| 7 | `write_file` | filename, content | 文件系统 /game_workspace | 低 |
-| 8 | `list_code_files` | extension (optional) | 文件系统 | 低 |
-| 9 | `read_code_file` | filename | 文件系统 | 低 |
-| 10 | `git_command` | git_command | Git CLI + /game_workspace | 低 |
-| 11 | `recall_memory` | time_range, keywords, limit, context_lines | SQLite FTS5 (t_chat_history_fts) | 中（hippocampus 已有 recall） |
-| 12 | `set_reminder` | user_id, content, cron/remind_at | SQLite (t_reminder) + APScheduler | 高（需要渠道回调） |
-| 13 | `list_reminders` | user_id (optional) | SQLite | 低 |
-| 14 | `cancel_reminder` | reminder_id | SQLite + APScheduler | 低 |
+| 类型 | 存储位置 | 检索 | 现有基础 |
+|---|---|---|---|
+| 共享知识 | `embedding/_shared/knowledge/` | `process_embedding` 已自动搜 | ✅ `add_knowledge()` 增量写入已有 |
+| 个人记忆 | `embedding/_user_<QQ号>/memory/`（虚拟角色 + `memory` subject） | `process_embedding` 新增分支 | `memory` 在 VALID_SUBJECTS 白名单，`generate_vector` 支持任意 subject |
 
-### Built-in Function 注册机制
+**per-user 隔离方案**：把每个用户当成一个"虚拟角色"（`_user_<uid>`），零 schema 改动，复用现有 character/subject 架构。QQ 用 QQ号，Bilibili 用 B站账号，Chat 用 identity。
 
-```python
-# ai_core/tools/registry.py
-class ToolRegistry:
-    def register(name, schema, handler)
-    def list_tools() -> List[ToolDef]
-    def call_tool(name, arguments) -> str
+### 任务清单
 
-# 执行循环中的路由
-if name in mcp_names:       -> MCP 执行（已有）
-elif name in builtin_names:  -> Built-in 执行（新增）
-else:                        -> 透传给渠道客户端（已有）
+| # | 任务 | 依赖 | 详情 |
+|---|------|------|------|
+| A1 | 泛化增量写入函数 | — | 从 `embedding.py:add_knowledge(content, character)` 抽出 `add_to_subject(content, character, subject)`，去掉 subject 硬编码 `"knowledge"`。逻辑：读现有 .mem → append 新段落 → 增量 `idx.add(embeddings)` → 写回 index.faiss + materials.jsonl。不一致时 fallback 全量 `generate_vector` 重建。 |
+| A2 | `save_knowledge` 工具 | A1 | 参数：`content: str, scope: "shared"|"user" = "shared", tags: str = ""`。scope=shared → `add_to_subject(content, "_shared", "knowledge")`。scope=user → `add_to_subject(content, "_user_<uid>", "memory")`。tags 附加到 .mem 行尾 `##tag1##tag2`。capability `memory.write`，默认 allow（AI 完全自主）。新工具组 `记忆管理`。 |
+| A3 | `search_knowledge` 工具 | A1 | 参数：`query: str, scope: "shared"|"user"|"all" = "all"`。调 `vector_search(query, top_k, character, subject, instruct)` → 返回命中段落文本。scope=all 时分别搜 `_shared/knowledge` + `_user_<uid>/memory`，合并结果。capability `memory.read`，allow。 |
+| A4 | `delete_knowledge` 工具 | A1 | 参数：`line_text: str, scope: "shared"|"user" = "user"`。读对应 .mem → 删匹配行 → `generate_vector` 全量重建。用"按内容匹配删除"而非 row_id（更直观，AI 知道自己写了什么）。capability `memory.write`，allow。 |
+| A5 | per-user 虚拟角色创建 | A2 | `_user_<uid>` 目录按需创建（首次 save_knowledge scope=user 时）。`data_store.create_character("_user_<uid>")` 会预建所有 subject 目录。user_id 来源：QQ 传 QQ号，Chat 传 identity 字符串，Bilibili 传账号。 |
+| A6 | `process_embedding` 加 memory 搜索 | A5 | 当前 `process_embedding`（embedding.py:480）固定搜 `setting` + `_shared/knowledge`。新增第三步：搜 `_user_<uid>/memory`（top_k=3），拼进 `embeddings_text`。需把 user_id 传入 `process_embedding`（新增参数 `user_id: str = ""`）。 |
+| A7 | user_id 传播 | A5 | `ChatCompletionRequest` 加 `user_id: Optional[str] = ""` 字段。QQ Bot 的 `qwenOpenapi.py` 传 `user_id=event.user_id`。Chat 页面传 `user_id=identity`。chat_on_setting / chat_on_setting_stream 把 user_id 传给 `process_embedding`。工具通过 context var（类似 QQ Bot 的 `current_group_id`）获取当前 user_id。 |
+| A8 | UI 补 memory 管理 | A5 | CharactersView 的 subject 下拉加 `memory`（当前只有 setting/expression/knowledge）。character 列表（`list_kb_characters`）改为**不排除** `_user_*` 开头的目录（当前排除 `_` 开头），或单独加一个"个人记忆"入口。编辑/删除走现有 .mem 文件 CRUD + rebuild 流程。 |
+| A9 | 引导文案 | A2 | groups.py 的 `记忆管理` 组（或归入记忆召回组）加引导："学到了有价值的新知识时，调用 save_knowledge 保存到知识库。搜索后综合的信息也值得保存。过时的知识可以删除。" |
+
+### 搜索→学习→记忆完整流程
+```
+用户："山海经有什么新活动？"
+  ├─ AI: web_search → 5 条结果
+  ├─ AI: access_website(萌娘百科 URL) → 读全文
+  ├─ AI: save_knowledge("山海经近期活动：五尘降临...", scope="shared")
+  │     → 增量写入 _shared/knowledge 的 FAISS
+  ├─ AI: 回答用户
+  └─ 下次任何人问山海经 → process_embedding 自动命中 → 不用再搜
+
+用户："你还记得我上次说的那个策略吗？"
+  ├─ process_embedding 自动搜 _user_<uid>/memory → 命中
+  └─ AI 也能主动 search_knowledge(query, scope="user") 深挖
 ```
 
-### 依赖处理
-
-| 依赖 | 当前位置 | 迁移方案 |
-|------|---------|---------|
-| **Chrome/Playwright** | QQ Bot 进程中启动 | 迁移到 AI Core 进程，或作为独立服务 |
-| **Docker** | QQ Bot 进程中调用 | 迁移到 AI Core 进程（需确认 AI Core 进程能访问 Docker） |
-| **SQLite FTS5** | QQ Bot 的 `init_fts()` — 已迁 ✅ | AI Core 启动时初始化 |
-| **APScheduler** | QQ Bot 进程中运行 | 迁移到 AI Core 进程（提醒触发需要回调渠道） |
-| **文件系统** | QQ Bot 的 /game_workspace | 迁移到共享路径或 AI Core 管理 |
-| **Git CLI** | QQ Bot 调用 subprocess | AI Core 进程同样可调用 |
+### 风险与注意事项
+- `add_knowledge` 的增量写入需并发安全（单进程 asyncio.Lock，已有 `data_store._get_lock`）
+- `generate_vector` 全量重建是同步阻塞操作 → 必须 `asyncio.to_thread` 包裹
+- `.mem` 行格式：每行一条记录，行尾可附 `##tag1##tag2`
+- 虚拟角色目录会随用户数增长 → 可定期清理不活跃用户的记忆
 
 ---
 
-## Phase 3：游戏世界工具迁移
+## Phase B：RAG 多模态（图片支持）
 
-**目标**：将 7 个游戏世界工具迁移到 AI Core。
+**目标**：知识库支持图片——文本描述做向量检索，图片作为 sidecar payload 注入 LLM 视觉。不需要换多模态 embedding 模型。
 
-### 工具清单
+### 设计
 
-| # | 工具 | 参数 | 数据库表 | 特殊逻辑 |
-|---|------|------|---------|---------|
-| 1 | `move` | options (位置ID/E/H/S) | t_status, t_position | 多步导航状态机的一部分 |
-| 2 | `decide_area` | options | t_area, t_status | 返回 [EXIT_AREA]/[EXIT_SCHOOL]/area_id |
-| 3 | `decide_school` | options | t_school, t_status | 返回 school_id |
-| 4 | `take_railway` | options | t_position (station=1) | 火车站间移动 |
-| 5 | `update_alias` | user_id, alias_name | t_user | 设置用户昵称 |
-| 6 | `go_to_sleep` | rest_type, minutes | t_status | 进入睡眠/游戏模式，可选自动唤醒 |
-| 7 | `set_daily_schedule` | sleep_h/m, wake_h/m | t_status | 更新每日睡眠/唤醒时间表 |
+`MaterialRecord` 已有 `type="image"` + `media_ref` 字段（schema 就绪但未使用）。方案：
+- `.mem` 文件的一行可以包含**文本描述 + 图片引用**：`这是一张山海经高中的外观图 ##山海经##学校\n[image,file=shanhaijing.png]`
+- `generate_vector` 处理时：文本描述 → 向量化；图片路径 → `media_ref`
+- `process_embedding` 检索命中含图片的段落时，在返回文本里输出 `[image,file=xxx.png]` → `content_normalizer` 自动转视觉内容
+- 图片文件存 `embedding/<character>/<subject>/binaries/`
 
-### 导航状态机（关键逻辑）
+### 任务清单
 
-QQ Bot 的 `emaid.py` 中有一个 `steps` 状态变量控制三级导航：
+| # | 任务 | 依赖 | 详情 |
+|---|------|------|------|
+| B1 | `.mem` 格式扩展 | — | `_gather_paragraphs_from_mem`（embedding.py:146-179）增加解析 `[image,file=xxx]` 行：识别为 type="image" 的段落，text=前一行文本（描述），media_ref={"source": "xxx"}。图片文件在 `binaries/` 或 `image/` 目录。 |
+| B2 | `generate_vector` 处理图片行 | B1 | `build_paragraph_records` 已支持 type/media_ref 字段。向量仍用文本描述编码。图片文件路径存入 `MaterialRecord.media_ref`。 |
+| B3 | `process_embedding` 返回图片引用 | B2 | `find_material_by_index`（embedding.py:456）返回文本时，检查该段落是否有 media_ref；有则在文本末尾追加 `[image,file=<media_ref.source>]`。content_normalizer 会把它转成视觉内容。 |
+| B4 | `save_knowledge` 支持图片 | B1,A2 | 参数加 `image_path: str = ""`。save_knowledge 时如果有 image_path，在 .mem 里写两行：描述行 + `[image,file=<filename>]` 行。图片文件复制到 `binaries/`。 |
+| B5 | `access_website` 截图存入知识库 | B4 | AI 搜到有用网页 → `access_website` 截图 → `save_knowledge(content, image_path=screenshot_path)`。需要 access_website 把截图存到 workspace 而非只返回 base64。 |
+| B6 | 知识库管理 UI 支持图片 | B1 | SharedKnowledgeView / CharactersView 的 .mem 编辑器支持图片引用语法预览。上传图片到 binaries/。 |
 
-```
-steps=0: 正常移动（move 工具，选择同区域地点）
-         | 选择 E（退出区域）
-steps=1: 选择区域（decide_area 工具）
-         | 选择 E（退出学校）
-steps=2: 选择学校（decide_school 工具）
-         | 选择学校后
-steps=1: 回到选择区域
-         | 选择区域后
-steps=0: 回到正常移动
-```
-
-每一步会**动态切换可用工具列表**：`move_tool(steps, school_id, area_id)` 返回不同的工具定义。
-
-**迁移方案**：将 `steps` 状态纳入 session 或 tool engine 的状态管理。
-
-### 游戏世界状态（需要迁移的内存状态）
-
-QQ Bot 的 `status.py` 中有全局变量追踪可用目标：
-
-```python
-available_move_targets = []
-available_anchor_targets = []
-available_area_targets = []
-available_school_targets = []
-available_functions = ""
-```
-
-这些在 `move_position()` / `find_route()` 调用后更新，并在 `get_general_tools()` 中用于动态填充工具参数的 `{OPTIONS}` 占位符。
-
-**迁移方案**：纳入 AI Core 的游戏世界管理模块。
+### 注意事项
+- embedding 模型不变（`DMetaSoul/Dmeta-embedding`，文本 only）。文本描述驱动检索，图片是关联 payload。
+- `content_normalizer.py` 已支持 `[image,file=...]` → 视觉内容转换（read_file 已在用）。
+- 图片大小应控制（如 480px 最长边，同表情图标准），避免 embedding 目录膨胀。
 
 ---
 
-## Phase 4：QQ 专属工具 + 渠道回调
+## Phase C：游戏世界观工具迁移
 
-### sword_of_light（光之剑）
+**目标**：将 QQ Bot 的导航状态机 + 7 个游戏工具迁到 AI Core，保留多步导航的探索玩法。
 
-唯一需要 QQ API 的工具：
-- 写入 `t_tomb`（墓地表）— 可在 AI Core 执行
-- 调用 `bot.get_group_member_info()` 判断身份 — 需要 QQ API
-- 调用 `bot.set_group_ban()` 禁言 — 需要 QQ API
+### 核心挑战
 
-**方案**：AI Core 执行数据库操作，通过**渠道回调**通知 QQ Bot 执行禁言。
+1. **动态工具下发**：导航状态机每轮切换可用工具集（move/decide_area/decide_school），需要扩展 AI Core 的工具框架支持 per-session 动态工具。
+2. **全局变量→per-session**：QQ Bot 的 `available_move_targets` 等是模块级全局（无锁，并发不安全）。迁移后必须改成 per-session 返回值。
+3. **游戏 DB**：`t_status`（单例 Alice 位置/睡眠）、`t_position`/`t_area`/`t_school`（静态地图）、`t_user`（per-user 别名/好感）。用 SQLite WAL 共享，后续 qq_bot 游戏逻辑全迁 AI Core。
+4. **步内渲染**：每步移动在 QQ 里推一条合并转发消息 → 抽成渠道回调（非必须，可先不做）。
+
+### 任务清单
+
+| # | 任务 | 依赖 | 详情 |
+|---|------|------|------|
+| C1 | 动态工具下发框架扩展 | — | 当前 `_channel_builtin_tools(channel)` 返回静态工具集。扩展为支持 per-session 状态：session 持有 `steps`（0/1/2），`_channel_builtin_tools` 根据 steps 返回不同的导航工具 + 动态填充 options description。需要 session-scoped 工具状态存储（in-memory dict keyed by session_id，或 hippocampus session metadata）。 |
+| C2 | 导航状态机迁移 | C1 | 从 `emaid.py:handle_llm_conversation:1001-1078` 提取纯函数 `next_move_state(steps, feedback) -> (new_steps, tool_list, system_notice)`。feedback 值：`[EXIT_AREA]`→steps=1、`[EXIT_SCHOOL]`→steps=2、数字→下钻/回退。`move_tool(steps, school_id, area_id)` 逻辑搬过来。 |
+| C3 | move/decide_area/decide_school/take_railway | C2 | 4 个导航工具。逻辑从 `services.py:73-144` + `status.py:160-259` 提取为纯函数。`move_position(position_id)` 写 t_status。`find_route(steps, school_id, area_id)` 改为返回 `(options_list, desc)` 元组（不再写全局变量）。options 字母含义：E=退出区域/学校、H=回家(63)、S=去沙勒(10)、数字=具体地点ID。 |
+| C4 | 游戏 DAO 迁移 | — | `map.py`（Field/School/Area/Position 查询）、`status.py`（move_position/move_default_position/find_route/check_railway/get_status_description/load_sleep_state/save_sleep_state/load_schedule/save_schedule）的纯 DB 逻辑搬到 `ai_core/game/`。engine 连同一个 SQLite（WAL 模式）。 |
+| C5 | 游戏 DB 共享 | C4 | AI Core game engine 连 QQ Bot 的同一个 SQLite 文件（`SQLALCHEMY_DATABASE_URL`）。WAL 模式允许跨进程并发读+单写。后续 qq_bot 游戏逻辑全迁 AI Core 后，qq_bot 不再直接访问游戏 DB。 |
+| C6 | update_alias / go_to_sleep / set_daily_schedule | C4 | update_alias 写 t_user.alias。go_to_sleep 写 t_status（is_sleeping/sleep_phase）+ move_position(63)（回家）。set_daily_schedule 写 t_status（sleep/wake hour/minute）。 |
+| C7 | QQ 合并转发 → 渠道回调 | C3 | 导航步内渲染（emaid.py 的 send_system_forward）抽成回调。AI Core 返回 system_notice 文本，渠道决定是否渲染（QQ→合并转发、Chat→系统消息气泡、Web→折叠面板）。非必须，可先不渲染。 |
+| C8 | 游戏工具引导 | C3 | groups.py 的 `游戏世界设定` 组引导更新，说明 move 工具的 options 含义（E/H/S/数字）和导航流程。 |
+
+### 导航状态转移图
+```
+steps=0 [move: 选同区域地点 + E/H/S]
+   ├─ 数字 → move_position(数字) → DONE → steps=0
+   ├─ E → [EXIT_AREA] → steps=1
+   ├─ H → move_position(-2) → 回家 → DONE
+   └─ S → move_position(-3) → 去沙勒 → DONE
+
+steps=1 [decide_area: 选同校区区域 + E/H/S]
+   ├─ 数字 → move_default_position(0, area_id) → steps=0, move_tool(0, 0, area_id)
+   ├─ E → [EXIT_SCHOOL] → steps=2
+   └─ H/S → move_position(-2/-3) → DONE
+
+steps=2 [decide_school: 选校区 + H/S]
+   ├─ 数字 → move_default_position(school_id, 0) → steps=1, move_tool(1, school_id, 0)
+   └─ H/S → move_position(-2/-3) → DONE
+```
+
+---
+
+## Phase D：QQ Bot → AI Core 工具迁移
+
+**目标**：逐步将 QQ Bot 工具委托给 AI Core，QQ Bot 瘦身为薄桥接层。
+
+| # | 任务 | 依赖 | 详情 |
+|---|------|------|------|
+| D1 | QQ search 改调 AI Core `web_search` | — | QQ Bot 的 `services.py:search_on_internet` 改为 HTTP 调 AI Core 的 `/v1/tools/execute`（tool_name=web_search）。删 `online_search.py`。QQ 侧的搜索后处理（提取主题→摘要→合并转发）保留在 QQ 编排层，或也让 agent loop 做。 |
+| D2 | QQ access_website 改调 AI Core | D1 | 同理，`access_page_func` → HTTP 调 AI Core access_website。 |
+| D3 | reminder 系统迁移 | — | APScheduler 从 QQ Bot 迁到 AI Core。提醒触发时通过渠道回调通知 QQ 发消息。`t_reminder` 表迁到 AI Core 或共享 SQLite。 |
+| D4 | sleep 状态机迁移 | D3 | SLEEP_MODE/SLEEP_PHASE 全局变量 → AI Core 进程内状态（持久化到 t_status）。自动入睡/起床的 APScheduler 任务迁到 AI Core。 |
+| D5 | sword_of_light 渠道回调 | — | AI Core 写 t_tomb + 返回渠道动作指令（"禁言 user_id 10分钟"），QQ Bot 收到回调执行 set_group_ban。 |
+| D6 | QQ Bot 死代码清理 | D1-D5 | 删 chatglmOpenapi.py、init_fts、shorten_history、summarize_history、_conclude_summary。简化 emaid.py（移除已迁逻辑）。 |
 
 ### 渠道回调机制设计
-
 ```
-AI Core 执行工具 -> 产生渠道动作指令
-  |
-  v
-通过回调通知渠道执行特定动作：
-  - 禁言用户
-  - 发送图片/表情
-  - 发送语音
-  - 发送合并转发消息
+渠道启动 → 向 AI Core POST /v1/channels/register
+  {channel_id, callback_url, capabilities: ["send_message","ban_user","forward_msg"]}
 
-渠道注册时提供回调接口（后续设计）
-```
-
-### 未来目标
-
-**消息发送/接收也作为 tool call**：让 AI 通过 tool call 主动发送消息到渠道，而不是被动响应。这样 AI 可以：
-- 主动发起对话
-- 在工具执行过程中发送中间状态（如"正在搜索..."）
-- 同时向多个渠道发送消息
-
----
-
-## Phase 5：QQ Bot 瘦身
-
-工具和上下文管理迁移完成后，QQ Bot 简化为：
-
-```
-QQ Bot（薄桥接层）
-├── NoneBot2 消息接收
-├── 消息格式化（用户名、图片、@、回复链）
-├── 调用公共模块：
-│   ├── ContextManager.get_session(session_id)
-│   ├── ContextManager.save_message(...)
-│   └── 构建请求 -> POST /v1/chat/completions
-├── 响应处理：
-│   ├── 情绪标记 -> emoji 图片
-│   ├── CQ 码 -> QQ @ 消息
-│   ├── 长消息分段发送
-│   └── 语音合成（可选）
-├── 渠道回调接口（接收 AI Core 的动作指令）
-└── 睡眠模式管理（可能也迁到 AI Core）
-```
-
-**保留在 QQ Bot 中的功能**：
-- NoneBot2 框架 + OneBot V11 适配器
-- QQ 消息格式化（CQ 码解析、图片处理）
-- 表情映射（emotion.py）
-- 语音合成（voice.py）
-- 消息分段发送（_send_response）
-
-**迁移到公共模块的功能**：
-- ~~对话历史管理（Qwen 类的大部分逻辑）~~ ✅ 已迁
-- 工具调用循环（emaid.py 的 handle_llm_conversation）
-- 状态注入（build_status）
-- ~~数据集采集~~ ✅ 已迁
-- 提醒系统（reminder_scheduler.py）
-- 睡眠管理（sleep/wake）
-
----
-
-## 工具调用循环详细逻辑（从 emaid.py 提取）
-
-当前 QQ Bot 的工具调用循环（`handle_llm_conversation`）有以下特殊处理，需要在公共模块中保留：
-
-| 工具 | 特殊处理 |
-|------|---------|
-| `recall_memory` | 重置工具列表为 `get_general_tools()` |
-| `search_on_internet` | 提取搜索主题 -> 调用 assistant 端点生成 400 字摘要 -> 发送合并转发消息 -> 剥离 `<reference_url:...>` 标签 |
-| `move`/`decide_area`/`decide_school` | **导航状态机**：根据返回值（`[EXIT_AREA]`/`[EXIT_SCHOOL]`/数字）切换 `steps`，动态更新工具列表 |
-| `access_website` | 访问失败时发送"网络不佳"提示 |
-| 其他工具 | 重置工具列表为 `get_general_tools()`，长结果发送合并转发消息 |
-
-**每轮循环的完整流程**：
-1. 执行工具，获取 feedback
-2. 特殊路由（上表）
-3. 重建 status（时间/位置可能变化）
-4. 调用 `send_feedback()` 将 observation 反馈给 LLM
-5. LLM 返回新的 text 和/或 function_call
-6. 如果有 text -> 发送响应
-7. 如果 finish_reason 仍为 function_call -> 继续循环
-8. 最多 6 轮（1 次初始调用 + 5 次反馈调用）
-
----
-
-## 文件结构（现状）
-
-```
-ai_core/
-├── hippocampus/                       ← 上下文模块（替代原计划 shared/）
-│   ├── db/engine.py                   ← 裸 sqlite3 引擎（WAL）
-│   ├── dao/chat_history.py            ← 独立 chat_history DAO + FTS5
-│   ├── context/session.py             ← Session 数据模型
-│   ├── context/manager.py             ← ContextManager
-│   ├── context/summarizer.py          ← 摘要（LLM 回调注入）
-│   ├── context/dataset.py             ← 数据集采集
-│   └── router.py                      ← /ctx HTTP 端点
-├── core/
-│   ├── expression_image.py            ← 表情图处理工具（缩放/路径/URL）
-│   └── channel_manager.py             ← 进程树杀修复
-├── embedding/tendou_arisu/
-│   ├── persona.json                   ← expressions 映射（70 条）+ image_size
-│   └── expression/image/              ← 15 张统一 480px 表情图
-└── web/src/views/ChatView.vue         ← 动态拉取 expressions + 兜底
-
-qq_bot/src/
-├── skills/hippocampus_client.py       ← aiohttp HTTP 客户端
-└── plugins/
-    ├── qwenOpenapi.py                 ← Qwen 完全委托 hippocampus
-    ├── emaid.py                       ← await add_user_message_to_history + 截断 no-op
-    ├── reminder_scheduler.py          ← hippo.list_sessions 选群
-    └── emotion.py                     ← 拉 persona expressions + 兜底 + favor 保留
+AI Core 执行工具产生渠道动作 → POST callback_url
+  {action: "ban_user", user_id, duration}
+  {action: "send_message", content, segments}
+  {action: "send_forward", nodes[]}
 ```
 
 ---
 
-## 实施顺序
+## Phase E：文档（面向开放给其他用户）
 
-```
-✅ Phase 1: 上下文管理模块
-   ✅ 1.1 独立 chat_history DAO + 引擎
-   ✅ 1.2 ContextManager（会话、历史、摘要、时间标注）
-   ✅ 1.3 QQ Bot 完全委托 hippocampus（去掉开关，唯一路径）
-
-✅ 额外：表情统一
-   ✅ persona.extra expressions + 480px 表情图 + QQ/Chat 双端打通
-
-Phase 2: 通用工具迁移（低依赖的先做）
-   2.1 文件操作工具（write/list/read_file, git_command）
-   2.2 记忆召回（recall_memory）— hippocampus 已有
-   2.3 代码沙箱（run_code_in_sandbox, interactive_code）
-   2.4 网页搜索（search_on_internet, access_website）
-   2.5 提醒系统（set/list/cancel_reminder + APScheduler 迁移）
-
-Phase 3: 游戏世界工具
-   3.1 导航状态机迁移
-   3.2 move/decide_area/decide_school/take_railway
-   3.3 update_alias, go_to_sleep, set_daily_schedule
-
-Phase 4: 渠道回调 + QQ 专属
-   4.1 设计渠道回调接口
-   4.2 sword_of_light 迁移
-   4.3 提醒触发通知渠道
-   4.4 睡眠模式管理迁移
-
-Phase 5: QQ Bot 瘦身
-   5.1 移除已迁移的代码
-   5.2 简化 emaid.py
-   5.3 简化 qwenOpenapi.py
-   5.4 验证所有功能正常
-```
+| # | 任务 | 详情 |
+|---|------|------|
+| E1 | README 重写 | 项目简介 + 一键启动 + **前置依赖矩阵**（核心 vs 每个可选功能各自需要什么、怎么装）。中文为主。 |
+| E2 | 前置依赖矩阵 | 核心必需：Python 3.10+ / Node 18+（start.bat 自动装）。可选：Docker（SearXNG + 代码沙箱）/ Chrome（CDP 浏览器）/ Playwright Chromium（无 Chrome 时兜底，自动装）/ OneBot 实现（QQ）/ B站开放平台 API / Unity 构建 / OCR HTTP 服务 / TTS VITS 服务 / LLM provider（vllm/远程）。每项写清"要什么、装了能干什么、不装会怎样（优雅降级）"。 |
+| E3 | 修过时文档 | ai_core/README.md（"Gradio"→"Vue SPA"）。qq_bot/README.md 重写（当前是 nb create 模板废稿）。 |
+| E4 | 各渠道配置指南 | QQ：OneBot WS URL、master_id、bot_id、.env 配置。Bilibili：开放平台 API 密钥。Unity：settings.json（WebSocket URL、TTS 地址）。 |
+| E5 | start 脚本注释 | 可选步骤（SearXNG/Playwright/Chromium）标注"不需要可跳过"。Docker 未安装时的提示信息。 |
+| E6 | vllm 配置说明 | `--enable-auto-tool-choice --tool-call-parser qwen3_coder` 必须带。embedding 模型路径。端口配置。 |
 
 ---
 
-## 其他待办
+## Phase F：基础设施优化
 
-- [ ] `chatglmOpenapi.py` 清理（已弃用，可删除或标记 deprecated）
-- [ ] `qwenOpenapi.py` 死代码清理（`_conclude_summary` 等不再被调用）
-- [ ] `emaid.py` `init_fts()` 移除（hippocampus 已自管）
-- [ ] 表情上传前端 UI（CharactersView 加 expression 编辑界面）
-- [ ] 摘要方式优化（保留更多信息）
-- [ ] 表情图尺寸微调（可能需要正方形画布而非最长边等比）
-- [ ] Unity 项目目录 `unity/settings.json`（旧副本）清理
-- [ ] 项目打包/发布方案（Unity 二进制通过 GitHub Releases）
-- [ ] QQ Bot `.env` 中 `IMGROOT` 死配置清理
+| # | 任务 | 详情 |
+|---|------|------|
+| F1 | SearXNG 代理动态检测 | start 脚本探测 localhost:7897（或可配端口）→ 有代理时挂载带代理的 settings.yml（`outgoing.proxies`），没代理时用直连（Bing only）。两个 settings 文件 + compose override。 |
+| F2 | access_website 流式标签过滤 | `<tool_call>` 标签在 streaming 时短暂闪现给前端。backend 端加 tag 感知过滤：检测到 `<tool_call>` 开头时停止 yield content delta，直到 `</tool_call>` 闭合。 |
+| F3 | start 脚本跨平台 Chrome 检测 | mac/linux 的 Chrome 路径检测完善（当前只写了 Windows + 基本的 mac/linux）。 |
+| F4 | requirements.txt 清理 | 移除死依赖 `gradio>=5.0`（ai_core/requirements.txt）。根目录和 ai_core 两份 requirements 统一或明确分工。 |
+| F5 | qq_bot 死代码清理 | chatglmOpenapi.py（整文件删除）、chat_history.py 的 init_fts/save_chat_record/load_recent_history（无人调用）、functions.py 的 func_move_random/func_walk/search_for_item、voice.py 废弃函数、user_status_process.py（整文件无引用）。 |
+| F6 | ChatView streamChat 捕获 `delta.tool_calls` | 当前只捕获 `delta.function_call`（legacy 单数）。加 `delta.tool_calls`（数组格式）兜底，防 vllm 新版格式变化。 |
+| F7 | index.html 缓存控制 | main.py 的 /admin 响应加 `Cache-Control: no-cache`，避免部署后用户拿到旧前端。 |
+| F8 | hippocampus 端点鉴权 | 生产环境 `/ctx` 端点可能需要 Basic Auth 或 token（当前完全无鉴权）。 |
+
+---
+
+## 其他待办（杂项）
+
+- [ ] 表情上传前端 UI（CharactersView 加 expression 编辑界面 + 图片上传）
+- [ ] 摘要方式优化（保留更多信息，当前 hippocampus 摘要较粗略）
+- [ ] Chat 页面 `max_tokens` 参数从 persona 的 `max_chat_len` 读取而非硬编码 15000
+- [ ] Unity 项目打包/发布方案（GitHub Releases）
 - [ ] 渠道配置编辑器的 `.env.prod` 写入测试验证
 - [ ] Request Monitor 的 `SyntaxError: 2` 控制台噪音排查
-- [ ] Chat 页面 `max_tokens` 参数可能需要从 persona 的 `max_chat_len` 读取而非 inference config
-- [ ] 浏览器缓存问题：考虑给 index.html 加 `Cache-Control: no-cache` 响应头
-- [ ] hippocampus 端点鉴权（生产环境 `/ctx` 可能需要 Basic Auth 或 token）
-- [ ] QQ Bot `--reload` 已去掉，需确认 channels.json（运行时）同步（gitignored，已手动改）
 
 ---
 
@@ -362,69 +238,40 @@ Phase 5: QQ Bot 瘦身
 
 ```
 main:    80553f4  <- 最后推送的稳定版本
-develop: 4e13429  <- 当前工作分支（Phase 1 完成 + 表情统一 + Chat 会话持久化 + 修复）
+develop: 当前工作分支（Phase 1 + Phase 2 工具框架 + 权限模型 + 网页搜索 + 大量修复）
+```
 
 ---
 
-## Phase 2：Agent 工具框架（设计已完成，待实施）
-
-### 目标
-把 AI Core 做成一个 Agent，拥有统一的工具注册表 + 权限模型 + 完整执行循环。
-工具从 Chat 页面发起，QQ 等渠道不可用。
-
-### 工具注册表（`ai_core/tools/`）
+## 实施顺序（推荐）
 
 ```
-ai_core/tools/
-├── __init__.py
-├── schema.py            ToolDef / ToolResult / ToolPermission / ToolContext
-├── registry.py          ToolRegistry 单例 (register / list / call)
-├── permissions.py       权限检查 + PendingManager 确认队列
-└── builtin/
-    ├── filesystem.py     文件操作 (read/write/edit/list/search/delete)
-    ├── terminal.py       终端命令 (白名单/黑名单)
-    ├── desktop.py        桌面截屏/点击/滚轮/键盘 (pyautogui+pywin32)
-    └── process.py        进程管理 (list/get/kill)
+✅ Phase 1: 上下文管理（hippocampus）
+✅ Phase 2: Agent 工具框架 + 22 个 builtin + 权限 + 网页搜索
+
+Phase A: 知识管理与记忆系统
+   A1 泛化 add_to_subject
+   A2-A4 save_knowledge / search_knowledge / delete_knowledge 工具
+   A5-A7 per-user 虚拟角色 + process_embedding + user_id 传播
+   A8-A9 UI + 引导
+
+Phase B: RAG 多模态（图片）
+   B1-B3 .mem 格式扩展 + generate_vector + process_embedding 返回图片
+   B4-B6 save_knowledge 支持图片 + 截图存知识 + UI
+
+Phase C: 游戏世界观工具
+   C1 动态工具框架扩展
+   C2-C3 导航状态机 + move/decide 工具
+   C4-C6 游戏 DAO + DB + 其余工具
+   C7 合并转发→回调（可后置）
+
+Phase D: QQ Bot → AI Core 迁移
+   D1-D2 搜索/访问改调 AI Core
+   D3-D4 提醒/睡眠迁移
+   D5 sword_of_light 回调
+   D6 QQ Bot 瘦身
+
+Phase E: 文档（随时可做，建议 Phase A 完成后）
+
+Phase F: 基础设施（穿插进行）
 ```
-
-### 工具清单
-
-| 类别 | 工具 | 权限 | 依赖 |
-|---|---|---|---|
-| 文件读 | read_file, list_directory, search_files, search_content | filesystem:read | os |
-| 文件写 | write_file, edit_file, delete_file | filesystem:write（需确认） | os |
-| 终端 | terminal_command | terminal:exec（需确认） | subprocess |
-| 桌面读 | screenshot, list_windows, get_active_window | desktop:read | pyautogui |
-| 桌面控制 | click, type_text, scroll, press_keys, drag | desktop:control（需确认） | pyautogui/pywin32 |
-| 进程读 | list_processes, get_process_info | process:read | os |
-| 进程控制 | kill_process | process:write（需确认） | os |
-
-### 权限模型
-- 读操作 → 自动通过
-- 写/控制/终端操作 → 人工确认（Chat 页面弹窗 / 桌面托盘系统弹窗）
-- WebUI 权限管理页：设置工具免审核白名单（离线时生效）
-
-### 执行流程
-
-```
-用户发消息 → POST /v1/chat/completions (非流式, tools 注入)
-  → LLM 返回 function_call
-  → 读类工具 → 直接 POST /v1/tools/execute → 追加结果 → 继续
-  → 写/控制类 → 前端弹确认窗 → 用户允许/拒绝 → 执行/跳过 → 继续
-```
-
-### 分阶段
-
-| 阶段 | 内容 |
-|---|---|
-| 2.0 | ToolRegistry 骨架 + echo 测试工具 + Agent Loop 集成 + POST /v1/tools/execute |
-| 2.1 | 文件工具 (filesystem.py: 7个) + 终端命令 (terminal.py) + 工作区隔离 |
-| 2.2 | Chat 前端 inline 确认弹窗 |
-| 2.3 | 桌面截屏 + 进程管理 + 桌面托盘程序 |
-| 2.4 | WebUI 权限管理页（免审核白名单） |
-| Phase 4 | QQ 渠道回调入口 + hybrid 工具 (sword_of_light 等) |
-
-### 渠道回调框架（预留）
-- 渠道启动时向 AI Core 注册 callback_url + capabilities
-- 混合工具（hybrid）：AI Core 执行 DB 部分, 回调渠道执行 QQ API 部分
-- 桌面托盘确认程序也走回调框架
