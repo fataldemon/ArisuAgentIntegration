@@ -207,37 +207,38 @@ function renderEntry(entry: MonitorEntry): string {
   }
 
   const messages: any[] = req.messages || []
-  let lastUserIdx = -1
-  for (let i = messages.length - 1; i >= 0; i--) {
-    if (messages[i]?.role === 'user') { lastUserIdx = i; break }
-  }
-
-  const historyMsgs = lastUserIdx >= 0 ? messages.slice(0, lastUserIdx) : messages
-  const latestMsg = lastUserIdx >= 0 ? messages[lastUserIdx] : null
+  // LATEST = the last message in the context (any role) — i.e. what the model
+  // is actually responding to. Previously this picked the last *user* message,
+  // which in a multi-tool turn was the original question, not the tool result.
+  const latestMsg = messages.length > 0 ? messages[messages.length - 1] : null
+  const historyMsgs = latestMsg ? messages.slice(0, messages.length - 1) : messages
 
   lines.push(sRaw(C_HEAD, '&gt;&gt;&gt; HISTORY', true))
   if (historyMsgs.length > 0) {
     for (const msg of historyMsgs) {
       const role = msg.role || '?'
       const toolCalls: any[] = msg.tool_calls || []
+      const fnCall = msg.function_call
       const text = msgText(msg)
-      const text1l = text.replace(/\n/g, '\\n').replace(/\r/g, '')
-
       if (toolCalls.length > 0) {
         for (const tc of toolCalls) {
           const fc = tc.function || {}
-          const tcName = fc.name || '?'
-          const tcArgs = (typeof fc.arguments === 'string' ? fc.arguments : JSON.stringify(fc.arguments || '')).substring(0, 100)
+          const tcArgs = typeof fc.arguments === 'string' ? fc.arguments : JSON.stringify(fc.arguments || '')
           lines.push(
-            sRaw(C_TOOL, `    [${esc(role)} \u2192 tool_call: ${esc(tcName)}]`) +
+            sRaw(C_TOOL, `    [${esc(role)} \u2192 tool_call: ${esc(fc.name || '?')}]`) +
             '  ' + s(C_TEXT, tcArgs)
           )
         }
-        if (text1l) {
-          lines.push(sRaw(C_META, `    [${esc(role)}]`) + '  ' + s(C_TEXT, text1l))
-        }
-      } else {
-        lines.push(sRaw(C_META, `    [${esc(role)}]`) + '  ' + s(C_TEXT, text1l))
+      } else if (fnCall) {
+        const tcArgs = typeof fnCall.arguments === 'string' ? fnCall.arguments : JSON.stringify(fnCall.arguments || '')
+        lines.push(
+          sRaw(C_TOOL, `    [${esc(role)} \u2192 tool_call: ${esc(fnCall.name || '?')}]`) +
+          '  ' + s(C_TEXT, tcArgs)
+        )
+      }
+      if (text) {
+        // Verbatim — CSS white-space:pre renders newlines naturally.
+        lines.push(sRaw(C_META, `    [${esc(role)}]`) + '  ' + s(C_TEXT, text))
       }
     }
   } else {
@@ -245,11 +246,31 @@ function renderEntry(entry: MonitorEntry): string {
   }
 
   if (latestMsg) {
-    const latestText = msgText(latestMsg)
     const roleLabel = latestMsg.role || '?'
-    const indented = latestText.split('\n').join('\n    ')
+    const latestText = msgText(latestMsg)
     lines.push(sRaw(C_HEAD, '&gt;&gt;&gt; LATEST MESSAGE', true))
-    lines.push(sRaw(C_META, `    [${esc(roleLabel)}]`) + '  ' + s(C_TEXT, indented))
+    const lToolCalls: any[] = latestMsg.tool_calls || []
+    const lFnCall = latestMsg.function_call
+    if (lToolCalls.length > 0) {
+      for (const tc of lToolCalls) {
+        const fc = tc.function || {}
+        const tcArgs = typeof fc.arguments === 'string' ? fc.arguments : JSON.stringify(fc.arguments || '')
+        lines.push(
+          sRaw(C_TOOL, `    [${esc(roleLabel)} \u2192 tool_call: ${esc(fc.name || '?')}]`) +
+          '  ' + s(C_TEXT, tcArgs)
+        )
+      }
+    } else if (lFnCall) {
+      const tcArgs = typeof lFnCall.arguments === 'string' ? lFnCall.arguments : JSON.stringify(lFnCall.arguments || '')
+      lines.push(
+        sRaw(C_TOOL, `    [${esc(roleLabel)} \u2192 tool_call: ${esc(lFnCall.name || '?')}]`) +
+        '  ' + s(C_TEXT, tcArgs)
+      )
+    }
+    if (latestText) {
+      const indented = latestText.split('\n').join('\n    ')
+      lines.push(sRaw(C_META, `    [${esc(roleLabel)}]`) + '  ' + s(C_TEXT, indented))
+    }
   }
 
   lines.push(sRaw(C_SEP, esc(SEP_SHORT)))
@@ -283,8 +304,8 @@ function renderEntry(entry: MonitorEntry): string {
     for (const fc of functionCalls) {
       const fcName = fc.name || '?'
       const fcArgs = typeof fc.arguments === 'string'
-        ? fc.arguments.substring(0, 200)
-        : JSON.stringify(fc.arguments || '').substring(0, 200)
+        ? fc.arguments
+        : JSON.stringify(fc.arguments || '')
       lines.push(s(C_TOOL, `    \u2192 ${fcName}(${fcArgs})`))
     }
   }
@@ -299,10 +320,7 @@ function renderEntry(entry: MonitorEntry): string {
       '</summary>'
     )
     for (let i = 0; i < rawEvents.length; i++) {
-      let evStr = JSON.stringify(rawEvents[i], null, 0)
-      if (evStr.length > 500) {
-        evStr = evStr.substring(0, 500) + `  ... (${JSON.stringify(rawEvents[i]).length} chars)`
-      }
+      const evStr = JSON.stringify(rawEvents[i], null, 0)
       lines.push(sRaw(C_META, `    [${i + 1}]`) + '  ' + s(C_RAW, evStr))
     }
     lines.push('</details>')

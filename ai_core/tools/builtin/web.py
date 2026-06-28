@@ -84,7 +84,7 @@ async def _web_search(query: str, max_results: int = 5) -> str:
             messages=[ChatMessage(role="user", content=raw + _SUMMARY_INSTRUCTION.format(q=query))],
             type=1,
         )
-        choice = await chat(request=req, max_tokens=2000, index=0)
+        choice = await chat(request=req, max_tokens=2000)
         summary = (choice.message.content or "").strip()
         if summary:
             return summary

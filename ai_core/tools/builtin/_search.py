@@ -125,45 +125,69 @@ async def _open_and_scroll(context, pages, url, wait_until="networkidle", timeou
 
 async def _extract_moegirl(context, pages, url) -> str:
     p = await _open_and_scroll(context, pages, url)
-    info = ""
-    box = await p.query_selector(".mw-parser-output >> .moe-infobox")
-    if box:
-        info += f"根据萌娘百科{url}提供的信息如下：\n{(await box.text_content() or '').replace(chr(10)*3, '')}\n"
-    locs = await p.query_selector_all(
-        ".mw-parser-output > h2:not(table *), .mw-parser-output > h3:not(table *), "
-        ".mw-parser-output > h4:not(table *), .mw-parser-output > p:not(table *), "
-        ".mw-parser-output > ul:not(table *)"
-    )
-    body = "".join((await loc.text_content() or "").replace("\n\n", "") + "\n" for loc in locs)
-    return info + body if (info or body).strip() else ""
+    try:
+        info = ""
+        box = await p.query_selector(".mw-parser-output >> .moe-infobox")
+        if box:
+            info += f"根据萌娘百科{url}提供的信息如下：\n{(await box.text_content() or '').replace(chr(10)*3, '')}\n"
+        locs = await p.query_selector_all(
+            ".mw-parser-output > h2:not(table *), .mw-parser-output > h3:not(table *), "
+            ".mw-parser-output > h4:not(table *), .mw-parser-output > p:not(table *), "
+            ".mw-parser-output > ul:not(table *)"
+        )
+        body = "".join((await loc.text_content() or "").replace("\n\n", "") + "\n" for loc in locs)
+        return info + body if (info or body).strip() else ""
+    finally:
+        try:
+            await p.close()
+        except Exception:
+            pass
 
 
 async def _extract_baike(context, pages, url) -> str:
     p = await _open_and_scroll(context, pages, url)
-    summary_el = await p.query_selector(".J-summary")
-    summary = (await summary_el.text_content() or "") if summary_el else ""
-    box_el = await p.query_selector(".J-basic-info")
-    brief = (await box_el.text_content() or "") if box_el else ""
-    body = f"根据百度百科{url}提供的信息如下：\n{brief}\n{summary}\n"
-    return body if body.strip() else ""
+    try:
+        summary_el = await p.query_selector(".J-summary")
+        summary = (await summary_el.text_content() or "") if summary_el else ""
+        box_el = await p.query_selector(".J-basic-info")
+        brief = (await box_el.text_content() or "") if box_el else ""
+        body = f"根据百度百科{url}提供的信息如下：\n{brief}\n{summary}\n"
+        return body if body.strip() else ""
+    finally:
+        try:
+            await p.close()
+        except Exception:
+            pass
 
 
 async def _extract_wiki(context, pages, url) -> str:
     p = await _open_and_scroll(context, pages, url)
-    locs = await p.query_selector_all(
-        ".mw-parser-output > h2:not(table *), .mw-parser-output > h3:not(table *), "
-        ".mw-parser-output > h4:not(table *), .mw-parser-output > p:not(table *), "
-        ".mw-parser-output > ul:not(table *)"
-    )
-    body = "".join((await loc.text_content() or "") + "\n" for loc in locs)
-    return (f"根据Wikipedia{url}提供的信息如下：\n" + body) if body.strip() else ""
+    try:
+        locs = await p.query_selector_all(
+            ".mw-parser-output > h2:not(table *), .mw-parser-output > h3:not(table *), "
+            ".mw-parser-output > h4:not(table *), .mw-parser-output > p:not(table *), "
+            ".mw-parser-output > ul:not(table *)"
+        )
+        body = "".join((await loc.text_content() or "") + "\n" for loc in locs)
+        return (f"根据Wikipedia{url}提供的信息如下：\n" + body) if body.strip() else ""
+    finally:
+        try:
+            await p.close()
+        except Exception:
+            pass
 
 
 async def _extract_generic(context, pages, url) -> str:
     # Robust: networkidle + scroll + inner_text, trafilatura fallback.
     p = await _open_and_scroll(context, pages, url, wait_until="networkidle", timeout=30000)
-    text = await _robust_text(p)
-    return f"根据网站{url}提供的信息：\n{text}\n" if text.strip() else ""
+    try:
+        text = await _robust_text(p)
+        return f"根据网站{url}提供的信息：\n{text}\n" if text.strip() else ""
+    finally:
+        try:
+            await p.close()
+        except Exception:
+            pass
 
 
 async def _deep_dive(context, results: List[Dict], pages: List, target: int) -> str:
