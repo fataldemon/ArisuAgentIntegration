@@ -1,0 +1,4 @@
+# Ensure Windows batch files always use CRLF and shell scripts use LF,
+# regardless of git config or editor settings.
+*.bat text eol=crlf
+*.sh  text eol=lf

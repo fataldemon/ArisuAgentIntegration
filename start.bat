@@ -6,6 +6,7 @@ cd /d "%~dp0"
 echo ========================================
 echo   ArisuAgentIntegration Launcher
 echo ========================================
+echo [%date% %time%] Start
 echo.
 
 where python >nul 2>&1
@@ -44,9 +45,10 @@ venv\Scripts\python.exe -m pip install -r requirements.txt
 if %errorlevel% neq 0 (echo [ERROR] AI Core pip install failed. & pause & exit /b 1)
 
 :: ---------- Chromium for the CDP browser (only if no system Chrome) ----------
+set "PF86=%ProgramFiles(x86)%"
 set "HAS_CHROME="
 if exist "%ProgramFiles%\Google\Chrome\Application\chrome.exe" set "HAS_CHROME=1"
-if exist "%ProgramFiles(x86)%\Google\Chrome\Application\chrome.exe" set "HAS_CHROME=1"
+if exist "%PF86%\Google\Chrome\Application\chrome.exe" set "HAS_CHROME=1"
 if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "HAS_CHROME=1"
 if not defined HAS_CHROME (
     echo [Browser] No system Chrome found; installing Playwright Chromium for web tools ...
@@ -122,8 +124,9 @@ echo ========================================
 echo.
 venv\Scripts\python.exe run.py
 
-if %errorlevel% neq 0 (
-    echo.
-    echo [ERROR] AI Core exited with code %errorlevel%.
-    pause
-)
+echo.
+echo [%date% %time%] AI Core exited (code %errorlevel%).
+echo ========================================
+echo Press any key to close this window.
+echo ========================================
+pause >nul
