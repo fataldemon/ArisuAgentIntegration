@@ -91,16 +91,32 @@ async def _access_website(url: str, close: bool = True, screenshot: bool = True)
     context = contexts[0] if contexts else await browser.new_context()
     page = await context.new_page()
     try:
-        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        await page.goto(url, wait_until="networkidle", timeout=30000)
+        # Scroll to trigger lazy-loaded content (JS-heavy sites like GameKee)
+        for _ in range(3):
+            await page.evaluate('window.scrollTo(0, document.body.scrollHeight)')
+            await page.wait_for_timeout(2000)
+        # Always bring to front so the user can see what's being accessed
+        try:
+            await page.bring_to_front()
+        except Exception:
+            pass
         title = await page.title()
-        html = await page.content()
 
+        # Use rendered inner_text as primary (captures JS-rendered content);
+        # fall back to trafilatura on raw HTML for static sites.
         text = ""
         try:
-            import trafilatura
-            text = await asyncio.to_thread(trafilatura.extract, html) or ""
-        except Exception:
             text = await page.inner_text("body")
+        except Exception:
+            pass
+        if not text or len(text) < 100:
+            try:
+                import trafilatura
+                html = await page.content()
+                text = await asyncio.to_thread(trafilatura.extract, html) or ""
+            except Exception:
+                text = ""
         text = (text or "")[:4000]
 
         links = []
@@ -126,10 +142,6 @@ async def _access_website(url: str, close: bool = True, screenshot: bool = True)
                 out += f"\n（截图失败：{e}）"
 
         if not close:
-            try:
-                await page.bring_to_front()
-            except Exception:
-                pass
             out += "\n\n（页面已在浏览器中为你打开，未关闭。）"
         return out
     except Exception as e:
