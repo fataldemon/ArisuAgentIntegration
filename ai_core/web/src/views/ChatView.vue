@@ -1632,11 +1632,15 @@ onMounted(() => {
 }
 
 .user-image {
+  display: inline-block;
+  margin: 4px 0;
+}
+
+.user-image :deep(img) {
   max-width: 220px;
   max-height: 220px;
   border-radius: 8px;
   display: block;
-  margin: 4px 0;
 }
 
 .emotion-tags {
