@@ -1177,10 +1177,21 @@ function buildRequestMessages(): any[] {
       content = `${ts} ${body}`
     }
     if (i + 1 < msgs.length && msgs[i + 1].role === 'tool_result' && (msgs[i + 1] as any).toolName) {
+      // Emit the standard structured function_call field (not inline <function=>
+      // text) so the backend's _prepare_messages converts it to tool_calls and
+      // the serving layer renders whatever tool-call format the model expects.
       const tc = msgs[i + 1] as any
-      content += '\n' + formatToolCallText(tc.toolName, tc.toolArgs || {})
+      result.push({
+        role: 'assistant',
+        content,
+        function_call: {
+          name: tc.toolName,
+          arguments: JSON.stringify(tc.toolArgs || {}),
+        },
+      })
+    } else {
+      result.push({ role: m.role, content })
     }
-    result.push({ role: m.role, content })
   }
   return result
 }
