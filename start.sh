@@ -70,27 +70,6 @@ npm install
 npm run build
 cd "$SCRIPT_DIR"
 
-# --- SearXNG (optional, powers web_search) ---
-if command -v docker &> /dev/null; then
-    echo
-    echo "[SearXNG] Starting via docker compose ..."
-    docker rm -f searxng > /dev/null 2>&1 || true
-    docker compose -f docker-compose.yml up -d searxng > /dev/null 2>&1 || true
-    echo "[SearXNG] Waiting for readiness ..."
-    for i in $(seq 1 30); do
-        if curl -sf -o /dev/null --max-time 2 "http://localhost:8888/healthz"; then
-            echo "[OK] SearXNG ready on http://localhost:8888"
-            break
-        fi
-        if [ "$i" -eq 30 ]; then
-            echo "[WARN] SearXNG not ready after ~30s; web_search may fail until it finishes booting."
-        fi
-        sleep 1
-    done
-else
-    echo "[SKIP] Docker not found - SearXNG (web search) disabled. Install Docker to enable web_search."
-fi
-
 echo
 echo "========================================"
 echo "[RUN] Starting AI Core ..."

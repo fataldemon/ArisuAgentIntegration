@@ -1,5 +1,0 @@
-# SearXNG has been retired — web_search now uses a real browser (DuckDuckGo,
-# with Bing as fallback) driving the shared Chrome via _browser.py, matching
-# the QQ bot's search quality. This file is kept as an empty stub so
-# `docker compose` commands still work if other services are added later.
-services: {}

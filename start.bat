@@ -89,32 +89,6 @@ call npm run build
 if %errorlevel% neq 0 (echo [ERROR] npm build failed. & popd & pause & exit /b 1)
 popd
 
-:: ---------- SearXNG (optional, powers web_search) ----------
-where docker >nul 2>&1
-if %errorlevel% neq 0 goto :searx_skip
-echo.
-echo [SearXNG] Starting via docker compose ...
-docker rm -f searxng >nul 2>&1
-docker compose -f docker-compose.yml up -d searxng >nul 2>&1
-echo [SearXNG] Waiting for readiness ...
-set /a _w=0
-:searx_wait
-powershell -NoProfile -Command "try{if((Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 'http://localhost:8888/healthz').StatusCode -eq 200){exit 0}else{exit 1}}catch{exit 1}" >nul 2>&1
-if %errorlevel% equ 0 goto :searx_ok
-set /a _w+=1
-if !_w! geq 30 goto :searx_timeout
-timeout /t 1 /nobreak >nul
-goto :searx_wait
-:searx_timeout
-echo [WARN] SearXNG not ready after ~30s; web_search may fail until it finishes booting.
-goto :searx_done
-:searx_ok
-echo [OK] SearXNG ready on http://localhost:8888
-goto :searx_done
-:searx_skip
-echo [SKIP] Docker not found - SearXNG ^(web search^) disabled. Install Docker to enable web_search.
-:searx_done
-
 echo.
 echo ========================================
 echo [RUN] Starting AI Core ...
