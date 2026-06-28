@@ -92,6 +92,7 @@ where docker >nul 2>&1
 if %errorlevel% neq 0 goto :searx_skip
 echo.
 echo [SearXNG] Starting via docker compose ...
+docker rm -f searxng >nul 2>&1
 docker compose -f docker-compose.yml up -d searxng >nul 2>&1
 echo [SearXNG] Waiting for readiness ...
 set /a _w=0

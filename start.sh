@@ -74,6 +74,7 @@ cd "$SCRIPT_DIR"
 if command -v docker &> /dev/null; then
     echo
     echo "[SearXNG] Starting via docker compose ..."
+    docker rm -f searxng > /dev/null 2>&1 || true
     docker compose -f docker-compose.yml up -d searxng > /dev/null 2>&1 || true
     echo "[SearXNG] Waiting for readiness ..."
     for i in $(seq 1 30); do
