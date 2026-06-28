@@ -56,7 +56,7 @@ CAPABILITIES: List[Capability] = [
     Capability("skill.read", "读取", "技能",
                "列出/阅读技能模块文档", STATE_ALLOW),
     Capability("web.search", "搜索", "网络检索",
-               "通过 SearXNG 搜索网页或图片", STATE_ALLOW),
+               "通过浏览器搜索网页（DuckDuckGo/Bing）", STATE_ALLOW),
     Capability("web.fetch", "访问", "网络检索",
                "打开网页并截图/抽取内容", STATE_ALLOW),
     Capability("test.run", "执行", "测试",

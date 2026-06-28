@@ -1,77 +1,65 @@
-"""Web tools: search (via SearXNG) and website access (via CDP browser).
+"""Web tools: search (browser-driven DuckDuckGo/Bing) and website access (CDP).
 
-``web_search`` talks to a self-hosted SearXNG instance's JSON API — no API
-key, no fragile scraping, multi-engine aggregation with graceful fallback.
+``web_search`` drives the shared Chrome (see ``_browser.py``) to query
+DuckDuckGo first, falling back to Bing, then deep-dives 萌娘百科 / 百度百科 /
+Wikipedia for full text (see ``_search.py``). The raw text is condensed via a
+type-1 assistant call — which also persists the summary to the shared
+knowledge base — so the model receives a concise summary instead of a dump.
 
-``access_website`` drives the shared CDP browser (see ``_browser.py``): it opens
-the page, takes a screenshot (returned as an ``[image,base64=...]`` placeholder
-so a vision-capable model can *see* it), extracts the main text with
-trafilatura, and either closes the tab (the model just needed the info) or
-leaves it open in the foreground for the operator to browse.
+``access_website`` opens a page in the same shared browser, takes a
+screenshot (returned as an ``[image,base64=...]`` placeholder so a
+vision-capable model can *see* it), extracts the main text, and either
+closes the tab or leaves it open for the operator to browse.
 """
 
 from __future__ import annotations
 
 import asyncio
 import base64
-import os
-from typing import Dict, List
-
-import httpx
 
 from tools.registry import get_tool_registry
 from tools.schema import PermissionLevel, ToolDef
 
-_SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://localhost:8888").rstrip("/")
+# Instruction appended to raw search text for the type-1 summarisation call.
+# Matches the QQ bot's prompt: concise summary + keyword tags + reference URLs.
+_SUMMARY_INSTRUCTION = (
+    "\n\n在400字以内总结上面关于\"{q}\"的搜索结果。"
+    "输出时不需要换行符，并根据内容在末尾用##的方式加上搜索的核心关键词tag，多个tag用空格隔开。"
+    "在这之后，你还需要以<reference_url:https://...>这样的格式在末尾列出参考的网页链接。\n"
+    "你给出的总结："
+)
 
 
-async def _web_search(query: str, category: str = "general", max_results: int = 5) -> str:
-    if not query.strip():
+async def _web_search(query: str, max_results: int = 5) -> str:
+    """Browser-driven search (DDG→Bing + deep-dive) condensed via a type-1 call.
+
+    The raw fetched text is summarised by the assistant path with type=1, which
+    both yields a concise result and persists it to the shared knowledge base
+    (``add_knowledge(..., "_shared")``) for future turns — matching the QQ bot.
+    """
+    if not (query or "").strip():
         return "Error: empty query"
-    params = {
-        "q": query,
-        "format": "json",
-        "categories": "images" if category == "images" else "general",
-        "safesearch": 1,
-        "language": "auto",
-    }
+    from tools.builtin import _search
+    raw = await _search.online_search(query, max_results=max_results)
+    # Surface upstream errors / "no results" verbatim, without summarising them.
+    if raw.startswith("Error") or raw.startswith("未找到"):
+        return raw
     try:
-        # trust_env=False so requests to the localhost SearXNG never get routed
-        # through any system HTTP proxy (which would return 5xx for localhost).
-        async with httpx.AsyncClient(timeout=20.0, trust_env=False) as client:
-            resp = await client.get(f"{_SEARXNG_URL}/search", params=params, headers={"User-Agent": "ArisuAgent/1.0"})
-            if resp.status_code != 200:
-                return f"Error: SearXNG returned HTTP {resp.status_code}. 确认 SearXNG 已启动且开启了 json 输出（docker start searxng）。"
-            data = resp.json()
-    except httpx.ConnectError:
-        return f"Error: 无法连接 SearXNG（{_SEARXNG_URL}）。请先启动：docker start searxng"
-    except Exception as e:
-        return f"Error: 搜索失败 — {e}"
-
-    results: List[Dict] = data.get("results", []) or []
-    if not results:
-        return f"未找到与 {query!r} 相关的结果。"
-
-    results = results[: max_results]
-    if category == "images":
-        lines = [f"找到 {len(results)} 张与 {query!r} 相关的图片："]
-        for r in results:
-            img = r.get("img_src") or r.get("thumbnail_src") or ""
-            title = (r.get("title") or "").strip()
-            src = r.get("url") or ""
-            if img:
-                lines.append(f'[image,url={img}] {title}（来源：{src}）')
-            else:
-                lines.append(f"{title}（{src}）")
-        return "\n".join(lines)
-
-    lines = [f"找到 {len(results)} 条与 {query!r} 相关的结果："]
-    for i, r in enumerate(results, 1):
-        title = (r.get("title") or "").strip()
-        url = r.get("url") or ""
-        snippet = (r.get("content") or "").strip()
-        lines.append(f"\n[{i}] {title}\n    {url}\n    {snippet}")
-    return "\n".join(lines)
+        from llm.chat import chat
+        from models.base import ChatCompletionRequest, ChatMessage
+        req = ChatCompletionRequest(
+            model="",
+            messages=[ChatMessage(role="user", content=raw + _SUMMARY_INSTRUCTION.format(q=query))],
+            type=1,
+        )
+        choice = await chat(request=req, max_tokens=2000, index=0)
+        summary = (choice.message.content or "").strip()
+        if summary:
+            return summary
+    except Exception:
+        pass  # fall through to a truncated raw dump
+    # Summarisation unavailable / failed — return a truncated raw dump.
+    return raw[:2000] + ("…[已截断]" if len(raw) > 2000 else "")
 
 
 async def _access_website(url: str, close: bool = True, screenshot: bool = True) -> str:
@@ -159,14 +147,14 @@ def register() -> None:
     reg.register(ToolDef(
         name="web_search",
         description=(
-            "通过网络搜索信息或图片（由 SearXNG 聚合多个引擎，无需 API key）。"
-            "category='general' 返回网页结果（标题/链接/摘要）；category='images' 返回图片（含图片URL，视觉模型可直接查看）。"
+            "通过网络搜索引擎查询最新信息（浏览器驱动 DuckDuckGo，失败回退 Bing，"
+            "并深入抓取萌娘百科/百度百科/Wikipedia 等页面）。结果会被总结成精简摘要返回，"
+            "并自动存入共享知识库供后续参考。"
         ),
         parameters={
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "搜索关键词。"},
-                "category": {"type": "string", "enum": ["general", "images"], "description": "general=网页，images=图片。默认 general。"},
                 "max_results": {"type": "integer", "description": "最多返回多少条（默认5）。"},
             },
             "required": ["query"],
@@ -175,7 +163,7 @@ def register() -> None:
         handler=_web_search,
         group="web",
         category="搜索",
-        guidance="要查资料/最新信息 → web_search；要找图片 → web_search(category=images)",
+        guidance="要查资料/最新信息 → web_search",
     ))
     reg.register(ToolDef(
         name="access_website",

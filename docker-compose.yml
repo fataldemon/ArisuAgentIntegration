@@ -1,21 +1,5 @@
-# SearXNG — self-hosted metasearch engine that powers AI Core's `web_search`.
-# Started automatically by start.bat / start.sh when Docker is available.
-#
-# The bind mount uses a RELATIVE path (./searxng/settings.yml), which Docker
-# Compose resolves correctly on Windows/macOS/Linux — this is more reliable than
-# a raw `docker run -v <abs-path>` single-file mount (the previous approach kept
-# failing with HTTP 502 because the mount silently broke the app config).
-# settings.yml enables the JSON output format that web_search requires.
-
-services:
-  searxng:
-    image: searxng/searxng
-    container_name: searxng
-    restart: unless-stopped
-    ports:
-      - "8888:8080"
-    volumes:
-      - ./searxng/settings.yml:/etc/searxng/settings.yml
-    environment:
-      - SEARXNG_BASE_URL=http://localhost:8888/
-      - SEARXNG_SECRET=arisu-searxng-secret-2026
+# SearXNG has been retired — web_search now uses a real browser (DuckDuckGo,
+# with Bing as fallback) driving the shared Chrome via _browser.py, matching
+# the QQ bot's search quality. This file is kept as an empty stub so
+# `docker compose` commands still work if other services are added later.
+services: {}
