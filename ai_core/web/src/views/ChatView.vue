@@ -493,7 +493,7 @@ function handleDragOver(e: DragEvent) {
 }
 
 async function processFile(file: File) {
-  const ext = file.name.rsplit('.', 1)[-1]?.toLowerCase() || ''
+  const ext = file.name.split('.').pop()?.toLowerCase() || ''
   if (file.type.startsWith('image/') || ['png','jpg','jpeg','gif','webp','bmp'].includes(ext)) {
     const reader = new FileReader()
     reader.onload = () => {
