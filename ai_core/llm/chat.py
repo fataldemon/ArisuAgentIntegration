@@ -693,9 +693,10 @@ async def chat(
         _active_requests[request.abort_id] = (provider_cfg.name, request_id)
 
     rtype = request.type or 0
-    extra_body = None
-    if rtype == 1:
-        extra_body = {"chat_template_kwargs": {"enable_thinking": False}}
+    # type 0 (normal): honour request.enable_thinking (pass-through);
+    # type 1 (knowledge) & type 2 (long-term memory): force thinking off.
+    effective_thinking = bool(request.enable_thinking) if rtype == 0 else False
+    extra_body = {"chat_template_kwargs": {"enable_thinking": effective_thinking}}
 
     try:
         result = await backend.generate(
@@ -705,7 +706,6 @@ async def chat(
             request_id=request_id,
             extra_body=extra_body,
         )
-        effective_thinking = False if rtype == 1 else bool(request.enable_thinking)
         thought, answer = _split_thought_and_answer(result.text, enable_thinking=effective_thinking)
         if result.reasoning and not thought:
             thought = result.reasoning

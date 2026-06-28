@@ -35,7 +35,7 @@ async def default_summarize(prompt: str) -> Optional[str]:
         enable_thinking=False,
         on_embedding=False,
         stream=False,
-        type=0,
+        type=2,
     )
     try:
         choice = await chat(request=request, max_tokens=max_analysis_len)
