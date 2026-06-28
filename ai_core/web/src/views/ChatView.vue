@@ -872,29 +872,45 @@ async function handleToolCall(
   return r.success ? r.output : `Error: ${r.error || 'Unknown error'}`
 }
 
+function formatToolCallText(name: string, args: Record<string, any>): string {
+  const lines = [`<function=${name}>`]
+  for (const [key, value] of Object.entries(args)) {
+    lines.push(`<parameter=${key}>`)
+    lines.push(String(value))
+    lines.push(`</parameter>`)
+  }
+  lines.push(`</function>`)
+  return `<tool_call>\n${lines.join('\n')}\n</tool_call>`
+}
+
 function buildRequestMessages(): any[] {
-  const targetMsgs = sessionCache[sessionId.value]
-  if (!targetMsgs) return []
-  return targetMsgs.map((m) => {
-    if (m.role === 'tool_call') {
-      return {
-        role: 'assistant',
-        content: '',
-        function_call: {
-          name: m.toolName,
-          arguments: m.toolArgs ? JSON.stringify(m.toolArgs) : '{}',
-        },
-      }
-    }
+  const msgs = sessionCache[sessionId.value]
+  if (!msgs) return []
+  const result: any[] = []
+  for (let i = 0; i < msgs.length; i++) {
+    const m = msgs[i]
+    if (m.role === 'tool_call') continue
     if (m.role === 'tool_result') {
-      return { role: 'tool', content: m.content.replace(/\[image,base64=[^\]]+\]/g, '[image removed]') }
+      result.push({
+        role: 'function',
+        content: m.content.replace(/\[image,base64=[^\]]+\]/g, '[image removed]'),
+      })
+      continue
     }
     const ts = fmtTs(m.timestamp)
+    let content: string
     if (m.role === 'user' && identity.value.trim()) {
-      return { role: m.role, content: `${ts} \uFF08${identity.value.trim()}\u8BF4\uFF09${m.content}` }
+      content = `${ts} \uFF08${identity.value.trim()}\u8BF4\uFF09${m.content}`
+    } else {
+      content = `${ts} ${m.content}`
     }
-    return { role: m.role, content: `${ts} ${m.content}` }
-  })
+    if (i + 1 < msgs.length && msgs[i + 1].role === 'tool_result' && (msgs[i + 1] as any).toolName) {
+      const tc = msgs[i + 1] as any
+      content += '\n' + formatToolCallText(tc.toolName, tc.toolArgs || {})
+    }
+    result.push({ role: m.role, content })
+  }
+  return result
 }
 
 async function streamChat(messages: any[]): Promise<{ content: string; thought: string; functionCall: { name: string; arguments: string } | null }> {
@@ -1111,6 +1127,10 @@ async function runAgentLoop(
       toolMsg.role = 'tool_result'
       toolMsg.content = toolResult
 
+      const tcText0 = formatToolCallText(functionCall.name, args)
+      hippoSave('assistant', (content ? stripTimestamp(content) + '\n' : '') + tcText0, sid)
+      hippoSave('function', toolResult, sid)
+
       currentMessages.push({
         role: 'assistant',
         content: content || '',
@@ -1162,6 +1182,10 @@ async function runAgentLoop(
       const toolMsg = targetMsgs[toolIdx]
       toolMsg.role = 'tool_result'
       toolMsg.content = toolResult
+
+      const tcTextN = formatToolCallText(functionCall.name, args)
+      hippoSave('assistant', (content ? stripTimestamp(content) + '\n' : '') + tcTextN, sid)
+      hippoSave('function', toolResult, sid)
 
       currentMessages.push({
         role: 'assistant',
