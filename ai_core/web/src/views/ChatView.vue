@@ -56,7 +56,15 @@
                 </div>
               </template>
               <template v-else>
-                {{ msg.content }}
+                <template v-for="(part, pi) in parseUserContent(msg.content)" :key="pi">
+                  <span v-if="part.type === 'text'">{{ part.value }}</span>
+                  <n-image
+                    v-else
+                    :src="'data:' + (part.mime || 'image/png') + ';base64,' + (part.data || '')"
+                    class="user-image"
+                    previewable
+                  />
+                </template>
               </template>
             </div>
             <div class="message-time">{{ formatTime(msg.timestamp) }}</div>
@@ -322,6 +330,7 @@ import {
   NPopover,
   NTabs,
   NTabPane,
+  NImage,
   useMessage,
 } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
@@ -412,6 +421,7 @@ interface Attachment {
   name: string
   data: string
   preview?: string
+  mime?: string
 }
 const attachments = ref<Attachment[]>([])
 
@@ -498,7 +508,7 @@ async function processFile(file: File) {
     const reader = new FileReader()
     reader.onload = () => {
       const base64 = (reader.result as string).split(',')[1]
-      attachments.value.push({ type: 'image', name: file.name, data: base64 })
+      attachments.value.push({ type: 'image', name: file.name, data: base64, mime: file.type || '' })
     }
     reader.readAsDataURL(file)
   } else if (_TEXT_EXTS.has(ext) || file.size < 50000) {
@@ -757,6 +767,38 @@ function parseAssistantContent(text: string): ContentPart[] {
   }
   if (parts.length === 0 && stripped) {
     parts.push({ type: 'text', value: stripped })
+  }
+  return parts
+}
+
+interface UserContentPart {
+  type: 'text' | 'image'
+  value?: string
+  data?: string
+  mime?: string
+}
+
+// Split a user message into text + image segments. Recognises the legacy
+// ``[image,base64=...]`` placeholder (no mime) and the new
+// ``[image,base64=...,mime=image/jpeg]`` form so old history still renders.
+function parseUserContent(text: string): UserContentPart[] {
+  if (!text) return []
+  const parts: UserContentPart[] = []
+  const re = /\[image,base64=([A-Za-z0-9+/=]+)(?:,mime=([a-zA-Z0-9/.+-]+))?\]/g
+  let last = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) {
+      parts.push({ type: 'text', value: text.slice(last, m.index) })
+    }
+    parts.push({ type: 'image', data: m[1], mime: m[2] || '' })
+    last = re.lastIndex
+  }
+  if (last < text.length) {
+    parts.push({ type: 'text', value: text.slice(last) })
+  }
+  if (parts.length === 0) {
+    parts.push({ type: 'text', value: text })
   }
   return parts
 }
@@ -1378,7 +1420,7 @@ async function sendMessage() {
   let fullContent = text
   for (const att of atts) {
     if (att.type === 'image') {
-      fullContent += `\n[image,base64=${att.data}]`
+      fullContent += `\n[image,base64=${att.data}${att.mime ? ',mime=' + att.mime : ''}]`
     } else if (att.type === 'text') {
       fullContent += `\n\`\`\`${att.name}\n${att.data}\n\`\`\``
     } else if (att.type === 'binary') {
@@ -1587,6 +1629,14 @@ onMounted(() => {
 .action-text {
   font-style: italic;
   color: #888;
+}
+
+.user-image {
+  max-width: 220px;
+  max-height: 220px;
+  border-radius: 8px;
+  display: block;
+  margin: 4px 0;
 }
 
 .emotion-tags {
