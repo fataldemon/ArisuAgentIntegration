@@ -35,6 +35,10 @@ class DeltaMessage(BaseModel):
     role: Optional[Literal["user", "assistant", "system"]] = None
     content: Optional[str] = None
     function_call: Optional[Dict] = None
+    # Backend-owned tool loop streams inline tool events so the front-end can
+    # render each tool call/result in real time without running its own loop.
+    # shape: {"type": "call"|"result", "name", "arguments"|"output", "success"?}
+    tool_event: Optional[Dict] = None
 
 
 class ChatCompletionRequest(BaseModel):

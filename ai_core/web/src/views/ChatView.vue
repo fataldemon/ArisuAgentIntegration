@@ -878,9 +878,11 @@ async function loadSessionHistoryFor(id: string): Promise<ChatMessage[]> {
       if (h.role === 'assistant') {
         const tc = parseToolCallFromText(h.content || '')
         if (tc) {
-          const cleanText = stripToolCallText(h.content || '')
-          if (cleanText) {
-            result.push({ role: 'assistant', content: cleanText, timestamp: ts })
+          // Split <think> off the tool-call turn so sessionCache always holds
+          // {content: answer, thought: reasoning} consistently (same as live).
+          const parsed = parseThinkBlock(stripToolCallText(h.content || ''), false)
+          if (parsed.content || parsed.thought) {
+            result.push({ role: 'assistant', content: parsed.content, thought: parsed.thought || undefined, timestamp: ts })
           }
           result.push({ role: 'tool_result', content: '', toolName: tc.name, toolArgs: tc.args, timestamp: ts })
           if (i + 1 < raw.length && raw[i + 1].role === 'function') {
@@ -890,7 +892,8 @@ async function loadSessionHistoryFor(id: string): Promise<ChatMessage[]> {
             result[result.length - 1].timestamp = funcTs
           }
         } else {
-          result.push({ role: 'assistant', content: h.content || '', timestamp: ts })
+          const parsed = parseThinkBlock(h.content || '', false)
+          result.push({ role: 'assistant', content: parsed.content, thought: parsed.thought || undefined, timestamp: ts })
         }
       } else if (h.role === 'function') {
         // already consumed by preceding assistant tool_call; skip if standalone
@@ -1139,6 +1142,12 @@ function formatToolCallText(name: string, args: Record<string, any>): string {
   return `<tool_call>\n${lines.join('\n')}\n</tool_call>`
 }
 
+// Wrap a stored assistant turn with its <think> block, matching the QQ bot's
+// hippocampus format so the model sees its own prior reasoning across turns.
+function wrapWithThink(thought: string | undefined, body: string): string {
+  return thought && thought.trim() ? `<think>\n${thought.trim()}\n</think>\n\n${body}` : body
+}
+
 function buildRequestMessages(): any[] {
   const msgs = sessionCache[sessionId.value]
   if (!msgs) return []
@@ -1154,11 +1163,18 @@ function buildRequestMessages(): any[] {
       continue
     }
     const ts = fmtTs(m.timestamp)
+    // Re-attach the assistant's <think> block (sessionCache stores it as a
+    // separate `thought` field) so the model sees its prior reasoning, mirroring
+    // how the QQ bot keeps <think> in context.
+    let body = m.content
+    if (m.role === 'assistant' && m.thought) {
+      body = wrapWithThink(m.thought, body)
+    }
     let content: string
     if (m.role === 'user' && identity.value.trim()) {
-      content = `${ts} \uFF08${identity.value.trim()}\u8BF4\uFF09${m.content}`
+      content = `${ts} \uFF08${identity.value.trim()}\u8BF4\uFF09${body}`
     } else {
-      content = `${ts} ${m.content}`
+      content = `${ts} ${body}`
     }
     if (i + 1 < msgs.length && msgs[i + 1].role === 'tool_result' && (msgs[i + 1] as any).toolName) {
       const tc = msgs[i + 1] as any
@@ -1169,112 +1185,163 @@ function buildRequestMessages(): any[] {
   return result
 }
 
-async function streamChat(messages: any[]): Promise<{ content: string; thought: string; functionCall: { name: string; arguments: string } | null }> {
-  const res = await fetch('/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: '',
-      character: character.value,
-      messages,
-      stream: true,
-      temperature: temperature.value,
-      top_p: topP.value,
-      top_k: topK.value ? Number(topK.value) : undefined,
-      repetition_penalty: repetitionPenalty.value ? Number(repetitionPenalty.value) : undefined,
-      presence_penalty: presencePenalty.value ? Number(presencePenalty.value) : undefined,
-      max_tokens: parseInt(maxTokensStr.value) || 15000,
-      on_embedding: onEmbedding.value,
-      enable_thinking: enableThinking.value,
-      abort_id: currentAbortId.value,
-      channel: 'chat',
-    }),
-    signal: abortController.value!.signal,
-  })
+async function runChat(
+  apiMessages: any[],
+  targetMsgs: ChatMessage[],
+  sid: string,
+) {
+  // The BACKEND owns the tool-calling loop now (chat_on_setting_stream runs
+  // the whole chain server-side and streams inline tool events). Here we only
+  // render the event stream in real time and bounce back for "ask" tools.
+  let currentMessages = apiMessages
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  for (let round = 0; round < _MAX_TOOL_ROUNDS; round++) {
+    rawStreamText.value = ''
+    let roundContent = ''
+    let roundThought = ''
 
-  let functionCall: { name: string; arguments: string } | null = null
-  const reader = res.body!.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let done = false
+    const res = await fetch('/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: '',
+        character: character.value,
+        messages: currentMessages,
+        stream: true,
+        temperature: temperature.value,
+        top_p: topP.value,
+        top_k: topK.value ? Number(topK.value) : undefined,
+        repetition_penalty: repetitionPenalty.value ? Number(repetitionPenalty.value) : undefined,
+        presence_penalty: presencePenalty.value ? Number(presencePenalty.value) : undefined,
+        max_tokens: parseInt(maxTokensStr.value) || 15000,
+        on_embedding: onEmbedding.value,
+        enable_thinking: enableThinking.value,
+        abort_id: currentAbortId.value,
+        channel: 'chat',
+      }),
+      signal: abortController.value!.signal,
+    })
 
-  while (!done) {
-    const result = await reader.read()
-    if (result.done) break
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
 
-    buffer += decoder.decode(result.value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() || ''
+    const reader = res.body!.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+    let done = false
+    let finishReason = ''
+    let pendingIdx = -1
+    let pendingName = ''
+    let pendingArgs: Record<string, any> = {}
 
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (!trimmed.startsWith('data: ')) continue
-      const payload = trimmed.slice(6).trim()
-      if (payload === '[DONE]') {
-        done = true
-        break
-      }
-      try {
-        const parsed = JSON.parse(payload)
-        const token = parsed.choices?.[0]?.delta?.content
-        if (token) {
-          rawStreamText.value += token
+    while (!done) {
+      const result = await reader.read()
+      if (result.done) break
+
+      buffer += decoder.decode(result.value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data: ')) continue
+        const payload = trimmed.slice(6).trim()
+        if (payload === '[DONE]') { done = true; break }
+        let parsed: any
+        try { parsed = JSON.parse(payload) } catch { continue }
+        const choice = parsed.choices?.[0]
+        const delta = choice?.delta || {}
+
+        if (delta.content) {
+          rawStreamText.value += delta.content
           scrollToBottom()
         }
-        const fc = parsed.choices?.[0]?.delta?.function_call
-        if (fc && fc.name) {
-          functionCall = { name: fc.name, arguments: fc.arguments || '{}', id: fc.id || '' }
+
+        const te = delta.tool_event
+        if (te && te.type === 'call') {
+          // commit the streamed text of this round as an assistant message
+          const parsedRound = parseThinkBlock(rawStreamText.value, enableThinking.value)
+          roundThought = parsedRound.thought
+          roundContent = stripToolCallText(stripTimestamp(parsedRound.content))
+          if (roundContent) {
+            targetMsgs.push({
+              role: 'assistant',
+              content: roundContent,
+              thought: roundThought || undefined,
+              timestamp: Date.now(),
+            })
+          }
+          // render the tool call as a "running" row
+          pendingName = te.name
+          try {
+            pendingArgs = typeof te.arguments === 'string'
+              ? JSON.parse(te.arguments || '{}')
+              : (te.arguments || {})
+          } catch { pendingArgs = {} }
+          pendingIdx = targetMsgs.length
+          targetMsgs.push({
+            role: 'tool_call',
+            content: '',
+            toolName: pendingName,
+            toolArgs: pendingArgs,
+            timestamp: Date.now(),
+          })
+          rawStreamText.value = ''
+          scrollToBottom()
+        } else if (te && te.type === 'result') {
+          // tool finished: turn the running row into a result row
+          if (pendingIdx >= 0) {
+            const tm = targetMsgs[pendingIdx]
+            tm.role = 'tool_result'
+            tm.content = stripBase64Images(te.output || '')
+            hippoSave('assistant', wrapWithThink(roundThought, (roundContent ? stripTimestamp(roundContent) + '\n' : '') + formatToolCallText(pendingName, pendingArgs)), sid)
+            hippoSave('function', te.output || '', sid)
+          }
+          pendingIdx = -1
+          roundContent = ''
+          roundThought = ''
+          scrollToBottom()
         }
-      } catch {}
+
+        if (choice?.finish_reason) {
+          finishReason = choice.finish_reason
+        }
+      }
     }
-  }
 
-  const { thought, content } = parseThinkBlock(rawStreamText.value, enableThinking.value)
-  return { content, thought, functionCall }
-}
+    if (finishReason === 'abort') return
 
-async function sendNonStreaming(messages: any[]): Promise<{
-  content: string
-  thought: string
-  finishReason: string
-  functionCall: { name: string; arguments: string } | null
-}> {
-  const res = await fetch('/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: '',
-      character: character.value,
-      messages,
-      stream: false,
-      temperature: temperature.value,
-      top_p: topP.value,
-      top_k: topK.value ? Number(topK.value) : undefined,
-      repetition_penalty: repetitionPenalty.value ? Number(repetitionPenalty.value) : undefined,
-      presence_penalty: presencePenalty.value ? Number(presencePenalty.value) : undefined,
-      max_tokens: parseInt(maxTokensStr.value) || 15000,
-      on_embedding: onEmbedding.value,
-      enable_thinking: enableThinking.value,
-      abort_id: currentAbortId.value,
-      channel: 'chat',
-    }),
-    signal: abortController.value!.signal,
-  })
+    if (finishReason === 'function_call' && pendingIdx >= 0) {
+      // "ask" tool bounced back: confirm via modal, run it client-side, resume.
+      const toolResult = await handleToolCall(pendingName, pendingArgs)
+      const tm = targetMsgs[pendingIdx]
+      tm.role = 'tool_result'
+      tm.content = stripBase64Images(toolResult)
+      hippoSave('assistant', wrapWithThink(roundThought, (roundContent ? stripTimestamp(roundContent) + '\n' : '') + formatToolCallText(pendingName, pendingArgs)), sid)
+      hippoSave('function', toolResult, sid)
+      currentMessages.push({
+        role: 'assistant',
+        content: '',
+        function_call: { name: pendingName, arguments: JSON.stringify(pendingArgs) },
+      })
+      currentMessages.push({ role: 'tool', content: toolResult })
+      continue
+    }
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-  const data = await res.json()
-  const choice = data.choices?.[0]
-  if (!choice) throw new Error('Empty response')
-
-  const msg = choice.message || {}
-  return {
-    content: msg.content || '',
-    thought: choice.thought || '',
-    finishReason: choice.finish_reason || 'stop',
-    functionCall: msg.function_call || null,
+    // finish_reason === 'stop' (or cap reached): commit any trailing text
+    if (rawStreamText.value) {
+      const parsedFinal = parseThinkBlock(rawStreamText.value, enableThinking.value)
+      const cleanContent = stripTimestamp(parsedFinal.content)
+      if (cleanContent) {
+        targetMsgs.push({
+          role: 'assistant',
+          content: cleanContent,
+          thought: parsedFinal.thought || undefined,
+          timestamp: Date.now(),
+        })
+        hippoSave('assistant', wrapWithThink(parsedFinal.thought, cleanContent), sid)
+      }
+    }
+    return
   }
 }
 
@@ -1326,7 +1393,7 @@ async function sendMessage() {
 
   try {
     const apiMessages = buildRequestMessages()
-    await runAgentLoop(apiMessages, targetMsgs, sid)
+    await runChat(apiMessages, targetMsgs, sid)
   } catch (e: any) {
     if (e.name !== 'AbortError') {
       const errorMsg: ChatMessage = {
@@ -1344,136 +1411,6 @@ async function sendMessage() {
     abortController.value = null
     currentAbortId.value = ''
     scrollToBottom()
-  }
-}
-
-async function runAgentLoop(
-  apiMessages: any[],
-  targetMsgs: ChatMessage[],
-  sid: string,
-) {
-  let currentMessages = apiMessages
-
-  for (let round = 0; round < _MAX_TOOL_ROUNDS; round++) {
-    if (round === 0) {
-      const { content, thought, functionCall } = await streamChat(currentMessages)
-
-      if (!functionCall) {
-        const cleanContent = stripTimestamp(content)
-        const assistantMsg: ChatMessage = {
-          role: 'assistant',
-          content: cleanContent,
-          thought: thought || undefined,
-          timestamp: Date.now(),
-        }
-        targetMsgs.push(assistantMsg)
-        hippoSave('assistant', cleanContent, sid)
-        return
-      }
-
-      if (content) {
-        const cleanContent0 = stripToolCallText(stripTimestamp(content))
-        if (cleanContent0) {
-          targetMsgs.push({
-            role: 'assistant',
-            content: cleanContent0,
-            thought: thought || undefined,
-            timestamp: Date.now(),
-          })
-        }
-      }
-
-      let args: Record<string, any> = {}
-      try { args = JSON.parse(functionCall.arguments) } catch { args = {} }
-
-      const toolIdx = targetMsgs.length
-      targetMsgs.push({
-        role: 'tool_call',
-        content: '',
-        toolName: functionCall.name,
-        toolArgs: args,
-        timestamp: Date.now(),
-      })
-
-      const toolResult = await handleToolCall(functionCall.name, args)
-
-      const toolMsg = targetMsgs[toolIdx]
-      toolMsg.role = 'tool_result'
-      toolMsg.content = stripBase64Images(toolResult)
-
-      const tcText0 = formatToolCallText(functionCall.name, args)
-      hippoSave('assistant', (content ? stripTimestamp(content) + '\n' : '') + tcText0, sid)
-      hippoSave('function', toolResult, sid)
-
-      currentMessages.push({
-        role: 'assistant',
-        content: content || '',
-        function_call: functionCall,
-      })
-      currentMessages.push({
-        role: 'tool',
-        content: toolResult,
-      })
-      rawStreamText.value = ''
-    } else {
-      const { content, thought, finishReason, functionCall } = await sendNonStreaming(currentMessages)
-
-      if (!functionCall || finishReason !== 'function_call') {
-        const cleanContent = stripTimestamp(content || '')
-        targetMsgs.push({
-          role: 'assistant',
-          content: cleanContent,
-          thought: thought || undefined,
-          timestamp: Date.now(),
-        })
-        hippoSave('assistant', cleanContent, sid)
-        return
-      }
-
-      if (content) {
-        const cleanContentN = stripToolCallText(stripTimestamp(content))
-        if (cleanContentN) {
-          targetMsgs.push({
-            role: 'assistant',
-            content: cleanContentN,
-            thought: thought || undefined,
-            timestamp: Date.now(),
-          })
-        }
-      }
-
-      let args: Record<string, any> = {}
-      try { args = JSON.parse(functionCall.arguments) } catch { args = {} }
-
-      const toolIdx = targetMsgs.length
-      targetMsgs.push({
-        role: 'tool_call',
-        content: '',
-        toolName: functionCall.name,
-        toolArgs: args,
-        timestamp: Date.now(),
-      })
-
-      const toolResult = await handleToolCall(functionCall.name, args)
-
-      const toolMsg = targetMsgs[toolIdx]
-      toolMsg.role = 'tool_result'
-      toolMsg.content = stripBase64Images(toolResult)
-
-      const tcTextN = formatToolCallText(functionCall.name, args)
-      hippoSave('assistant', (content ? stripTimestamp(content) + '\n' : '') + tcTextN, sid)
-      hippoSave('function', toolResult, sid)
-
-      currentMessages.push({
-        role: 'assistant',
-        content: content || '',
-        function_call: functionCall,
-      })
-      currentMessages.push({
-        role: 'tool',
-        content: toolResult,
-      })
-    }
   }
 }
 

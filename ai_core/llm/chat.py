@@ -564,10 +564,12 @@ async def _execute_mcp_tool(
     tool_name: str,
     arguments: str,
     messages: List[Dict[str, Any]],
-) -> Optional[Dict[str, Any]]:
+) -> Tuple[Optional[Dict[str, Any]], str]:
     """Execute an MCP tool and append tool_call + tool_result to messages.
 
-    Returns a log entry dict if successful, None on failure.
+    Returns ``(log_entry, result_str)`` where ``log_entry`` is a dict if
+    successful (None on failure) and ``result_str`` is the tool output the
+    caller can forward to the front-end as a ``tool_event`` payload.
     """
     try:
         args = json.loads(arguments) if isinstance(arguments, str) and arguments else {}
@@ -598,7 +600,7 @@ async def _execute_mcp_tool(
         "tool_name": tool_name,
         "arguments": arguments,
         "result": result_str[:2000],
-    }
+    }, result_str
 
 
 def _parse_arguments(arguments: str) -> Dict[str, Any]:
@@ -609,6 +611,66 @@ def _parse_arguments(arguments: str) -> Dict[str, Any]:
         return json.loads(arguments) if arguments else {}
     except (json.JSONDecodeError, TypeError):
         return {}
+
+
+async def _dispatch_tool(
+    fc: Dict[str, Any],
+    *,
+    mcp_names: Set[str],
+    builtin_names: Set[str],
+    messages: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Classify one function call and execute it server-side when allowed.
+
+    Shared by the non-streaming ``_mcp_loop`` and the streaming tool loop so
+    the two never drift apart. When the tool runs on the server (an MCP tool,
+    or a built-in whose capability state is ``allow``) the assistant
+    ``tool_calls`` + ``tool`` response are appended to ``messages`` and a dict
+    ``{"kind": "executed", "output": str, "success": bool}`` is returned. When
+    the call must be bounced back to the client for confirmation (built-in
+    ``ask``/``deny`` or an unknown tool), ``{"kind": "ask"}`` is returned and
+    nothing is appended.
+    """
+    name = fc.get("name", "")
+    raw_args = fc.get("arguments", "{}")
+    if name in mcp_names:
+        from core.mcp_manager import get_mcp_manager
+
+        mm = get_mcp_manager()
+        log_entry, result_str = await _execute_mcp_tool(mm, name, raw_args, messages)
+        if log_entry is not None:
+            _append_vllm_request_log(log_entry)
+        return {"kind": "executed", "output": result_str, "success": True}
+    if name in builtin_names:
+        args = _parse_arguments(raw_args)
+        cap = resolve_capability(name, args)
+        state = get_config_manager().get_capability_states().get(cap, "ask")
+        if state == "allow":
+            result_str = await get_tool_registry().call_tool(name, args)
+            output = result_str.output if result_str.success else f"Error: {result_str.error}"
+            messages.append({
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [{
+                    "id": f"call_{uuid.uuid4().hex[:12]}",
+                    "type": "function",
+                    "function": {"name": name, "arguments": raw_args},
+                }],
+            })
+            messages.append({
+                "role": "tool",
+                "content": f"<tool_response>\n{output}\n</tool_response>",
+            })
+            _append_vllm_request_log({
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "type": "builtin_tool_execution",
+                "tool_name": name,
+                "arguments": raw_args,
+                "result": output[:2000],
+            })
+            return {"kind": "executed", "output": output, "success": result_str.success}
+        return {"kind": "ask"}
+    return {"kind": "ask"}
 
 
 async def _gather_tools(req: ChatCompletionRequest) -> Tuple[Optional[List[Dict[str, Any]]], Set[str], Set[str]]:
@@ -961,62 +1023,15 @@ async def chat_on_setting(
                 )
             executed_any = False
             for fc in result.function_calls:
-                name = fc.get("name", "")
-                if name in mcp_names:
-                    from core.mcp_manager import get_mcp_manager
-                    mm = get_mcp_manager()
-                    log_entry = await _execute_mcp_tool(mm, name, fc.get("arguments", "{}"), messages)
-                    if log_entry is not None:
-                        _append_vllm_request_log(log_entry)
+                dispatch = await _dispatch_tool(
+                    fc, mcp_names=mcp_names, builtin_names=builtin_names, messages=messages,
+                )
+                if dispatch["kind"] == "executed":
                     executed_any = True
-                elif name in builtin_names:
-                    args = _parse_arguments(fc.get("arguments", "{}"))
-                    cap = resolve_capability(name, args)
-                    state = get_config_manager().get_capability_states().get(cap, "ask")
-                    if state == "allow":
-                        result_str = await get_tool_registry().call_tool(name, args)
-                        output = result_str.output if result_str.success else f"Error: {result_str.error}"
-                        messages.append({
-                            "role": "assistant",
-                            "content": "",
-                            "tool_calls": [{
-                                "id": f"call_{uuid.uuid4().hex[:12]}",
-                                "type": "function",
-                                "function": {"name": name, "arguments": fc.get("arguments", "{}")},
-                            }],
-                        })
-                        messages.append({
-                            "role": "tool",
-                            "content": f"<tool_response>\n{output}\n</tool_response>",
-                        })
-                        _append_vllm_request_log({
-                            "ts": datetime.now(timezone.utc).isoformat(),
-                            "type": "builtin_tool_execution",
-                            "tool_name": name,
-                            "arguments": fc.get("arguments", ""),
-                            "result": output[:2000],
-                        })
-                        executed_any = True
-                    else:
-                        # ask (needs confirmation) or deny (treated as ask):
-                        # return the function_call to the caller for confirmation.
-                        fc_first = result.function_calls[0]
-                        return ChatCompletionResponseChoice(
-                            index=index,
-                            thought=thought,
-                            embedding_list=embedding_index_list,
-                            message=ChatMessage(
-                                role="assistant",
-                                content=answer or "",
-                                function_call={
-                                    "name": fc_first.get("name", ""),
-                                    "arguments": fc_first.get("arguments", ""),
-                                },
-                            ),
-                            finish_reason="function_call",
-                        )
                 else:
-                    fc = result.function_calls[0]
+                    # ask (needs confirmation) or deny, or unknown tool:
+                    # bounce the first function_call back to the caller.
+                    fc_first = result.function_calls[0]
                     return ChatCompletionResponseChoice(
                         index=index,
                         thought=thought,
@@ -1025,8 +1040,8 @@ async def chat_on_setting(
                             role="assistant",
                             content=answer or "",
                             function_call={
-                                "name": fc.get("name", ""),
-                                "arguments": fc.get("arguments", ""),
+                                "name": fc_first.get("name", ""),
+                                "arguments": fc_first.get("arguments", ""),
                             },
                         ),
                         finish_reason="function_call",
@@ -1083,6 +1098,15 @@ async def chat_on_setting_stream(
 
     The first chunk carries ``delta.role="assistant"``; subsequent chunks
     carry incremental text; the terminal chunk carries ``finish_reason``.
+
+    This function OWNS the tool-calling loop: for each model turn it streams
+    the assistant text (typewriter), then -- when the model asks for a tool --
+    it emits ``delta.tool_event`` chunks (``call`` then ``result``) in real
+    time so the front-end can render every tool in the chain as it runs. Read
+    tools (capability ``allow``) and MCP tools execute server-side and stream
+    their result immediately; ``ask`` tools are bounced back to the client
+    (``finish_reason="function_call"``) for the permission modal, after which
+    the client re-requests to resume. The front-end never runs its own loop.
     """
     backend = get_backend()
     provider_cfg = backend.config  # type: ignore[attr-defined]
@@ -1115,7 +1139,7 @@ async def chat_on_setting_stream(
                               prefetch_files=bool(provider_cfg.prefetch_media),
                               character=request.character or "",
                               provider_cfg=provider_cfg)
-    tools, mcp_names, _builtin_names = await _gather_tools(request)
+    tools, mcp_names, builtin_names = await _gather_tools(request)
     sampling = _sampling_from_request(request, max_tokens)
     extra_body = (
         {"chat_template_kwargs": {"enable_thinking": bool(request.enable_thinking)}}
@@ -1145,108 +1169,146 @@ async def chat_on_setting_stream(
         ],
     )
 
-    collected_text: List[str] = []
-    collected_function_calls: List[Dict[str, Any]] = []
+    max_rounds = get_config_manager().get_mcp_max_tool_rounds()
     collected_raw_events: List[Dict[str, Any]] = []
     last_finish_reason: Optional[str] = None
+    final_answer = ""
+    final_thought = ""
+    hit_function_call = False
 
-    try:
-        it = await backend.generate_stream(
-            messages=messages,
-            sampling=sampling,
-            tools=tools,
-            request_id=request_id,
-            extra_body=extra_body,
-        )
-        async for chunk in it:  # type: StreamChunk
-            if chunk.raw is not None:
-                collected_raw_events.append(chunk.raw)
-            if chunk.text:
-                collected_text.append(chunk.text)
-            if chunk.function_calls:
-                collected_function_calls = chunk.function_calls
-            if not chunk.text and not chunk.finish_reason:
-                continue
-            last_finish_reason = chunk.finish_reason
-            yield ChatCompletionResponse(
-                model=request.model,
-                object="chat.completion.chunk",
-                choices=[
-                    ChatCompletionResponseStreamChoice(
-                        index=index,
-                        delta=DeltaMessage(content=chunk.text or None),
-                        finish_reason=(
-                            _map_finish_reason(chunk.finish_reason)
-                            if chunk.finish_reason
-                            else None
-                        ),
-                    )
-                ],
-            )
-    finally:
-        if request.abort_id:
-            _active_requests.pop(request.abort_id, None)
-
-    if collected_function_calls:
-        fc = collected_function_calls[0]
-        yield ChatCompletionResponse(
+    def _chunk(delta: DeltaMessage, finish_reason: Optional[str] = None) -> ChatCompletionResponse:
+        return ChatCompletionResponse(
             model=request.model,
             object="chat.completion.chunk",
             choices=[
                 ChatCompletionResponseStreamChoice(
-                    index=index,
-                    delta=DeltaMessage(
-                        function_call={
-                            "id": fc.get("id", ""),
-                            "name": fc.get("name", ""),
-                            "arguments": fc.get("arguments", ""),
-                        },
-                    ),
-                    finish_reason="function_call",
+                    index=index, delta=delta, finish_reason=finish_reason,
                 )
             ],
         )
 
-    # Log the full conversation turn after streaming ends.
     try:
-        full_answer = "".join(collected_text).strip()
-        thought, clean_answer = _split_thought_and_answer(full_answer, enable_thinking=bool(request.enable_thinking))
-        if not thought:
-            thought = ""
-        log_entry = {
-            "ts": request_ts,
-            "character": request.character or "",
-            "user": user_text,
-            "assistant": clean_answer or full_answer,
-            "thought": thought,
-            "finish_reason": "stop",
-            "tokens": {},
-        }
-        _append_chat_log(log_entry)
-        _append_vllm_request_log({
-            "ts": request_ts,
-            "character": request.character or "",
-            "provider": provider_cfg.name,
-            "model": provider_cfg.model,
-            "base_url": provider_cfg.base_url,
-            "type": "streaming",
-            "request": {
-                "messages": messages,
-                "sampling": sampling,
-                "tools": tools,
-                "extra_body": extra_body,
-            },
-            "response": {
-                "finish_reason": last_finish_reason or "stop",
-                "function_calls": collected_function_calls or None,
-                "answer": clean_answer or full_answer,
-                "thought": thought,
-                "raw_text": full_answer,
-                "raw_events": collected_raw_events,
-            },
-        })
-    except Exception:
-        pass  # Logging failure must never break the response.
+        for _round in range(max_rounds):
+            collected_text: List[str] = []
+            collected_function_calls: List[Dict[str, Any]] = []
+            round_aborted = False
+            it = await backend.generate_stream(
+                messages=messages,
+                sampling=sampling,
+                tools=tools,
+                request_id=request_id,
+                extra_body=extra_body,
+            )
+            async for chunk in it:  # type: StreamChunk
+                if chunk.raw is not None:
+                    collected_raw_events.append(chunk.raw)
+                if chunk.text:
+                    collected_text.append(chunk.text)
+                    # Stream assistant text live. Intermediate rounds never
+                    # forward finish_reason -- only the terminal chunk does.
+                    yield _chunk(DeltaMessage(content=chunk.text))
+                if chunk.function_calls:
+                    collected_function_calls = chunk.function_calls
+                if chunk.finish_reason == "abort":
+                    round_aborted = True
+                elif chunk.finish_reason:
+                    last_finish_reason = chunk.finish_reason
+
+            if round_aborted:
+                yield _chunk(DeltaMessage(), finish_reason="abort")
+                return
+
+            full_text = "".join(collected_text)
+            thought, clean_answer = _split_thought_and_answer(
+                full_text, enable_thinking=bool(request.enable_thinking)
+            )
+            final_thought = thought or ""
+            final_answer = clean_answer or full_text
+            _append_vllm_request_log({
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "character": request.character or "",
+                "provider": provider_cfg.name,
+                "model": provider_cfg.model,
+                "base_url": provider_cfg.base_url,
+                "type": f"stream_round/{_round + 1}",
+                "request": {
+                    "messages": messages,
+                    "sampling": sampling,
+                    "tools": tools,
+                    "extra_body": extra_body,
+                },
+                "response": {
+                    "finish_reason": last_finish_reason or "stop",
+                    "function_calls": collected_function_calls or None,
+                    "answer": final_answer,
+                    "thought": final_thought,
+                    "raw_text": full_text,
+                    "raw_events": collected_raw_events,
+                },
+            })
+
+            if not collected_function_calls:
+                # Final assistant answer — terminate the stream.
+                yield _chunk(DeltaMessage(), finish_reason="stop")
+                break
+
+            fc = collected_function_calls[0]
+            fc_name = fc.get("name", "")
+            fc_args = fc.get("arguments", "{}")
+            # Real-time: a tool call is starting (front-end shows "running").
+            yield _chunk(DeltaMessage(tool_event={
+                "type": "call",
+                "name": fc_name,
+                "arguments": fc_args,
+            }))
+
+            dispatch = await _dispatch_tool(
+                fc, mcp_names=mcp_names, builtin_names=builtin_names, messages=messages,
+            )
+            if dispatch["kind"] == "executed":
+                # Real-time: forward the tool result, then loop so the model
+                # can stream its next turn (text + possibly more tools).
+                yield _chunk(DeltaMessage(tool_event={
+                    "type": "result",
+                    "name": fc_name,
+                    "output": dispatch["output"],
+                    "success": bool(dispatch["success"]),
+                }))
+                continue
+
+            # ask/deny/unknown: bounce the function_call back to the client for
+            # its permission modal. The tool_event(call) above already rendered
+            # the running row; this terminal chunk carries the legacy
+            # function_call shape + finish_reason so the client can resume.
+            hit_function_call = True
+            yield _chunk(
+                DeltaMessage(function_call={
+                    "id": fc.get("id", ""),
+                    "name": fc_name,
+                    "arguments": fc_args,
+                }),
+                finish_reason="function_call",
+            )
+            return
+        else:
+            # Max rounds exhausted -- emit a terminal stop.
+            yield _chunk(DeltaMessage(), finish_reason="stop")
+    finally:
+        if request.abort_id:
+            _active_requests.pop(request.abort_id, None)
+        # Log the conversation turn to the chat log file.
+        try:
+            _append_chat_log({
+                "ts": request_ts,
+                "character": request.character or "",
+                "user": user_text,
+                "assistant": final_answer,
+                "thought": final_thought,
+                "finish_reason": "function_call" if hit_function_call else "stop",
+                "tokens": {},
+            })
+        except Exception:
+            pass  # Logging failure must never break the response.
 
 
 # ---------------------------------------------------------------------------
