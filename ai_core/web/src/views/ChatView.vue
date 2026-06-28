@@ -673,11 +673,12 @@ async function loadSessionHistoryFor(id: string): Promise<ChatMessage[]> {
           if (cleanText) {
             result.push({ role: 'assistant', content: cleanText, timestamp: ts })
           }
-          result.push({ role: 'tool_call', content: '', toolName: tc.name, toolArgs: tc.args, timestamp: ts })
+          result.push({ role: 'tool_result', content: '', toolName: tc.name, toolArgs: tc.args, timestamp: ts })
           if (i + 1 < raw.length && raw[i + 1].role === 'function') {
             i++
             const funcTs = raw[i].timestamp ? new Date(raw[i].timestamp).getTime() : ts
-            result.push({ role: 'tool_result', content: stripBase64Images(raw[i].content || ''), toolName: tc.name, toolArgs: tc.args, timestamp: funcTs })
+            result[result.length - 1].content = stripBase64Images(raw[i].content || '')
+            result[result.length - 1].timestamp = funcTs
           }
         } else {
           result.push({ role: 'assistant', content: h.content || '', timestamp: ts })
