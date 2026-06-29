@@ -836,15 +836,18 @@ function hippoSid(id?: string): string {
 
 function fmtTs(ts: number): string {
   const d = new Date(ts)
+  const Y = d.getFullYear()
   const M = (d.getMonth() + 1).toString().padStart(2, '0')
   const D = d.getDate().toString().padStart(2, '0')
   const h = d.getHours().toString().padStart(2, '0')
   const m = d.getMinutes().toString().padStart(2, '0')
-  return `[${M}-${D} ${h}:${m}]`
+  return `[${Y}-${M}-${D} ${h}:${m}]`
 }
 
 function stripTimestamp(text: string): string {
-  return text.replace(/^\s*\[\d{2}-\d{2}\s+\d{2}:\d{2}\]\s*/, '')
+  // Matches both old [MM-DD HH:MM] and new [YYYY-MM-DD HH:MM] formats so
+  // existing hippocampus history (old format) still strips correctly.
+  return text.replace(/^\s*\[\d{2,4}-\d{2}(?:-\d{2})?\s+\d{2}:\d{2}\]\s*/, '')
 }
 
 async function fetchSessions() {

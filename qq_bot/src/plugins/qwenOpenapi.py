@@ -197,7 +197,7 @@ class Qwen(LLM):
         for msg in messages:
             ts = msg.get("_timestamp")
             if ts:
-                ts_str = ts.strftime("[%m-%d %H:%M]")
+                ts_str = ts.strftime("[%Y-%m-%d %H:%M]")
                 clean_messages.append({"role": msg["role"], "content": f"{ts_str} {msg['content']}"})
             else:
                 clean_messages.append({"role": msg["role"], "content": msg["content"]})
