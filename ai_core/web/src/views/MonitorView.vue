@@ -105,6 +105,13 @@ function msgText(msg: any): string {
   return content ? String(content) : ''
 }
 
+function compactThink(text: string): string {
+  if (!text) return text
+  // Collapse newlines only inside <think>...</think> blocks so the model's
+  // reasoning stays on one line (easier to scan); leave the rest verbatim.
+  return text.replace(/<think>[\s\S]*?<\/think>/g, (m) => m.replace(/\n/g, '\\n'))
+}
+
 function fmtToolDef(t: any, idx: number): string {
   const fn = t.function || t
   const name = fn.name || '?'
@@ -219,7 +226,7 @@ function renderEntry(entry: MonitorEntry): string {
       const role = msg.role || '?'
       const toolCalls: any[] = msg.tool_calls || []
       const fnCall = msg.function_call
-      const text = msgText(msg)
+      const text = compactThink(msgText(msg))
       if (toolCalls.length > 0) {
         for (const tc of toolCalls) {
           const fc = tc.function || {}
@@ -247,7 +254,7 @@ function renderEntry(entry: MonitorEntry): string {
 
   if (latestMsg) {
     const roleLabel = latestMsg.role || '?'
-    const latestText = msgText(latestMsg)
+    const latestText = compactThink(msgText(latestMsg))
     lines.push(sRaw(C_HEAD, '&gt;&gt;&gt; LATEST MESSAGE', true))
     const lToolCalls: any[] = latestMsg.tool_calls || []
     const lFnCall = latestMsg.function_call
@@ -339,10 +346,12 @@ const renderedHtml = computed(() => {
 
 function scrollToBottom() {
   nextTick(() => {
-    const el = terminalRef.value
-    if (!el) return
-    el.scrollTop = el.scrollHeight
-    wasScrolledUp.value = false
+    requestAnimationFrame(() => {
+      const el = terminalRef.value
+      if (!el) return
+      el.scrollTop = el.scrollHeight
+      wasScrolledUp.value = false
+    })
   })
 }
 

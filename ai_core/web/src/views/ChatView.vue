@@ -1198,6 +1198,19 @@ function buildRequestMessages(): any[] {
     const m = msgs[i]
     if (m.role === 'tool_call') continue
     if (m.role === 'tool_result') {
+      // Each tool result self-emits its own assistant(function_call) + function
+      // result, so tool calls without accompanying text are still reconstructed
+      // as a complete tool-call turn (previously they'd leave a bare function
+      // message with no preceding assistant tool_call, confusing the model).
+      const tc = m as any
+      result.push({
+        role: 'assistant',
+        content: '',
+        function_call: {
+          name: tc.toolName,
+          arguments: JSON.stringify(tc.toolArgs || {}),
+        },
+      })
       result.push({
         role: 'function',
         content: m.content.replace(/\[image,base64=[^\]]+\]/g, '[image removed]'),
@@ -1218,22 +1231,7 @@ function buildRequestMessages(): any[] {
     } else {
       content = `${ts} ${body}`
     }
-    if (i + 1 < msgs.length && msgs[i + 1].role === 'tool_result' && (msgs[i + 1] as any).toolName) {
-      // Emit the standard structured function_call field (not inline <function=>
-      // text) so the backend's _prepare_messages converts it to tool_calls and
-      // the serving layer renders whatever tool-call format the model expects.
-      const tc = msgs[i + 1] as any
-      result.push({
-        role: 'assistant',
-        content,
-        function_call: {
-          name: tc.toolName,
-          arguments: JSON.stringify(tc.toolArgs || {}),
-        },
-      })
-    } else {
-      result.push({ role: m.role, content })
-    }
+    result.push({ role: m.role, content })
   }
   return result
 }
