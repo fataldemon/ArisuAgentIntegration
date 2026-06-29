@@ -98,6 +98,28 @@ def _wait_for_port(port: int, timeout: float = 20.0) -> bool:
     return False
 
 
+def _suppress_crash_dialog(profile_dir: str) -> None:
+    """Patch the Chrome profile's Preferences to suppress the 'restore pages'
+    dialog that appears after a hard terminate.
+
+    Sets ``exit_type`` to ``Normal`` and ``exited_cleanly`` to ``True`` so the
+    next launch doesn't think the previous session crashed.
+    """
+    import json
+    prefs_path = os.path.join(profile_dir, "Default", "Preferences")
+    if not os.path.exists(prefs_path):
+        return
+    try:
+        with open(prefs_path, "r", encoding="utf-8") as f:
+            prefs = json.load(f)
+        prefs.setdefault("session", {})["exit_type"] = "Normal"
+        prefs["session"]["exited_cleanly"] = True
+        with open(prefs_path, "w", encoding="utf-8") as f:
+            json.dump(prefs, f, ensure_ascii=False)
+    except Exception:
+        pass  # non-fatal — the crash-bubble flags are the primary suppression
+
+
 async def _start() -> None:
     """Launch Chrome (if not already up) and connect over CDP."""
     global _chrome_proc, _playwright, _browser
@@ -132,6 +154,9 @@ async def _start() -> None:
 
         profile = _profile_dir()
         os.makedirs(profile, exist_ok=True)
+        # Patch the profile's Preferences so Chrome doesn't show the "restore
+        # pages" crash dialog after we hard-terminate the process.
+        _suppress_crash_dialog(profile)
         cmd = [
             chrome,
             f"--remote-debugging-port={port}",
@@ -141,6 +166,9 @@ async def _start() -> None:
             "--no-first-run",
             "--no-default-browser-check",
             "--disable-features=Translate",
+            "--noerrdialogs",
+            "--disable-session-crashed-bubble",
+            "--disable-crash-reporter",
         ]
         if headless:
             cmd.append("--headless=new")

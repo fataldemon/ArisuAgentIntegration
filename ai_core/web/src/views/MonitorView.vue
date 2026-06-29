@@ -51,6 +51,7 @@ const loading = ref(false)
 const intervalValue = ref(3)
 const terminalRef = ref<HTMLDivElement | null>(null)
 let timer: ReturnType<typeof setInterval> | null = null
+let resizeObserver: ResizeObserver | null = null
 
 const currentPage = ref(1)
 const totalPages = ref(0)
@@ -244,8 +245,10 @@ function renderEntry(entry: MonitorEntry): string {
         )
       }
       if (text) {
-        // Verbatim — CSS white-space:pre renders newlines naturally.
-        lines.push(sRaw(C_META, `    [${esc(role)}]`) + '  ' + s(C_TEXT, text))
+        // Indent continuation lines so multi-line content stays aligned under
+        // the [role] label instead of wrapping to column 0.
+        const indented = text.split('\n').join('\n    ')
+        lines.push(sRaw(C_META, `    [${esc(role)}]`) + '  ' + s(C_TEXT, indented))
       }
     }
   } else {
@@ -414,11 +417,24 @@ onActivated(() => {
   startPolling()
   if (terminalRef.value) {
     terminalRef.value.addEventListener('scroll', onScroll)
+    // ResizeObserver catches the exact moment the browser finishes laying out
+    // new content, then scrolls to bottom — more reliable than nextTick+RAF
+    // for the heavy verbatim DOM.
+    resizeObserver = new ResizeObserver(() => {
+      if (trackLatest.value && !wasScrolledUp.value && terminalRef.value) {
+        terminalRef.value.scrollTop = terminalRef.value.scrollHeight
+      }
+    })
+    resizeObserver.observe(terminalRef.value)
   }
 })
 
 onDeactivated(() => {
   stopPolling()
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
   if (terminalRef.value) {
     terminalRef.value.removeEventListener('scroll', onScroll)
   }

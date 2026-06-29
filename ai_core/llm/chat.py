@@ -845,6 +845,9 @@ async def chat(
             _active_requests.pop(request.abort_id, None)
 
     if rtype == 1:
+        # Knowledge base stores / searches line-by-line; enforce single-line so
+        # multi-paragraph summaries don't get split into fragmented entries.
+        answer = answer.replace("\n", " ").replace("\r", "").strip()
         add_knowledge(content=answer, character="_shared")
         _append_chat_log({
             "ts": request_ts,

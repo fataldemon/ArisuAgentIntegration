@@ -40,7 +40,7 @@
                   </n-collapse>
                 </div>
                 <template v-for="(part, pidx) in parseAssistantContent(msg.content)" :key="pidx">
-                  <span v-if="part.type === 'text'">{{ part.value }}</span>
+                  <div v-if="part.type === 'text'" class="md-content" v-html="renderMarkdown(part.value)"></div>
                   <span v-else-if="part.type === 'action'" class="action-text">{{ part.value }}</span>
                 </template>
                 <div v-if="parseEmotions(msg.content).length" class="emotion-tags">
@@ -333,6 +333,8 @@ import {
   NImage,
   useMessage,
 } from 'naive-ui'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { useI18n } from 'vue-i18n'
 import HelpTip from '../components/HelpTip.vue'
 import { inferenceApi } from '../api/inference'
@@ -801,6 +803,13 @@ function parseUserContent(text: string): UserContentPart[] {
     parts.push({ type: 'text', value: text })
   }
   return parts
+}
+
+// Render markdown to sanitized HTML for assistant bubbles (committed messages
+// only; the streaming bubble stays plain text for performance).
+function renderMarkdown(text: string): string {
+  if (!text) return ''
+  return DOMPurify.sanitize(marked.parse(text, { async: false, breaks: true }) as string)
 }
 
 function formatTime(ts: number): string {
@@ -1671,6 +1680,69 @@ onMounted(() => {
   display: inline-block;
   margin-left: 4px;
   vertical-align: middle;
+}
+
+/* Markdown rendering inside assistant bubbles (v-html needs :deep()) */
+.message-bubble.assistant :deep(.md-content) {
+  line-height: 1.6;
+}
+.message-bubble.assistant :deep(.md-content p) {
+  margin: 0 0 8px;
+}
+.message-bubble.assistant :deep(.md-content p:last-child) {
+  margin-bottom: 0;
+}
+.message-bubble.assistant :deep(.md-content h1),
+.message-bubble.assistant :deep(.md-content h2),
+.message-bubble.assistant :deep(.md-content h3) {
+  font-size: 1.05em;
+  font-weight: bold;
+  margin: 8px 0 4px;
+}
+.message-bubble.assistant :deep(.md-content ul),
+.message-bubble.assistant :deep(.md-content ol) {
+  margin: 4px 0 8px;
+  padding-left: 20px;
+}
+.message-bubble.assistant :deep(.md-content li) {
+  margin: 2px 0;
+}
+.message-bubble.assistant :deep(.md-content code) {
+  font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9em;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+.message-bubble.assistant :deep(.md-content pre) {
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+.message-bubble.assistant :deep(.md-content pre code) {
+  background: none;
+  padding: 0;
+  font-size: 0.9em;
+}
+.message-bubble.assistant :deep(.md-content blockquote) {
+  border-left: 3px solid #4C8FEC;
+  margin: 8px 0;
+  padding: 4px 12px;
+  color: #666;
+}
+.message-bubble.assistant :deep(.md-content strong) {
+  font-weight: 600;
+}
+.message-bubble.assistant :deep(.md-content table) {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+.message-bubble.assistant :deep(.md-content th),
+.message-bubble.assistant :deep(.md-content td) {
+  border: 1px solid #ddd;
+  padding: 4px 8px;
 }
 
 .input-area {
