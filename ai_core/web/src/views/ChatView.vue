@@ -809,7 +809,12 @@ function parseUserContent(text: string): UserContentPart[] {
 // only; the streaming bubble stays plain text for performance).
 function renderMarkdown(text: string): string {
   if (!text) return ''
-  return DOMPurify.sanitize(marked.parse(text, { async: false, breaks: true }) as string)
+  try {
+    return DOMPurify.sanitize(marked.parse(text, { async: false, breaks: true }) as string)
+  } catch {
+    const esc = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    return `<p>${esc}</p>`
+  }
 }
 
 function formatTime(ts: number): string {
