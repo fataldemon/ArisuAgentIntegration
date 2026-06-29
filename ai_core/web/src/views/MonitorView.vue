@@ -413,6 +413,8 @@ function onScroll() {
 }
 
 onActivated(() => {
+  wasScrolledUp.value = false
+  trackLatest.value = true
   fetchLog()
   startPolling()
   if (terminalRef.value) {
